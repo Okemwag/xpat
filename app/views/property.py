@@ -3,10 +3,11 @@ import streamlit as st
 from floodcat.core.constants import TIERS
 from ui import state
 from ui.charts import vulnerability_chart
-from ui.components import page_header, require_result, run_banner
+from ui.components import explain, page_header, pipeline_strip, require_result, run_banner
 
 page_header('Property explorer', 'Trace any loss back to its inputs: value, location, hazard score, assumed depth and damage curve.',
             ('SYNTHETIC', 'PROXY', 'ASSUMPTION'))
+pipeline_strip('Financial engine')
 report = require_result()
 run_banner(report)
 cfg = state.config()
@@ -39,7 +40,10 @@ with left:
     st.dataframe(frame, hide_index=True, width='stretch',
                  column_config={'Hazard score': st.column_config.NumberColumn(format='%.3f'), 'Depth (m)': st.column_config.NumberColumn(format='%.2f'),
                                 'Damage ratio': st.column_config.NumberColumn(format='percent')})
-    st.caption(f'Hazard score (PROXY) × {cfg.max_depth_m:g} m = assumed depth (ASSUMPTION) → damage from the adapted JRC curve → × insured value.')
+    last = rows[-1]
+    st.markdown(f"**The calculation at {last['Return period']}:** score {last['Hazard score']:.3f} × {cfg.max_depth_m:g} m = "
+                f"{last['Depth (m)']:.2f} m → {last['Damage ratio']:.1%} damage → {state.kes(p['tiv_kes'])} × {last['Damage ratio']:.1%} = **{last['Loss']}**")
+    st.caption('Hazard score: PROXY · depth conversion and class curve: ASSUMPTION on a published JRC curve · value: SYNTHETIC.')
     if all(r['Hazard score'] == 0 for r in rows):
         st.info('The proxy map does not flag this location in any tier, so it has no modelled loss. That does not mean it cannot '
                 'flood — drainage failures are invisible to the proxy.', icon=':material/info:')
@@ -53,4 +57,5 @@ with right:
     marks = frame.rename(columns={'Return period': 'Return period'})[['Return period', 'Depth (m)', 'Damage ratio']]
     chart_cfg = cfg
     st.altair_chart(vulnerability_chart(chart_cfg, marks=marks), width='stretch')
-    st.caption('Orange points: this property at each return period, on its class curve.')
+    explain('This property’s class curve, with an orange point for each of the five scenarios.',
+            'Further right = deeper assumed water in rarer floods; the height is the share of value damaged.', ['REAL', 'ASSUMPTION'])

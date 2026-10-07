@@ -14,7 +14,9 @@ if report:
     st.subheader('Current run')
     cfg = state.config()
     c = st.container(horizontal=True)
-    c.download_button('Summary (Markdown)', markdown_summary(report), 'xpat_summary.md', 'text/markdown', icon=':material/description:')
+    try: ranges, ylt = state.uncertainty(report), state.ylt(report)
+    except ModelError: ranges = ylt = None
+    c.download_button('Summary (Markdown)', markdown_summary(report, ranges, ylt), 'xpat_summary.md', 'text/markdown', icon=':material/description:')
     c.download_button('Full report (JSON)', json_report(report), 'xpat_report.json', 'application/json', icon=':material/data_object:')
     tier = st.selectbox('Property losses for', TIERS, index=len(TIERS)-1, format_func=lambda t: f'{state.rp_label(cfg.return_periods[t])} ({t})')
     runs = list(report['runs'])

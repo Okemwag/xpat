@@ -7,8 +7,8 @@ from floodcat.ai.evidence import Evidence, usable
 from floodcat.core.constants import MECHANISMS, TIERS
 from floodcat.core.errors import ModelError
 from ui import state
-from ui.charts import ep_chart
-from ui.components import badges, page_header
+from ui.charts import ylt_chart
+from ui.components import badges, explain, page_header
 
 page_header('AI flood evidence', 'The baseline map cannot see drainage failures. Turn flood reports into reviewed evidence and measure what it changes.', ('AI', 'REAL'))
 rt = state.runtime(); cfg = state.config(); store = rt.store
@@ -159,9 +159,10 @@ with impact_tab:
         if ai.get('spread'):
             st.caption(f"{ai['spread']['changed_near_hotspot']} changed properties are within {cfg.hotspot_tag_radius_m/1000:g} km of a named hotspot; "
                        f"{ai['spread']['changed_away_from_hotspots']} are further away.")
-        st.altair_chart(ep_chart(report, compare_ai=True), width='stretch')
-        badges('AI', 'ASSUMPTION')
-        st.caption('A higher loss is not proof of a better model. The hit-rate check below is the evidence.')
+        st.altair_chart(ylt_chart(state.ylt(report), report, compare_ai=True), width='stretch')
+        explain('The loss curve before (blue) and after (orange) applying approved drainage evidence, each from 10,000 simulated years.',
+                'Where the orange curve sits above the blue, the evidence raised losses. A higher loss is not proof of a better model — the '
+                'named-hotspot check below is the evidence.', ['AI', 'ASSUMPTION'])
 
     st.subheader('Named-hotspot check')
     comparison = hotspot_comparison(rt.hotspots, rt.hazard, store.list_evidence(), cfg)

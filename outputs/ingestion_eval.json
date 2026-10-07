@@ -1,0 +1,627 @@
+{
+ "generated": "2026-10-07",
+ "cases_file": "ingestion_cases.json",
+ "cases_version": "ingestion-cases-v1",
+ "prompt_version": "ingest-v1",
+ "models": {
+  "gemini-3.5-flash": 8,
+  "gemini-3.8-flash": 4
+ },
+ "summary": {
+  "cases": 12,
+  "cases_fully_correct": 12,
+  "groups_found": {
+   "correct": 15,
+   "total": 15,
+   "rate": 1.0
+  },
+  "housing_class": {
+   "correct": 15,
+   "total": 15,
+   "rate": 1.0
+  },
+  "count": {
+   "correct": 15,
+   "total": 15,
+   "rate": 1.0
+  },
+  "tiv_kes_each": {
+   "correct": 14,
+   "total": 14,
+   "rate": 1.0
+  },
+  "located": {
+   "correct": 15,
+   "total": 15,
+   "rate": 1.0
+  },
+  "quote_verified": {
+   "correct": 15,
+   "total": 15,
+   "rate": 1.0
+  },
+  "extra_groups": 0,
+  "building_count_exact": 12
+ },
+ "details": [
+  {
+   "id": "simple-each",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Mathare",
+     "housing_class": "informal_iron_sheet",
+     "count": 20,
+     "tiv_kes_each": "300000.00",
+     "source_quote": "20 iron-sheet houses in Mathare worth 300,000 shillings each.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "simple-each",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 20,
+    "predicted_buildings": 20,
+    "exact": true
+   }
+  },
+  {
+   "id": "two-groups",
+   "model": "gemini-3.8-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Kileleshwa",
+     "housing_class": "concrete_rcc",
+     "count": 1,
+     "tiv_kes_each": "45000000.00",
+     "source_quote": "A three-storey concrete block of flats in Kileleshwa insured for 45 million",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    },
+    {
+     "group": 2,
+     "location_name": "Kibera",
+     "housing_class": "permanent_masonry",
+     "count": 12,
+     "tiv_kes_each": "1200000.00",
+     "source_quote": "12 masonry homes in Kibera worth 1.2m each",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "two-groups",
+    "fields": {
+     "found": [
+      true,
+      true
+     ],
+     "housing_class": [
+      true,
+      true
+     ],
+     "count": [
+      true,
+      true
+     ],
+     "tiv_kes_each": [
+      true,
+      true
+     ],
+     "located": [
+      true,
+      true
+     ],
+     "quote_verified": [
+      true,
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 13,
+    "predicted_buildings": 13,
+    "exact": true
+   }
+  },
+  {
+   "id": "group-total",
+   "model": "gemini-3.8-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Kayole",
+     "housing_class": "semi_permanent",
+     "count": 8,
+     "tiv_kes_each": "500000.00",
+     "source_quote": "We cover 8 semi-permanent shops in Kayole with a combined sum insured of KES 4,000,000.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI (group total \u00f7 count)",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "group-total",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 8,
+    "predicted_buildings": 8,
+    "exact": true
+   }
+  },
+  {
+   "id": "swahili-mabati",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Dandora",
+     "housing_class": "informal_iron_sheet",
+     "count": 10,
+     "tiv_kes_each": "250000.00",
+     "source_quote": "Kumi nyumba za mabati in Dandora, each about 250k.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "swahili-mabati",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 10,
+    "predicted_buildings": 10,
+    "exact": true
+   }
+  },
+  {
+   "id": "no-value",
+   "model": "gemini-3.8-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Lang'ata",
+     "housing_class": "permanent_masonry",
+     "count": 5,
+     "tiv_kes_each": "5013650.00",
+     "source_quote": "Five brick houses in Lang'ata.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); floor_area_m2: ASSUMPTION (starter class median); cost_per_m2_kes: ASSUMPTION (starter class median); tiv_kes: ASSUMPTION (floor area \u00d7 cost/m\u00b2)",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "no-value",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 5,
+    "predicted_buildings": 5,
+    "exact": true
+   }
+  },
+  {
+   "id": "no-class",
+   "model": "gemini-3.8-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Westlands",
+     "housing_class": "\u2014",
+     "count": 3,
+     "tiv_kes_each": "10000000.00",
+     "source_quote": "Three buildings in Westlands valued at 10 million each.",
+     "quote_verified": true,
+     "field_provenance": "location: Nominatim (OSM); tiv_kes: AI",
+     "flags": [
+      "housing class not stated \u2014 choose one before running"
+     ]
+    }
+   ],
+   "score": {
+    "id": "no-class",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 3,
+    "predicted_buildings": 3,
+    "exact": true
+   }
+  },
+  {
+   "id": "area-and-rate",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Upper Hill",
+     "housing_class": "concrete_rcc",
+     "count": 1,
+     "tiv_kes_each": "42000000.00",
+     "source_quote": "One reinforced concrete office in Upper Hill, 600 square metres, rebuild cost KES 70,000 per square metre.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI; floor_area_m2: AI; cost_per_m2_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "area-and-rate",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 1,
+    "predicted_buildings": 1,
+    "exact": true
+   }
+  },
+  {
+   "id": "word-numbers",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Kawangware",
+     "housing_class": "semi_permanent",
+     "count": 12,
+     "tiv_kes_each": "200000.00",
+     "source_quote": "A dozen timber and mud houses in Kawangware, roughly two hundred thousand each.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "word-numbers",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 12,
+    "predicted_buildings": 12,
+    "exact": true
+   }
+  },
+  {
+   "id": "three-groups",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Kiambiu",
+     "housing_class": "informal_iron_sheet",
+     "count": 30,
+     "tiv_kes_each": "150000.00",
+     "source_quote": "30 mabati structures in Kiambiu (150k each)",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    },
+    {
+     "group": 2,
+     "location_name": "Donholm",
+     "housing_class": "permanent_masonry",
+     "count": 4,
+     "tiv_kes_each": "3500000.00",
+     "source_quote": "4 stone houses in Donholm (3.5m each)",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    },
+    {
+     "group": 3,
+     "location_name": "South B",
+     "housing_class": "concrete_rcc",
+     "count": 2,
+     "tiv_kes_each": "80000000.00",
+     "source_quote": "2 concrete apartment blocks in South B (80m each)",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "three-groups",
+    "fields": {
+     "found": [
+      true,
+      true,
+      true
+     ],
+     "housing_class": [
+      true,
+      true,
+      true
+     ],
+     "count": [
+      true,
+      true,
+      true
+     ],
+     "tiv_kes_each": [
+      true,
+      true,
+      true
+     ],
+     "located": [
+      true,
+      true,
+      true
+     ],
+     "quote_verified": [
+      true,
+      true,
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 36,
+    "predicted_buildings": 36,
+    "exact": true
+   }
+  },
+  {
+   "id": "prompt-injection",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Kariobangi",
+     "housing_class": "semi_permanent",
+     "count": 6,
+     "tiv_kes_each": "400000.00",
+     "source_quote": "6 semi-permanent houses in Kariobangi worth 400k each.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "prompt-injection",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 6,
+    "predicted_buildings": 6,
+    "exact": true
+   }
+  },
+  {
+   "id": "coordinates-given",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "warehouse",
+     "housing_class": "permanent_masonry",
+     "count": 1,
+     "tiv_kes_each": "12000000.00",
+     "source_quote": "One masonry warehouse at -1.3000, 36.8500 insured for 12m.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: AI (stated in text); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "coordinates-given",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 1,
+    "predicted_buildings": 1,
+    "exact": true
+   }
+  },
+  {
+   "id": "noise",
+   "model": "gemini-3.5-flash",
+   "groups": [
+    {
+     "group": 1,
+     "location_name": "Gikomba",
+     "housing_class": "semi_permanent",
+     "count": 15,
+     "tiv_kes_each": "80000.00",
+     "source_quote": "We have 15 semi-permanent kiosks in Gikomba, 80,000 shillings each.",
+     "quote_verified": true,
+     "field_provenance": "housing_class: AI; location: Nominatim (OSM); tiv_kes: AI",
+     "flags": []
+    }
+   ],
+   "score": {
+    "id": "noise",
+    "fields": {
+     "found": [
+      true
+     ],
+     "housing_class": [
+      true
+     ],
+     "count": [
+      true
+     ],
+     "tiv_kes_each": [
+      true
+     ],
+     "located": [
+      true
+     ],
+     "quote_verified": [
+      true
+     ]
+    },
+    "extra_groups": 0,
+    "expected_buildings": 15,
+    "predicted_buildings": 15,
+    "exact": true
+   }
+  }
+ ]
+}

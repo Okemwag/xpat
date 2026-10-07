@@ -99,3 +99,50 @@ def class_label(name):
 
 def tier_for_rp(cfg, years):
     return next(t for t, rp in cfg.return_periods.items() if rp == years)
+
+def uncertainty(report=None):
+    """Monte Carlo ranges for the current result, computed once per analysis and config."""
+    from floodcat.exposure.validation import apply_declarations
+    from floodcat.financial.uncertainty import uncertainty_ranges
+    report = report or result()
+    if report is None: return None
+    cfg = config()
+    key = (report['analysis_id'], cfg.fingerprint)
+    cached = st.session_state.get('uncertainty')
+    if cached and cached[0] == key: return cached[1]
+    settings = st.session_state.get('run_settings', {})
+    rows, _ = apply_declarations(st.session_state.get('rows') or [], settings.get('declare_synthetic', False),
+                                 settings.get('source_label'), settings.get('assign_missing_ids', False))
+    if cfg.policy_terms['enabled'] and not rows:
+        cfg = cfg.replace(policy_terms={**cfg.policy_terms, 'enabled': False})
+    ranges = uncertainty_ranges(report, rows, cfg)
+    st.session_state['uncertainty'] = (key, ranges)
+    return ranges
+
+def ingestion_eval():
+    import json
+    path = runtime().data_dir.parent/'outputs'/'ingestion_eval.json'
+    try: return json.loads(path.read_text())
+    except (OSError, ValueError): return None
+
+def ylt(report=None):
+    """Year-loss-table EP curves for the current result, cached per analysis and config."""
+    from floodcat.exposure.validation import apply_declarations
+    from floodcat.financial.ylt import ylt_for_report
+    report = report or result()
+    if report is None: return None
+    cfg = config()
+    key = (report['analysis_id'], cfg.fingerprint)
+    cached = st.session_state.get('ylt')
+    if cached and cached[0] == key: return cached[1]
+    settings = st.session_state.get('run_settings', {})
+    rows, _ = apply_declarations(st.session_state.get('rows') or [], settings.get('declare_synthetic', False),
+                                 settings.get('source_label'), settings.get('assign_missing_ids', False))
+    if cfg.policy_terms['enabled'] and not rows:
+        cfg = cfg.replace(policy_terms={**cfg.policy_terms, 'enabled': False})
+    curves = ylt_for_report(report, rows, cfg)
+    st.session_state['ylt'] = (key, curves)
+    return curves
+
+def rp_sentence(years, loss):
+    return f'1-in-{years:,.0f} year loss: {kes(loss, compact=False)}'

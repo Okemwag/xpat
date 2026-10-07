@@ -64,7 +64,7 @@ src/floodcat/
   hazard/        raster lookup (in-memory), providers, hotspots, score interpretation
   vulnerability/ damage (depth-damage) functions
   exposure/      loaders, models, schema validation (the contract for CSV and AI rows)
-  financial/     loss, EP curve + AAL, accumulation
+  financial/     loss, EP curve + AAL, accumulation, policy terms, uncertainty (damage MC), ylt (10,000-year table)
   ai/            gemini client, ingestion, extraction, geocode, evidence, evaluation
   services/      analysis orchestration, runtime (live context), accounts, sensitivity, data audit
   reporting/     export, provenance, markdown summary
@@ -134,7 +134,11 @@ sum to portfolio loss → EP curve across return periods.
   integration assumptions stated), loss by housing class, top locations,
   loss as % of total insured value, accumulation by area.
 - Base result is **gross insured loss**. Simple per-risk policy terms
-  (deductible / limit) may exist in config, default off.
+  (`policy_terms`: deductible / limit as % of TIV, or per-row `deductible_kes` /
+  `limit_kes`) are in config, default off; they add an insured curve and AAL.
+- Uncertainty ranges (`financial/uncertainty.py`, `uncertainty` in config) are
+  Monte Carlo on the damage ratio only, with a portfolio-wide correlation.
+  Label them ASSUMPTION; never call them confidence intervals.
 - **Out of scope:** reinsurance treaty structuring, layers, net-of-reinsurance
   loss, multi-peril aggregation, real policy/claims data. Do not build these.
 
@@ -247,7 +251,34 @@ Rules:
   Evidence derived from the county hotspot list makes the check circular.
 - A higher loss is not evidence of a better model. Never claim accuracy.
 - Tests use fake LLM and gazetteer objects; no test may call the network.
+- Ingestion accuracy: `make eval-ingestion` scores Gemini on the held-out cases in
+  `evaluation/ingestion_cases.json` → `outputs/ingestion_eval.{json,md}`. Never
+  tune the prompt on those cases; add new cases instead of editing failed ones.
 - An LLM-written summary of results on its own does **not** satisfy the brief.
+
+---
+
+## 7a. UI and explainability
+
+The problem statement's three figures (after Steps 2, 3 and 5) show what each stage's output should look like.
+They are **requirements** for the interface, alongside "understandable and honest" (Step 6).
+
+| Figure | Required view | Where |
+|---|---|---|
+| 1 · Damage matrix | Damage ratio **against the 0–1 hazard score**, one curve per class, plus the matrix table. State where our curves differ from the reference (≈85/69/52/31% at score 1) and why | Assumptions page |
+| 2 · Exposure & hazard map | All properties; size = insured value, colour = hazard score; tooltip traces **class → value → score → depth → damage → loss** with the arithmetic (`KES X × Y% = KES Z`) | Accumulation map |
+| 3 · EP curve | From a **10,000-year simulated year-loss table** (`financial/ylt.py`), **log return-period axis 1–10,000**, grey 5–95% bootstrap band, tooltip in words (“1-in-500 year loss: KES …”) | Loss curve, Overview |
+
+Rules for every user-facing chart:
+- A three-line caption via `ui.components.explain`: **What it shows** / **How to read it** / **Where it comes from** with
+  REAL · PROXY · SYNTHETIC · ASSUMPTION · AI badges.
+- Tooltips trace calculations in plain words, not raw field names.
+- Mark the edge of modelled information: beyond the rarest tier the YLT varies only with damage uncertainty — say so on the chart.
+- Keep the two ranges distinct: the **simulation range** (bootstrap of simulated years, on the curve) and the
+  **damage-uncertainty range** (per scenario, `financial/uncertainty.py`). Never call either a confidence interval.
+- Show the pipeline strip (Hazard → Vulnerability → Exposure → Financial engine → Loss curve) on stage pages.
+- The Data & honesty page keeps the 12-of-24 hotspot hit/miss map and the limitations list; the Methods page explains
+  the four stages, what a return period is and is not, why tier names do not match frequency, and the simulation.
 
 ---
 

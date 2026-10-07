@@ -27,6 +27,9 @@ class ModelConfig:
     aal_tail: str
     hotspot_tag_radius_m: float
     top_n: int
+    policy_terms: dict
+    uncertainty: dict
+    year_loss_table: dict
     uplift_weight: float
     uplift_factors: dict
     evidence_mechanisms: tuple
@@ -43,6 +46,14 @@ class ModelConfig:
                                                               'damage_cap':float(self.class_adjustments[c]['damage_cap'])} for c in CLASSES})
             object.__setattr__(self, 'uplift_factors', {t:float(self.uplift_factors[t]) for t in TIERS})
             object.__setattr__(self, 'evidence_mechanisms', tuple(self.evidence_mechanisms))
+            object.__setattr__(self, 'policy_terms', {'enabled':bool(self.policy_terms['enabled']),
+                'deductible_pct_of_tiv':float(self.policy_terms['deductible_pct_of_tiv']),'limit_pct_of_tiv':float(self.policy_terms['limit_pct_of_tiv'])})
+            u=self.uncertainty
+            object.__setattr__(self, 'uncertainty', {'trials':int(u['trials']),'damage_sigma':float(u['damage_sigma']),'correlation':float(u['correlation']),
+                'seed':int(u['seed']),'interval_pct':tuple(float(x) for x in u['interval_pct'])})
+            y=self.year_loss_table
+            object.__setattr__(self, 'year_loss_table', {'years':int(y['years']),'bootstrap':int(y['bootstrap']),'seed':int(y['seed']),
+                'band_pct':tuple(float(x) for x in y['band_pct'])})
             for name in ('evidence_min_confidence','max_depth_m','uplift_weight','grid_size_m',
                          'evidence_radius_m','aal_zero_loss_return_period','hotspot_tag_radius_m'):
                 object.__setattr__(self,name,float(getattr(self,name)))
@@ -89,6 +100,29 @@ class ModelConfig:
             raise ModelError("invalid_config", "top_n must be a positive integer")
         bounded(self.uplift_weight,"uplift_weight")
         bounded(self.evidence_min_confidence,"evidence_min_confidence")
+        terms=self.policy_terms
+        if set(terms)!={'enabled','deductible_pct_of_tiv','limit_pct_of_tiv'} or not isinstance(terms['enabled'],bool):
+            raise ModelError("invalid_config", "policy_terms needs enabled (true/false), deductible_pct_of_tiv and limit_pct_of_tiv")
+        deductible=bounded(terms['deductible_pct_of_tiv'],'deductible_pct_of_tiv')
+        if not deductible<bounded(terms['limit_pct_of_tiv'],'limit_pct_of_tiv'):
+            raise ModelError("invalid_config", "Policy limit must exceed the deductible")
+        u=self.uncertainty
+        if set(u)!={'trials','damage_sigma','correlation','seed','interval_pct'}:
+            raise ModelError("invalid_config", "uncertainty needs trials, damage_sigma, correlation, seed and interval_pct")
+        if isinstance(u['trials'],bool) or not isinstance(u['trials'],int) or not 100<=u['trials']<=20000:
+            raise ModelError("invalid_config", "uncertainty.trials must be an integer between 100 and 20000")
+        bounded(u['damage_sigma'],'damage_sigma',0,2); bounded(u['correlation'],'correlation')
+        if isinstance(u['seed'],bool) or not isinstance(u['seed'],int): raise ModelError("invalid_config", "uncertainty.seed must be an integer")
+        low,high=(bounded(x,'interval_pct',0,100) for x in u['interval_pct'])
+        y=self.year_loss_table
+        if set(y)!={'years','bootstrap','seed','band_pct'}:
+            raise ModelError("invalid_config", "year_loss_table needs years, bootstrap, seed and band_pct")
+        for key,lo,hi in (('years',1000,200000),('bootstrap',20,2000),('seed',-2**63,2**63)):
+            if isinstance(y[key],bool) or not isinstance(y[key],int) or not lo<=y[key]<=hi:
+                raise ModelError("invalid_config", f"year_loss_table.{key} must be an integer between {lo} and {hi}")
+        b_low,b_high=(bounded(x,'band_pct',0,100) for x in y['band_pct'])
+        if not b_low<b_high: raise ModelError("invalid_config", "band_pct must be [low, high] percentiles")
+        if len(u['interval_pct'])!=2 or not low<high: raise ModelError("invalid_config", "interval_pct must be [low, high] percentiles")
         if not self.evidence_mechanisms or not set(self.evidence_mechanisms)<=set(MECHANISMS):
             raise ModelError("invalid_config", "evidence_mechanisms must be a non-empty subset of "+", ".join(MECHANISMS))
         if set(self.uplift_factors)!=set(TIERS):

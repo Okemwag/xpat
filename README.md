@@ -75,6 +75,8 @@ These distinctions are part of the product's purpose. A useful risk assessment s
 
 ## Running Xpat
 
+The full approach, assumptions, results and limitations are in **[docs/REPORT.md](docs/REPORT.md)**.
+
 ```bash
 make install        # uv sync with dev, geo, ui and ai extras
 make app            # Streamlit interface at http://localhost:8501

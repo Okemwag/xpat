@@ -62,6 +62,10 @@ def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotsp
         totals={t:total_loss(r) for t,r in scenarios.items()}
         runs[name]={'ep_curve':ep_curve(totals,config,covered_tiv),'aal':average_annual_loss(totals,config),'property_losses':scenarios,
                     'breakdowns':{t:group_losses(r,config) for t,r in scenarios.items()}}
+        if config.policy_terms['enabled']:
+            insured={t:total_loss(r,'insured_loss_kes') for t,r in scenarios.items()}
+            runs[name]['insured']={'ep_curve':ep_curve(insured,config,covered_tiv),'aal':average_annual_loss(insured,config),
+                                   'terms':dict(config.policy_terms),'note':'Per-risk deductible and limit only; no layers or reinsurance'}
     contribution={'enabled':ai_adjustment,'applied_evidence_count':len(applied),
                   'approved_evidence_count':sum(e.approved for e in evidence),
                   'changed_properties':sum(c for _,c in changes),
@@ -82,7 +86,8 @@ def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotsp
             'issues':issues,'runs':runs,'ai_contribution':contribution,'config':config.to_dict(),'config_fingerprint':config.fingerprint,
             'provenance':provenance(config),
             'limitations':['Scenario EP points and AAL use assumed return periods, not a calibrated annual loss distribution.',
-            'Losses are gross of policy terms; no deductible, limit or reinsurance is applied.',
+            ('Insured loss applies a simple per-property deductible and limit; no layers or reinsurance.' if config.policy_terms['enabled']
+             else 'Losses are gross of policy terms; no deductible, limit or reinsurance is applied.'),
             'Depth = score × max_depth_m is an assumption; the score is relative susceptibility, not measured depth.',
             'The JRC Africa residential curve rests on South African and Mozambican functions only; class scales and caps are assumptions.',
             'A zero score means the proxy did not flag the location, not that it cannot flood (drainage-driven flooding is invisible to it).'],

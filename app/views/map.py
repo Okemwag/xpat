@@ -4,10 +4,10 @@ import streamlit as st
 from floodcat.ai.evidence import usable
 from ui import state
 from ui.charts import portfolio_map
-from ui.components import page_header, require_result, run_banner, tier_selector
+from ui.components import explain, page_header, pipeline_strip, require_result, run_banner, tier_selector
 
-page_header('Accumulation map', 'How much insured value and loss sit together in the same places — what one flood event could hit at once.',
-            ('SYNTHETIC', 'PROXY', 'REAL'))
+page_header('Exposure, hazard and accumulation', 'Every property on the map: its value, its flood score and the loss they produce together.')
+pipeline_strip('Hazard')
 report = require_result()
 run_banner(report)
 cfg = state.config()
@@ -17,16 +17,25 @@ with c2:
     runs = ['baseline'] + (['enhanced'] if 'enhanced' in report['runs'] else [])
     run = st.radio('Model', runs, horizontal=True, format_func={'baseline': 'Baseline', 'enhanced': 'With AI evidence'}.get) if len(runs) > 1 else 'baseline'
 
+color_by = st.segmented_control('Colour properties by', ['score', 'loss'], default='score',
+                                format_func={'score': 'Hazard score', 'loss': 'Loss'}.get) or 'score'
 rows = report['runs'][run]['property_losses'][tier]
-points = [{'lat': r['lat'], 'lon': r['lon'], 'loss': float(r['loss_kes']), 'tiv': float(r['tiv_kes']),
-           'tooltip': f"<b>{r['loc_id']}</b> · {state.class_label(r['housing_class'])}<br/>Insured {state.kes(r['tiv_kes'])}<br/>"
-                      f"Score {r['hazard_score']:.2f} → {r['assumed_depth_m']:.2f} m → {r['damage_ratio']:.0%} damage<br/>"
-                      f"Loss {state.kes(r['loss_kes'])} at {state.rp_label(rp)}"} for r in rows]
+points = [{'lat': r['lat'], 'lon': r['lon'], 'loss': float(r['loss_kes']), 'tiv': float(r['tiv_kes']), 'score': r['hazard_score'],
+           'tooltip': f"<b>{r['loc_id']}</b> · {state.class_label(r['housing_class'])}<br/>"
+                      f"Insured value {state.kes(r['tiv_kes'])}<br/>"
+                      f"Hazard score {r['hazard_score']:.3f} ({tier}, {state.rp_label(rp)}) → depth {r['assumed_depth_m']:.2f} m<br/>"
+                      f"Damage ratio {r['damage_ratio']:.1%}<br/>"
+                      f"<b>Loss = {state.kes(r['tiv_kes'])} × {r['damage_ratio']:.1%} = {state.kes(r['loss_kes'])}</b>"
+                      + (f"<br/>Nearest hotspot: {r['nearest_hotspot']} ({r['hotspot_distance_m']/1000:.1f} km)" if r.get('nearest_hotspot') else '')}
+          for r in rows]
 evidence = usable(state.runtime().store.list_evidence(), cfg) if run == 'enhanced' else ()
-st.pydeck_chart(portfolio_map(points, state.runtime().hotspots, evidence), height=520)
-st.caption('Dot colour: loss at the selected return period (light = none, dark blue = highest). Dot size: insured value. '
-           'Orange rings: the 24 government-named flood hotspots (approximate centres). '
-           + ('Purple circles: approved AI drainage evidence and its radius.' if evidence else ''))
+st.pydeck_chart(portfolio_map(points, state.runtime().hotspots, evidence, color_by=color_by), height=540)
+explain(f"All {len(points)} properties. Dot size = insured value; colour = {'hazard score (0–1)' if color_by == 'score' else 'loss'} at {state.rp_label(rp)} "
+        '(light = none, dark blue = highest). Orange rings: the 24 government-named flood hotspots'
+        + ('; purple circles: approved AI drainage evidence and its reach.' if evidence else '.'),
+        'Hover a property to trace its loss: class → insured value → hazard score → depth → damage ratio → loss. Big dark dots close '
+        'together are concentrations a single flood could hit at once. Grey dots are not flagged by the proxy — not proof they cannot flood.',
+        ['SYNTHETIC', 'PROXY', 'REAL', 'ASSUMPTION'], source='synthetic properties · proxy hazard map · named hotspots (approximate) ·')
 
 b = report['runs'][run]['breakdowns'][tier]
 left, right = st.columns(2, gap='large')

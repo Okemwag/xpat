@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit.errors import StreamlitAPIException
 from floodcat.core.constants import TIERS
 from floodcat.exposure.validation import summarise_issues
 from . import state
@@ -86,3 +87,31 @@ def tier_selector(key, default_rp=100.0, label='Return period'):
     chosen = st.segmented_control(label, options, default=default, format_func=state.rp_label, key=key)
     chosen = chosen or default
     return state.tier_for_rp(cfg, chosen), chosen
+
+STAGES = [('Hazard', 'views/map.py', ':material/water:', 'Flood-severity score at each property'),
+          ('Vulnerability', 'views/assumptions.py', ':material/home:', 'Score → depth → damage ratio by construction'),
+          ('Exposure', 'views/portfolio.py', ':material/apartment:', 'Properties, construction and insured value'),
+          ('Financial engine', 'views/property.py', ':material/calculate:', 'Damage × value per property, summed per event'),
+          ('Loss curve', 'views/results.py', ':material/show_chart:', '10,000 simulated years → loss vs rarity')]
+
+def pipeline_strip(active=None):
+    """The model chain as a clickable strip. `active` is the stage name of the current page."""
+    with st.container(horizontal=True, gap='small', vertical_alignment='center'):
+        for i, (name, page, icon, help_text) in enumerate(STAGES):
+            label = f'**{name}**' if name == active else name
+            try:
+                st.page_link(page, label=label, icon=icon, help=help_text)
+            except StreamlitAPIException:  # page not registered (e.g. a page rendered on its own): show the stage as text
+                st.markdown(f'{icon} {label}', help=help_text)
+            if i < len(STAGES)-1: st.markdown('→')
+
+def explain(what, how, labels, source=None):
+    """Three-line caption under a chart: what it shows, how to read it, where it comes from."""
+    with st.container(gap='small'):
+        st.markdown(f':gray[**What it shows** · {what}]')
+        st.markdown(f':gray[**How to read it** · {how}]')
+        row = st.container(horizontal=True, gap='small', vertical_alignment='center')
+        row.markdown(':gray[**Where it comes from** ·' + (f' {source}' if source else '') + ']')
+        for label in labels:
+            color, help_text = LABELS[label]
+            row.badge(label, color=color, help=help_text)

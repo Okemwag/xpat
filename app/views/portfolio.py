@@ -6,7 +6,7 @@ from floodcat.core.constants import CLASSES
 from floodcat.core.errors import ModelError, ReviewRequired
 from floodcat.exposure.validation import apply_declarations, validate_rows
 from ui import state
-from ui.components import badges, issues_panel, page_header
+from ui.components import badges, issues_panel, page_header, pipeline_strip
 
 TEMPLATE = ('loc_id,lat,lon,housing_class,floor_area_m2,cost_per_m2_kes,tiv_kes,synthetic,source\n'
             'P-001,-1.2576,36.8962,semi_permanent,33,10000,3300000,True,my test portfolio\n'
@@ -18,6 +18,7 @@ EXAMPLES = [
 ]
 
 page_header('Portfolio', 'Load the properties to model. Every source goes through the same validation before any loss is calculated.', ('SYNTHETIC',))
+pipeline_strip('Exposure')
 
 def run_and_go(rows, label, settings):
     with st.spinner('Running hazard → vulnerability → loss…'):
@@ -103,6 +104,9 @@ with describe:
     badges('AI', 'ASSUMPTION')
     if not state.ai_available():
         st.warning('AI is not configured on this server (set GEMINI_API_KEY). Use the CSV upload or the sample portfolio instead.', icon=':material/key_off:')
+    ev = state.ingestion_eval()
+    if ev: st.caption(f"Tested on {ev['summary']['cases']} held-out descriptions: {ev['summary']['cases_fully_correct']} fully correct "
+                      f"(see Data & honesty). You still review every record.")
     st.write('Describe buildings as you would to a colleague. Gemini turns your words into records; OpenStreetMap locates the places; '
              'anything you did not say is filled from a stated assumption and marked. You review every row before it is modelled.')
     ex = st.pills('Examples', ['Example 1', 'Example 2'], key='example_pick')

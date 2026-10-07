@@ -13,3 +13,5 @@ class Exposure:
     floor_area_m2: float | None
     cost_per_m2_kes: float | None
     hazard: dict
+    deductible_kes: Decimal | None = None
+    limit_kes: Decimal | None = None

@@ -1,4 +1,4 @@
-.PHONY: install test demo serve outputs app
+.PHONY: install test demo serve outputs app eval-ingestion
 install:
 	uv sync --extra dev --extra geo --extra ui --extra ai
 test:
@@ -11,3 +11,5 @@ outputs:
 	uv run --extra geo python scripts/build_day1_outputs.py
 app:
 	uv run --extra ui --extra ai streamlit run app/streamlit_app.py
+eval-ingestion:
+	uv run --extra ai --extra geo python scripts/evaluate_ingestion.py

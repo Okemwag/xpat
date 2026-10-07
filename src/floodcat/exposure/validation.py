@@ -70,7 +70,12 @@ def parse_row(row):
     hazard={t:bounded(row['hazard_score_'+t],'hazard_score_'+t) for t in supplied}
     if supplied and len(supplied)<len(TIERS):
         notes.append(("partial_hazard_scores","Only some hazard_score columns supplied; scores will come from the hazard maps"))
-    asset=Exposure(identifier,lat,lon,c,parse_money(row['tiv_kes']),parse_bool(row['synthetic']),text_field(row,'source'),area,cost,hazard)
+    deductible=parse_money(row['deductible_kes'],'deductible_kes') if row.get('deductible_kes') not in (None,'') else None
+    limit=parse_money(row['limit_kes'],'limit_kes') if row.get('limit_kes') not in (None,'') else None
+    if limit is not None and limit==0: raise ModelError("invalid_policy_terms", "limit_kes must be positive")
+    if deductible is not None and limit is not None and deductible>=limit:
+        raise ModelError("invalid_policy_terms", "deductible_kes must be below limit_kes")
+    asset=Exposure(identifier,lat,lon,c,parse_money(row['tiv_kes']),parse_bool(row['synthetic']),text_field(row,'source'),area,cost,hazard,deductible,limit)
     return asset,notes
 
 def check_columns(rows):

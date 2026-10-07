@@ -176,3 +176,25 @@ def test_gemini_all_unavailable_reports_each_failure(gemini):
 def test_gemini_malformed_json_rejected(gemini):
     client, _ = gemini({'retired': 'not json', 'busy': '{}', 'good': '{}'})
     with pytest.raises(ModelError): client.generate_json('s', 'p', {})
+
+from floodcat.ai.ingestion_eval import score_case, summarise
+
+def g(location, housing_class, count, tiv, flags=(), quote=True):
+    return {'location_name': location, 'housing_class': housing_class, 'count': count, 'tiv_kes_each': tiv, 'flags': list(flags), 'quote_verified': quote}
+
+CASE = {'id': 'c', 'expected': [{'location': 'Kibera', 'housing_class': 'permanent_masonry', 'count': 12, 'tiv_kes_each': 1200000},
+                                {'location': 'Westlands', 'housing_class': None, 'count': 3, 'tiv_kes_each': None}]}
+
+def test_scorer_perfect_extraction():
+    s = score_case(CASE, {'groups': [g('Westlands', '—', 3, '—'), g('Kibera', 'permanent_masonry', 12, '1200000.00')]})
+    assert s['exact'] and summarise([s])['housing_class']['rate'] == 1
+
+def test_scorer_catches_guessed_class_wrong_value_and_extras():
+    s = score_case(CASE, {'groups': [g('Kibera', 'permanent_masonry', 12, '1300000.00'), g('Westlands', 'concrete_rcc', 3, '—'),
+                                     g('Narnia', 'concrete_rcc', 500, '1e9')]})
+    assert not s['exact'] and s['extra_groups'] == 1
+    assert s['fields']['tiv_kes_each'] == [False] and s['fields']['housing_class'] == [True, False]
+
+def test_scorer_missing_group_and_unlocated():
+    s = score_case(CASE, {'groups': [g('Kibera', 'permanent_masonry', 12, '1200000.00', flags=["could not locate 'Kibera'"])]})
+    assert s['fields']['found'] == [True, False] and s['fields']['located'] == [False]

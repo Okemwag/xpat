@@ -1,6 +1,6 @@
 # Nairobi flood model — Day 1 results
 
-Generated 2026-10-07 by `scripts/build_day1_outputs.py`. Config `nairobi-prototype-v0.3` (fingerprint `8bac31931b89`).
+Generated 2026-10-07 by `scripts/build_day1_outputs.py`. Config `nairobi-prototype-v0.5` (fingerprint `9e3ef0bca1cc`).
 
 > **Every number here is illustrative.** The 600 properties are SYNTHETIC, the hazard is a PROXY, and the return periods,
 > score-to-depth conversion and class adjustments are ASSUMPTIONS. Nothing is calibrated to Kenyan claims.
@@ -34,6 +34,42 @@ Generated 2026-10-07 by `scripts/build_day1_outputs.py`. Config `nairobi-prototy
 
 Tier names describe how extreme a cell is, not how often it floods: `extreme` keeps the top 5% of cells (narrowest
 footprint, most frequent event); `common` keeps the top 40% (widest footprint, rarest event).
+
+## EP curve from 10,000 simulated years
+
+| Rarity | Loss | Simulation range (5–95th pct) | Modelled from |
+|---|---|---|---|
+| 1-in-2 | KES 2,951,230 | KES 0 – KES 7,189,959 | hazard tiers |
+| 1-in-5 | KES 185,392,425 | KES 180,230,592 – KES 188,948,716 | hazard tiers |
+| 1-in-10 | KES 293,048,956 | KES 284,519,625 – KES 297,892,158 | hazard tiers |
+| 1-in-25 | KES 532,025,496 | KES 498,560,529 – KES 570,054,713 | hazard tiers |
+| 1-in-50 | KES 1,005,840,302 | KES 871,383,949 – KES 1,081,430,346 | hazard tiers |
+| 1-in-100 | KES 1,746,087,849 | KES 1,492,343,004 – KES 1,835,461,210 | hazard tiers |
+| 1-in-200 | KES 2,241,206,718 | KES 2,067,636,478 – KES 2,449,499,891 | hazard tiers |
+| 1-in-250 | KES 2,442,614,489 | KES 2,209,758,873 – KES 2,559,021,502 | hazard tiers |
+| 1-in-500 | KES 3,157,651,032 | KES 2,621,943,879 – KES 3,466,051,000 | damage uncertainty only |
+| 1-in-1,000 | KES 3,577,088,921 | KES 3,455,779,847 – KES 3,786,452,785 | damage uncertainty only |
+| 1-in-2,000 | KES 3,786,476,845 | KES 3,639,571,948 – KES 4,139,503,518 | damage uncertainty only |
+| 1-in-5,000 | KES 4,139,552,449 | KES 3,786,513,885 – KES 5,675,741,133 | damage uncertainty only |
+| 1-in-10,000 | KES 4,384,288,294 | KES 3,834,750,773 – KES 5,675,741,133 | damage uncertainty only |
+
+Average annual loss from the simulation: KES 124,746,748 (range KES 119,279,159 – KES 129,515,010);
+4,963 of 10,000 years have no loss. Each simulated year draws its rarity and one damage-uncertainty
+trial, and reads the loss between the five scenario points (linear in annual chance). Simulated from five assumed scenario points; beyond 1-in-250 only damage uncertainty varies, no rarer floods are modelled.
+
+## Likely ranges per scenario (damage-ratio uncertainty, ASSUMPTION)
+
+| Return period | 5th pct | Median | 95th pct |
+|---|---|---|---|
+| 1-in-10 | KES 148,272,070 | KES 248,084,049 | KES 406,593,050 |
+| 1-in-25 | KES 255,521,055 | KES 421,276,618 | KES 678,940,211 |
+| 1-in-50 | KES 596,802,758 | KES 959,229,082 | KES 1,533,697,121 |
+| 1-in-100 | KES 1,008,308,109 | KES 1,609,409,816 | KES 2,586,854,072 |
+| 1-in-250 | KES 1,577,877,880 | KES 2,504,508,614 | KES 4,039,798,385 |
+| Average annual loss | KES 72,751,645 | KES 118,754,800 | KES 191,737,042 |
+
+2,000 simulations; each property's damage ratio varies around its curve with log-spread σ=0.4, of which a
+share ρ=0.5 is common to the whole portfolio. Damage-ratio uncertainty only; hazard, frequency and values are held fixed. Not a confidence interval on the true loss.
 
 ## Loss by housing class (1-in-100)
 
@@ -146,4 +182,4 @@ Vulnerability matrix at max depth 1.5 m (damage ratio):
 ## Files
 
 `nairobi_hazard_lookup.csv`, `nairobi_hotspot_check.csv`, `nairobi_vulnerability_matrix.csv`, `nairobi_property_losses.csv`,
-`nairobi_ep_curve.csv`, `nairobi_accumulation.csv`, `nairobi_sensitivity.csv`.
+`nairobi_ep_curve.csv`, `nairobi_accumulation.csv`, `nairobi_sensitivity.csv`, `nairobi_uncertainty_ranges.csv`, `nairobi_ylt_ep_curve.csv`.

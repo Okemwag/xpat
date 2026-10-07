@@ -5,6 +5,7 @@ COPY pyproject.toml uv.lock ./
 COPY src ./src
 COPY migrations ./migrations
 COPY alembic.ini ./alembic.ini
+COPY configs ./configs
 RUN uv sync --locked --no-dev --extra geo && useradd --create-home appuser
 USER appuser
 EXPOSE 8000

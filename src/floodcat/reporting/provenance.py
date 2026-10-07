@@ -1,9 +1,14 @@
+# Labels follow AGENTS.md §5: REAL, PROXY, SYNTHETIC, ASSUMPTION, AI.
 def provenance(config):
     return [
-        {'component':'exposure','status':'synthetic','note':'Uploaded records are not real client properties'},
-        {'component':'baseline_hazard','status':'derived_proxy','note':'Real terrain + OSM inputs, not observed depths'},
-        {'component':'vulnerability','status':config.vulnerability_status,'note':config.vulnerability_source},
-        {'component':'frequency','status':'assumed_uncalibrated','note':'Metadata reference mapping; not fitted to Nairobi rainfall'},
-        {'component':'loss','status':'calculated','note':'TIV × damage ratio; no deductibles, limits or reinsurance terms'},
-        {'component':'AI_uplift','status':'assumed_mapping','note':'Learned hotspot probability mapped to severity; not measured flood intensity'},
+        {'component':'exposure','label':'SYNTHETIC','status':'synthetic','note':'Generated for the hackathon starter kit; not real client properties'},
+        {'component':'baseline_hazard','label':'PROXY','status':'derived_proxy','note':'Real terrain + OSM rivers, not observed depths; blind to drainage'},
+        {'component':'hotspots','label':'REAL','status':'named_locations','note':'Government-named areas; coordinates approximate (OSM Nominatim); validation and tagging only'},
+        {'component':'score_to_depth','label':'ASSUMPTION','status':'assumed','note':f'depth = score × {config.max_depth_m} m'},
+        {'component':'vulnerability_base_curve','label':'REAL','status':'published','note':config.vulnerability_source},
+        {'component':'vulnerability_class_adjustments','label':'ASSUMPTION','status':config.vulnerability_status,'note':'Per-class JRC depth scale and damage cap'},
+        {'component':'frequency','label':'ASSUMPTION','status':'assumed_uncalibrated','note':'Metadata reference tier→return-period mapping; not fitted to Nairobi rainfall'},
+        {'component':'aal','label':'ASSUMPTION','status':'assumed_uncalibrated','note':f'Zero loss at {config.aal_zero_loss_return_period}-yr; {config.aal_tail} beyond rarest tier'},
+        {'component':'loss','label':'ASSUMPTION','status':'calculated','note':'TIV × damage ratio; gross, no deductibles, limits or reinsurance terms'},
+        {'component':'AI_uplift','label':'AI','status':'assumed_mapping','note':'Off by default; learned hotspot probability mapped to severity, not measured intensity'},
     ]

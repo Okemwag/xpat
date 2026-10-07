@@ -17,8 +17,9 @@ dependencies = [
 ]
 [project.optional-dependencies]
 geo = ["rasterio>=1.3,<2"]
-ml = ["scikit-learn>=1.4,<2", "numpy>=1.26,<3"]
 dev = ["pytest>=8,<10", "httpx>=0.27,<1"]
+ui = ["streamlit>=1.50,<2", "rasterio>=1.3,<2"]
+ai = ["google-genai>=1.0,<3"]
 [project.scripts]
 flood-cat = "floodcat.cli:main"
 [tool.setuptools.packages.find]

@@ -4,7 +4,7 @@
 
 The Nairobi baseline uses **Option 1** from the Team A guide: `data/exposure_nairobi_with_hazard.csv`. Its five hazard columns are already attached to the same 600 synthetic buildings in `exposure_nairobi_synthetic.csv`. The baseline therefore reads those columns directly. The five GeoTIFFs remain the source rasters for verification and for later work on new exposures or an improved hazard layer.
 
-The prepared CSV **is the flood severity dataset for the property-level baseline**. We do not create a duplicate CSV with the same scores, because that would introduce another copy that could drift from the supplied data.
+The prepared CSV is the **source** for the property-level baseline. The explicit deliverables are [the flood severity table with its explanation](../outputs/nairobi_flood_severity.md) and [the matching analysis CSV](../outputs/nairobi_flood_severity.csv). Both are generated directly from the prepared file by `scripts/build_flood_severity_output.py`, with no score transformation.
 
 ## What each hazard value means
 

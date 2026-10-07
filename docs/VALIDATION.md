@@ -2,6 +2,7 @@
 
 Current checked results for the supplied Nairobi files:
 
+- `outputs/nairobi_flood_severity.md` shows the score meaning and all **600** property rows; its matching CSV has **600** data rows and reproduces every copied source field exactly.
 - After adding the explicit severity interpretation and tier audit, `uv run --locked --extra dev --extra geo --extra ml python -m pytest -q` with `TEST_DATABASE_URL` pointed at a separate migrated PostGIS database: **34 passed**. One upstream Starlette/httpx deprecation warning remains.
 - `PYTHONPATH=src python -m floodcat.cli analyse data/exposure_nairobi_with_hazard.csv --output runtime/baseline-report.json`: **600 properties modelled**, supplied TIV **KES 63,635,075,000.00**.
 - All five portfolio scenario totals reconcile exactly with their property losses. Current illustrative common-tier gross damage proxy: **KES 1,793,116,247.37**.

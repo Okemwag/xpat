@@ -53,11 +53,11 @@ For each scenario, the underwriter can see the portfolio loss, a breakdown by co
 
 ## Where AI fits
 
-The planned AI contribution focuses on flood evidence that ordinary maps may miss. Reports about flooding, drainage failures, and affected neighbourhoods can contain useful local information, but they arrive as unstructured text. The proposed workflow will extract the reported place, event, flood mechanism, and supporting passage; preserve the source; and require review when a location or claim is uncertain.
+Xpat uses Gemini in two places. First, a portfolio can be described in plain English and turned into validated property records. Second, and more importantly, the AI focuses on flood evidence that ordinary maps may miss. Reports about flooding, drainage failures, and affected neighbourhoods can contain useful local information, but they arrive as unstructured text. The workflow extracts the reported place, event, flood mechanism, and supporting passage; preserves the source; and requires a named reviewer's approval when a location or claim is uncertain.
 
-Approved evidence would then inform a **documented adjustment** to the baseline hazard assessment. Xpat would recalculate losses and show exactly which properties and portfolio figures changed. The financial calculation itself remains governed by explicit model assumptions: an AI-generated statement is not treated as a flood depth, damage ratio, or monetary loss.
+Approved evidence informs a **documented adjustment** to the baseline hazard assessment. Xpat recalculates losses and shows exactly which properties and portfolio figures changed. The financial calculation itself remains governed by explicit model assumptions: an AI-generated statement is not treated as a flood depth, damage ratio, or monetary loss.
 
-**This evidence-driven enhancement is planned work, not a validated feature of the current Nairobi demonstration.** Any claim that it improves the model will require independent evaluation. A higher estimate of loss alone is not proof of better risk assessment.
+**This enhancement is built but not validated.** The app reports the named-hotspot hit rate before and after, using only evidence independent of the county's hotspot list; any claim that it improves the model still requires independent evaluation. A higher estimate of loss alone is not proof of better risk assessment.
 
 ## What the current results mean
 
@@ -72,6 +72,17 @@ The Nairobi demonstration is an **uncalibrated prototype** built to make the cat
 - Named hotspot coordinates represent approximate neighbourhood locations, not verified positions of flooded buildings.
 
 These distinctions are part of the product's purpose. A useful risk assessment should show what is known, what was assumed, and what remains unresolved.
+
+## Running Xpat
+
+```bash
+make install        # uv sync with dev, geo, ui and ai extras
+make app            # Streamlit interface at http://localhost:8501
+make test           # full test suite
+make outputs        # rebuild the published results in outputs/
+```
+
+Copy `.env.example` to `.env` and set `GEMINI_API_KEY` to enable the AI features; without it the app runs and says AI is off. Set `FLOODCAT_ADMIN_USER` and `FLOODCAT_ADMIN_PASSWORD` to create the first admin. Judges can use **Explore as guest**. No database is needed; runs, evidence and accounts are kept under `runtime/store/`.
 
 ## The longer-term vision
 

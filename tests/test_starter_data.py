@@ -17,7 +17,7 @@ def test_supplied_data_matches_rasters_and_hotspot_baseline():
     assert report['base_fields_match_prepared']
     assert report['prepared_score_mismatches'] == 0
     assert report['baseline_common_hotspots_positive'] == 12
-    assert report['tiv_kes'] == '63635075000.0'
+    assert Decimal(report['tiv_kes']) == Decimal('63635075000')
 
 
 def test_sensitivity_keeps_assumptions_separate():

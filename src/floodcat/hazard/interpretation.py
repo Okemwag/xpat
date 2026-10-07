@@ -1,18 +1,24 @@
+"""Nairobi flood CAT backend."""
 from ..core.constants import TIERS
 from ..core.errors import ModelError
 from ..core.numeric import bounded
 
 def validate_scores(scores):
     if any(scores.get(t) is None for t in TIERS):
-        raise ModelError("hazard_unavailable", "Missing score or property outside model coverage")
+        raise ModelError("hazard_unavailable", "No hazard value at this location (off the hazard maps or a masked cell)")
     values=[bounded(scores[t],t) for t in TIERS]
     if any(a>b+1e-9 for a,b in zip(values,values[1:])):
         raise ModelError("nonmonotonic_hazard", "Scores must not decrease from extreme to common; do not reorder losses to hide this")
     return dict(zip(TIERS,values))
 
-def enhance(scores, probability, config):
-    # Learned hotspot probability is NOT annual flood probability or physical intensity.
-    # Its conversion to severity uplift is a separately disclosed assumption.
-    probability=bounded(probability,'hotspot_probability')
-    activation=max(0.,(probability-config.enhancement_activation_threshold)/(1-config.enhancement_activation_threshold))
-    return validate_scores({t: min(1.,scores[t]+config.uplift_weight*config.uplift_factors[t]*activation*(1-scores[t])) for t in TIERS})
+def enhance(scores, signal, config):
+    """Raise scores toward 1 where approved drainage evidence applies (AI stage, ASSUMPTION mapping).
+
+    s' = 1 - (1 - s)(1 - w·f_tier·signal). Both factors shrink as tiers get rarer, so the
+    adjusted scores keep the extreme→common order. The evidence signal is not a depth or a
+    probability; the weight and tier factors that turn it into severity are config assumptions.
+    """
+    signal=bounded(signal,'evidence_signal')
+    if signal==0: return validate_scores(dict(scores))
+    # max() guards against floating-point round-off pulling a score below its baseline.
+    return validate_scores({t: max(scores[t],1-(1-scores[t])*(1-config.uplift_weight*config.uplift_factors[t]*signal)) for t in TIERS})

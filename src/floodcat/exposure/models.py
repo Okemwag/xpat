@@ -13,4 +13,3 @@ class Exposure:
     floor_area_m2: float | None
     cost_per_m2_kes: float | None
     hazard: dict
-    features: dict

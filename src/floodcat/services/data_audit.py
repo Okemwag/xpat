@@ -53,7 +53,7 @@ def audit_data(directory):
     uncovered = 0
     with RasterHazard(root) as hazard:
         for row in prepared:
-            asset = parse_row(row)
+            asset, _ = parse_row(row)
             sampled = hazard.scores(asset)
             if any(value is None for value in sampled.values()):
                 uncovered += 1

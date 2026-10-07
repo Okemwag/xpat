@@ -1,37 +1,48 @@
-from contextlib import ExitStack
+import math
+from pathlib import Path
 from ..core.constants import TIERS
 from ..core.errors import ModelError
 from ..core.numeric import bounded
 
+def masked_value():
+    import numpy
+    return numpy.ma.masked
+
 class RasterHazard:
-    """Context-managed local GeoTIFF sampler; CRS conversion, bounds and masks checked."""
+    """Five proxy GeoTIFFs held in memory: thread-safe lookups, no open file handles after load.
+
+    A cell is found with the same floor rule as rasterio's index(). Points off the grid or on
+    masked cells return None so the caller rejects them instead of assuming zero hazard.
+    """
     def __init__(self, directory):
-        self.directory=directory
-        self.stack=ExitStack()
-        self.datasets={}
-    def __enter__(self):
-        from pathlib import Path
+        self.directory=Path(directory)
+        self.grids={}
+    def load(self):
         import rasterio
-        try:
-            for tier in TIERS:
-                ds=self.stack.enter_context(rasterio.open(Path(self.directory)/f'nairobi_pluvial_proxy_{tier}.tif'))
+        for tier in TIERS:
+            path=self.directory/f'nairobi_pluvial_proxy_{tier}.tif'
+            if not path.exists(): raise ModelError("missing_raster", f"Hazard map not found: {path.name}")
+            with rasterio.open(path) as ds:
                 if ds.crs is None or ds.count!=1:
                     raise ModelError("invalid_raster", "Single-band raster with CRS required")
-                self.datasets[tier]=ds
-        except Exception:
-            self.stack.close(); raise
+                self.grids[tier]=(ds.read(1,masked=True),ds.transform,ds.crs.to_string(),ds.height,ds.width)
         return self
-    def __exit__(self,*args): self.stack.close()
+    def __enter__(self): return self.load() if not self.grids else self
+    def __exit__(self,*args): pass
     def scores(self,asset):
-        from rasterio.warp import transform
+        if not self.grids: self.load()
         result={}
-        for tier,ds in self.datasets.items():
-            x,y=transform('EPSG:4326',ds.crs,[asset.lon],[asset.lat])
-            col,row=x[0],y[0]
-            r,c=ds.index(col,row)
-            if not (0<=r<ds.height and 0<=c<ds.width):
+        for tier,(array,transform,crs,height,width) in self.grids.items():
+            x,y=asset.lon,asset.lat
+            if crs!='EPSG:4326':
+                from rasterio.warp import transform as warp
+                xs,ys=warp('EPSG:4326',crs,[x],[y]); x,y=xs[0],ys[0]
+            col,row=~transform@(x,y)
+            r,c=math.floor(row),math.floor(col)
+            if not (0<=r<height and 0<=c<width):
                 result[tier]=None; continue
-            value=next(ds.sample([(col,row)],masked=True))[0]
-            if getattr(value,'mask',False): result[tier]=None
-            else: result[tier]=bounded(float(value),f'raster_{tier}')
+            value=array[r,c]
+            if value is masked_value():
+                result[tier]=None; continue
+            result[tier]=bounded(float(value),f'raster_{tier}')
         return result

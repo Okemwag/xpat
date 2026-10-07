@@ -1,0 +1,45 @@
+{
+  "features": [
+    "baseline_common",
+    "impervious_fraction",
+    "drainage_deficit",
+    "evidence_signal"
+  ],
+  "coefficients": [
+    0.5701859872194557,
+    0.7679629765876078,
+    0.7669778720275507,
+    0.7825159575067595
+  ],
+  "intercept": -1.2702847406311835,
+  "training_provenance": "Illustrative synthetic plumbing test; not Nairobi observations",
+  "data_sha256": "40d0cea8d84b57f8c3349a9d1efc3f61365fd64e60bc24bcb9826490880492f2",
+  "train_groups": [
+    "train-a",
+    "train-b",
+    "train-c",
+    "train-d"
+  ],
+  "test_groups": [
+    "test-e",
+    "test-f"
+  ],
+  "evaluation": {
+    "held_out_count": 4,
+    "confusion_matrix": [
+      [
+        2,
+        0
+      ],
+      [
+        0,
+        2
+      ]
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "roc_auc": 1.0,
+    "warning": "Metrics depend on label quality; unlabelled locations are not negative examples. Supplied positive-only hotspots cannot establish false-positive rate."
+  },
+  "status": "uncalibrated_hotspot_susceptibility_classifier"
+}

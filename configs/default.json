@@ -1,0 +1,63 @@
+{
+  "version": "nairobi-prototype-v0.1",
+  "return_periods": {
+    "extreme": 10.0,
+    "severe": 25.0,
+    "moderate": 50.0,
+    "occasional": 100.0,
+    "common": 250.0
+  },
+  "severity_knots": [
+    0.0,
+    0.1,
+    0.3,
+    0.6,
+    1.0
+  ],
+  "curves": {
+    "informal_iron_sheet": [
+      0.0,
+      0.15,
+      0.45,
+      0.75,
+      0.95
+    ],
+    "semi_permanent": [
+      0.0,
+      0.08,
+      0.3,
+      0.6,
+      0.9
+    ],
+    "permanent_masonry": [
+      0.0,
+      0.03,
+      0.18,
+      0.45,
+      0.85
+    ],
+    "concrete_rcc": [
+      0.0,
+      0.01,
+      0.1,
+      0.3,
+      0.8
+    ]
+  },
+  "vulnerability_status": "illustrative_uncalibrated",
+  "vulnerability_source": "Team A build-guide qualitative shape; NOT digitized JRC parameters",
+  "vulnerability_mode": "score",
+  "max_depth_m": 4.0,
+  "enhancement_activation_threshold": 0.5,
+  "uplift_weight": 0.25,
+  "uplift_factors": {
+    "extreme": 0.2,
+    "severe": 0.4,
+    "moderate": 0.6,
+    "occasional": 0.8,
+    "common": 1.0
+  },
+  "grid_size_m": 1000.0,
+  "high_risk_threshold": 0.5,
+  "evidence_radius_m": 1000.0
+}

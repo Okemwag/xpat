@@ -48,6 +48,35 @@
     "tiv_mismatch": 600
   },
   "validation_error_count": 0,
+  "score_interpretation": "relative susceptibility index, unitless; not flood depth or annual probability",
+  "score_ordered_count": 600,
+  "tier_score_summary": {
+    "extreme": {
+      "minimum": 0.0,
+      "maximum": 0.4974516928195953,
+      "positive_properties": 32
+    },
+    "severe": {
+      "minimum": 0.0,
+      "maximum": 0.5628854632377625,
+      "positive_properties": 51
+    },
+    "moderate": {
+      "minimum": 0.0,
+      "maximum": 0.6197513937950134,
+      "positive_properties": 110
+    },
+    "occasional": {
+      "minimum": 0.0,
+      "maximum": 0.6558092832565308,
+      "positive_properties": 174
+    },
+    "common": {
+      "minimum": 0.0,
+      "maximum": 0.6854886412620544,
+      "positive_properties": 259
+    }
+  },
   "tiv_kes": "63635075000.00",
   "area_times_cost_kes": "6363503700.00",
   "tiv_to_area_cost_ratio": "10.00000597155306124831828101",

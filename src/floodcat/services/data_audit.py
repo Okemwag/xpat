@@ -8,6 +8,7 @@ from pathlib import Path
 from ..core.constants import TIERS
 from ..exposure.loaders import read_csv
 from ..exposure.validation import parse_row, validate_rows
+from ..hazard.interpretation import validate_scores
 from ..hazard.raster import RasterHazard
 
 
@@ -24,6 +25,12 @@ def audit_data(directory):
     plain = read_csv(root / names[0])
     prepared = read_csv(root / names[1])
     assets, issues = validate_rows(prepared)
+    tier_values = {tier: [float(row[f"hazard_score_{tier}"]) for row in prepared]
+                   for tier in TIERS}
+    ordered_score_count = sum(
+        1 for row in prepared
+        if validate_scores({tier: float(row[f"hazard_score_{tier}"]) for tier in TIERS})
+    )
     base_columns = set(plain[0])
     base_equal = len(plain) == len(prepared) and all(
         {key: row[key] for key in base_columns} == base
@@ -69,6 +76,13 @@ def audit_data(directory):
         "housing_classes": dict(Counter(asset.housing_class for asset in assets)),
         "validation_issue_counts": dict(Counter(issue["code"] for issue in issues)),
         "validation_error_count": sum(issue["severity"] == "error" for issue in issues),
+        "score_interpretation": "relative susceptibility index, unitless; not flood depth or annual probability",
+        "score_ordered_count": ordered_score_count,
+        "tier_score_summary": {
+            tier: {"minimum": min(values), "maximum": max(values),
+                   "positive_properties": sum(value > 0 for value in values)}
+            for tier, values in tier_values.items()
+        },
         "tiv_kes": str(tiv), "area_times_cost_kes": str(replacement),
         "tiv_to_area_cost_ratio": str(tiv / replacement) if replacement else None,
         "raster_info": raster_info,

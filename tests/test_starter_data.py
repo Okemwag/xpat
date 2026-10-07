@@ -17,6 +17,9 @@ def test_supplied_data_matches_rasters_and_hotspot_baseline():
     assert report['base_fields_match_prepared']
     assert report['prepared_score_mismatches'] == 0
     assert report['baseline_common_hotspots_positive'] == 12
+    assert report['score_ordered_count'] == 600
+    assert report['tier_score_summary']['common']['positive_properties'] == 259
+    assert report['tier_score_summary']['extreme']['positive_properties'] == 32
     assert Decimal(report['tiv_kes']) == Decimal('63635075000')
 
 

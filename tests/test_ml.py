@@ -7,7 +7,7 @@ from floodcat.ai.evaluation import positive_hotspot_detection
 from floodcat.core.errors import ModelError
 
 def test_train_artifact_and_disjoint_groups(tmp_path):
-    fixture=Path(__file__).parents[1]/'data/demo/training.csv'
+    fixture=Path(__file__).parent/'fixtures/training.csv'
     output=tmp_path/'model.json'
     artifact=train(fixture,output,'Entirely illustrative synthetic labels; not Nairobi observations')
     assert set(artifact['train_groups']).isdisjoint(artifact['test_groups'])
@@ -17,7 +17,7 @@ def test_train_artifact_and_disjoint_groups(tmp_path):
     assert 0<p<1
 
 def test_group_leakage_rejected(tmp_path):
-    source=Path(__file__).parents[1]/'data/demo/training.csv'
+    source=Path(__file__).parent/'fixtures/training.csv'
     rows=list(csv.DictReader(source.open()))
     rows[-1]['spatial_group']='train-a'
     target=tmp_path/'leaked.csv'

@@ -1,18 +1,14 @@
-# Validation
+# Validation record
 
-31 tests passed, including live raster sampling. Baseline CLI, trained-ML CLI and a live loopback API startup/health request succeeded. Docker and CI definitions are supplied but were not executed here.
+Current checked results for the supplied Nairobi files:
 
-One upstream Starlette/httpx test-client deprecation warning remains; it does not affect passing tests.
+- `PYTHONPATH=src python -m pytest -q tests/test_pipeline.py tests/test_ml.py`: **26 passed** using the relocated test fixtures.
+- `PYTHONPATH=src python -m floodcat.cli analyse data/exposure_nairobi_with_hazard.csv --output runtime/baseline-report.json`: **600 properties modelled**, supplied TIV **KES 63,635,075,000.00**.
+- All five portfolio scenario totals reconcile exactly with their property losses. Current illustrative common-tier gross damage proxy: **KES 1,793,116,247.37**.
+- `PYTHONPATH=src python -m floodcat.cli sensitivity data/exposure_nairobi_with_hazard.csv --output runtime/sensitivity.json`: completed. With area-times-cost values, the common-tier loss is **KES 179,311,474.93**. This is an alternative input assumption, not a corrected portfolio.
+- `python -m compileall -q src tests migrations`, `docker compose config --quiet`, and `git diff --check`: passed.
+- PostGIS 16 / PostgreSQL 16 container started and reported healthy on local port 5433. A separate `floodcat_test` database was created.
 
-Tested environment:
+Pending at this checkpoint: `uv sync` dependency installation, full suite including raster/API tests, Alembic upgrade, starter-data import, and end-to-end PostGIS verification. The previous validation claims from the archive applied to a different environment and demo fixtures; they are not treated as current results.
 
-- fastapi: 0.142.2
-- pydantic: 2.13.5
-- uvicorn: 0.54.0
-- pytest: 9.1.1
-- httpx: 0.28.1
-- rasterio: 1.5.2
-- numpy: 2.3.5
-- scikit-learn: 1.8.0
-
-The ML fixture is synthetic; these checks verify code behavior, not Nairobi predictive validity. Actual starter CSVs/GeoTIFFs were not attached.
+The baseline is an uncalibrated demonstration on synthetic exposure and proxy hazard. These checks verify program behaviour and internal arithmetic, not real flood predictive skill or insured loss accuracy.

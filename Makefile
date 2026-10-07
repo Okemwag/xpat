@@ -1,9 +1,9 @@
 .PHONY: install test demo serve
 install:
-	python -m pip install -e '.[dev,ml]'
+	uv sync --extra dev --extra geo
 test:
-	python -m pytest -q
+	uv run --extra dev --extra geo python -m pytest -q
 demo:
-	flood-cat analyse data/demo/exposure.csv --output runtime/demo-report.json
+	uv run --extra geo flood-cat analyse data/exposure_nairobi_with_hazard.csv --output runtime/baseline-report.json
 serve:
-	flood-cat serve
+	uv run flood-cat serve

@@ -1,0 +1,5 @@
+loc_id,lat,lon,housing_class,floor_area_m2,cost_per_m2_kes,tiv_kes,synthetic,source,hazard_score_extreme,hazard_score_severe,hazard_score_moderate,hazard_score_occasional,hazard_score_common,impervious_fraction,drainage_deficit
+DEMO-001,-1.28,36.86,informal_iron_sheet,10,8000,80000,true,illustrative demo fixture,0.1,0.2,0.3,0.4,0.5,0.8,0.7
+DEMO-002,-1.26,36.79,concrete_rcc,400,60000,24000000,true,illustrative demo fixture,0,0.1,0.2,0.3,0.4,0.9,0.5
+DEMO-003,-1.30,36.88,permanent_masonry,100,50000,5000000,true,illustrative demo fixture,0.2,0.3,0.4,0.5,0.6,0.6,0.4
+DEMO-004,-1.31,36.81,semi_permanent,40,10000,400000,true,illustrative demo fixture,0,0,0.1,0.2,0.3,0.7,0.6

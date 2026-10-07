@@ -16,11 +16,11 @@ from ..reporting.export import json_report, property_csv
 from ..vulnerability.functions import matrix
 from .schemas import AnalysisRequest, EvidenceRequest, ApprovalRequest, ExtractionRequest, CSVAnalysisRequest
 
-def create_app(db_path=None,api_token=None,model_path=None):
+def create_app(db_url=None,api_token=None,model_path=None):
     token=api_token if api_token is not None else os.getenv('FLOODCAT_API_TOKEN','')
     if os.getenv('FLOODCAT_ENV','development')=='production' and not token:
         raise RuntimeError('Production requires FLOODCAT_API_TOKEN')
-    repo=Repository(db_path or os.getenv('FLOODCAT_DB','runtime/floodcat.sqlite3'))
+    repo=Repository(db_url)
     artifact=model_path or os.getenv('FLOODCAT_MODEL')
     model=HotspotModel.load(artifact) if artifact else None
     app=FastAPI(title='Nairobi Flood CAT API',version='0.1.0',description='Synthetic portfolio analysis; uncalibrated prototype')

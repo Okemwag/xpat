@@ -1,12 +1,42 @@
 services:
+  db:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_DB: floodcat
+      POSTGRES_USER: floodcat
+      POSTGRES_PASSWORD: ${FLOODCAT_DB_PASSWORD:-floodcat-local-only}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U floodcat -d floodcat"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    build: .
+    command: [".venv/bin/alembic", "upgrade", "head"]
+    environment:
+      FLOODCAT_DATABASE_URL: postgresql+psycopg://floodcat:${FLOODCAT_DB_PASSWORD:-floodcat-local-only}@db:5432/floodcat
+    depends_on:
+      db:
+        condition: service_healthy
+
   backend:
     build: .
-    ports: ["127.0.0.1:8000:8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
     environment:
-      FLOODCAT_DB: /app/runtime/floodcat.sqlite3
+      FLOODCAT_DATABASE_URL: postgresql+psycopg://floodcat:${FLOODCAT_DB_PASSWORD:-floodcat-local-only}@db:5432/floodcat
       FLOODCAT_API_TOKEN: ${FLOODCAT_API_TOKEN:-}
       FLOODCAT_ENV: development
     volumes:
-      - results:/app/runtime
+      - ./data:/app/data:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
-  results:
+  postgres_data:

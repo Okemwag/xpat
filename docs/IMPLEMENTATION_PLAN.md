@@ -1,18 +1,19 @@
-# Next implementation tasks
+# Implementation plan and boundaries
 
-1. Add the actual prepared CSV, raw exposure CSV, rasters and geocoded hotspots. Verify row counts, aggregate TIV, raster coverage and prepared-vs-resampled scores. Never replace missing hazard with zero.
-2. Research JRC/Huizinga or regional vulnerability relationships. Digitize/source knots, document construction adjustments and sensitivity ranges. Replace illustrative config before presenting a sourced model.
-3. Independently collect drainage/impervious signals and review flood evidence, including source dates and confidence. Approximate neighbourhood coordinates are not exact flooded buildings.
-4. Establish honest train/test geographic groups and label provenance. Supplied positive hotspots cannot support negative-label metrics alone; avoid using evaluation locations or their reports to train/engineer the model.
-5. Train and assess the ML artifact. Run the same portfolio, vulnerability and financial assumptions through both hazard providers. Export hazard/damage/loss changes, held-out metrics, and uncovered observations.
-6. Assess parameter sensitivity (damage curves, RP mapping, uplift strength, drainage signal, evidence radius). These are not calibrated observational uncertainties; keep assumption scenarios separate from confidence intervals.
-7. Build the frontend against OpenAPI: upload/review → exposure map → baseline/enhanced map → vulnerability/property trace → portfolio EP/construction/grid accumulation → provenance/export.
-8. Commercial pilot: arrange independent validation and licensed inputs, add user/tenant access and durable jobs. Commercial positioning should be explainable localized portfolio intelligence; do not claim calibrated pricing accuracy or guaranteed losses.
+The ordered implementation tasks are in [IMPLEMENTATION_BACKLOG.md](IMPLEMENTATION_BACKLOG.md). Tasks 1–19 establish the baseline and spatial persistence. Tasks 20–45 cover the LLM evidence path, independent validation, and underwriter presentation. Tasks 46–53 describe the later product phase.
 
-## Extension boundaries
+## Current modelling path
 
-Hazard providers expose `scores(asset)`; replace/extend them for new data without changing financial code. Core calculations do not import FastAPI or SQLite. ML inference uses portable JSON coefficients. Add feature providers or a geocoding provider behind explicit service interfaces, not in financial helpers. SQLite stores immutable result snapshots and a reviewable evidence registry; an enterprise deployment needs migrations, authentication roles and approval/revocation history.
+The supplied 600-property portfolio and five GeoTIFFs support a reproducible baseline run. `audit-data` verifies dataset hashes, row counts, raster metadata, prepared score sampling, and hotspot detection. `analyse` calculates gross damage proxies from the supplied susceptibility scores. `sensitivity` varies unresolved TIV and model assumptions without treating the range as a confidence interval.
 
-## Scope intentionally deferred
+The score-to-damage curves remain illustrative. The raster scores are **not** flood depths, and the assigned return periods are **not** estimated Nairobi event frequencies. No AAL, insured-policy loss, or net reinsurance loss is claimed. The supplied TIV differs by approximately 10× from area times cost; the source of the discrepancy has not been resolved.
 
-Frontend, real portfolio integration, policy financial terms, treaty layers, multi-peril aggregation, stochastic AAL, hydrodynamic modelling and automatic geocoding are outside this scaffold's demonstrated scope. They should not be reported as implemented features.
+## Storage and extension boundary
+
+PostgreSQL/PostGIS is the primary persistence layer. Alembic migrations create indexed point geometries for imported assets, hotspot references, and evidence, plus JSONB snapshots for analyses. GeoTIFFs remain files and are sampled with Rasterio. The hazard-provider boundary and financial calculations remain independent of the database and API.
+
+The optional logistic classifier is an experiment with synthetic fixture labels, not a validated Nairobi hazard enhancement. A future LLM workflow must extract sourced evidence, preserve review status and location ambiguity, then apply a documented adjustment to hazard. Evaluation hotspot locations and their evidence must not be reused as enhancement inputs. Improvements must be shown on independent held-out observations, and increased loss alone is not evidence of improved accuracy.
+
+## Product boundaries
+
+The hackathon result is a prototype for synthetic exposure and gross damage scenarios. A commercial pilot requires licensed data, validated hazard and vulnerability models, tenant isolation, policy terms, audit controls, and observed-outcome testing. The platform should make uncertainty and out-of-coverage assets explicit.

@@ -23,7 +23,7 @@ def check_ports() -> None:
             except OSError as exc:
                 raise RuntimeError(
                     f"{name} port {port} is unavailable. Stop the existing server "
-                    f"and retry `make app` (check with `lsof -nP -iTCP:{port} -sTCP:LISTEN`)."
+                    f"and retry (find it with `netstat -ano | findstr :{port}` on Windows or `lsof -nP -iTCP:{port} -sTCP:LISTEN` elsewhere)."
                 ) from exc
 
 
@@ -79,6 +79,13 @@ def run() -> int:
         ),
     )
     children: list[subprocess.Popen] = []
+    sys.path.insert(0, str(ROOT / "src"))
+    from floodcat.platform.identity import app_url
+
+    print(
+        f"\nOpen Xpat at {app_url()}  (use this address, not 127.0.0.1: the sign-in cookie belongs to it)\n",
+        flush=True,
+    )
     try:
         for _, command in commands:
             children.append(subprocess.Popen(command, cwd=ROOT))

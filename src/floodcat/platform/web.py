@@ -147,6 +147,12 @@ def _login_links(next_url):
             "label": "Sign in with your company (SSO)",
         },
     ]
+    from .registration import signup_enabled
+
+    if signup_enabled():
+        links.insert(
+            0, {"href": "/auth/register", "label": "New here? Create an account"}
+        )
     if os.getenv("FLOODCAT_ALLOW_GUEST") == "1":
         links.append({"href": "/auth/guest", "label": "Explore the demo"})
     return links
@@ -158,7 +164,7 @@ def login_form(request: Request, next: str = "/"):
     return page(
         request,
         "Sign in",
-        lead="Use your work e-mail. New users join by invitation from their administrator.",
+        lead="Use your work e-mail. New here? Create an account, or join by invitation from your administrator.",
         fields=LOGIN_FIELDS,
         action=f"/auth/login?next={quote(next)}",
         submit="Sign in",
@@ -196,8 +202,16 @@ def login(
                 )
             orgs = identity.user_orgs(conn, user["id"])
             if not orgs and not user["is_platform_admin"]:
+                from .registration import pending_orgs
+
+                waiting = pending_orgs(conn, user["id"])
                 raise ModelError(
-                    "no_org", "Your account is not active in any organisation."
+                    "no_org",
+                    f"Your request to join {', '.join(waiting)} is waiting for an administrator's approval. "
+                    "You will get an e-mail when it is approved."
+                    if waiting
+                    else "Your account is not active in any organisation. Ask your administrator for an invitation, "
+                    "or create an account to set up a new organisation.",
                 )
             org_id = orgs[0]["id"] if len(orgs) == 1 else None
             raw, _ = identity.start_session(
@@ -224,6 +238,206 @@ def login(
         )
     )
     return with_session(redirect(target), raw, settings["session_max_hours"])
+
+
+# Self-service registration -------------------------------------------------------------------------------
+REGISTER_COMMON = [
+    {"name": "display_name", "label": "Your name", "autocomplete": "name"},
+    {"name": "email", "label": "Work e-mail", "type": "email", "autocomplete": "email"},
+]
+REGISTER_TITLE = {"org": "Set up a new organisation", "join": "Join your organisation"}
+REGISTER_LEAD = {
+    "org": "For the first person from a company: you will administer the organisation, invite colleagues and set their roles.",
+    "join": "Your organisation already uses Xpat. After you confirm your e-mail, an administrator approves your request "
+    "and chooses what you can do.",
+}
+
+
+def _register_fields(kind, values=None):
+    values = values or {}
+    org = (
+        [
+            {
+                "name": "org_name",
+                "label": "Organisation name",
+                "autocomplete": "organization",
+                "hint": "A new organisation is created and you become its administrator (owner).",
+            }
+        ]
+        if kind == "org"
+        else []
+    )
+    keep = ("org_name", "display_name", "email")
+    return [
+        {**f, "value": values.get(f["name"], "")} if f["name"] in keep else f
+        for f in org + REGISTER_COMMON + _reset_fields(False)
+    ]
+
+
+def _dev_link(email_addr):
+    """Outside production, with no mail service configured, show the e-mailed link on the page so local testing works."""
+    import re
+    from . import email as mail
+
+    if os.getenv("FLOODCAT_ENV") == "production" or mail.configured():
+        return None
+    with platform().tx() as conn:
+        latest = next(iter(mail.recent(conn, email_addr, 1)), None)
+    found = re.findall(r"https?://[^\s]+", latest["text"]) if latest else []
+    return found[0] if found else None
+
+
+@router.get("/register", response_class=HTMLResponse)
+def register_form(request: Request, kind: str = ""):
+    from .registration import signup_enabled
+
+    if not signup_enabled():
+        return page(
+            request,
+            "Registration closed",
+            error="Ask your administrator for an invitation.",
+            links=[{"href": "/auth/login", "label": "Sign in"}],
+            status=404,
+        )
+    if kind not in REGISTER_TITLE:
+        return page(
+            request,
+            "Create an account",
+            lead="Choose how you will use Xpat.",
+            choices=[
+                {
+                    "href": "/auth/register?kind=org",
+                    "label": "Set up a new organisation: I will be its administrator",
+                },
+                {
+                    "href": "/auth/register?kind=join",
+                    "label": "Join my organisation: I am a user and an administrator approves me",
+                },
+            ],
+            links=[
+                {"href": "/auth/login", "label": "Already have an account? Sign in"}
+            ],
+        )
+    other = "join" if kind == "org" else "org"
+    return page(
+        request,
+        REGISTER_TITLE[kind],
+        lead=REGISTER_LEAD[kind],
+        fields=_register_fields(kind),
+        action=f"/auth/register?kind={kind}",
+        submit="Create account",
+        links=[
+            {
+                "href": f"/auth/register?kind={other}",
+                "label": REGISTER_TITLE[other] + " instead",
+            },
+            {"href": "/auth/login", "label": "Sign in"},
+        ],
+    )
+
+
+@router.post("/register", response_class=HTMLResponse)
+def register(
+    request: Request,
+    kind: str = "",
+    org_name: str = Form(""),
+    display_name: str = Form(""),
+    email: str = Form(""),
+    password: str = Form(""),
+    confirm: str = Form(""),
+    csrf: str = Form(""),
+):
+    from .registration import start
+
+    values = {"org_name": org_name, "display_name": display_name, "email": email}
+    try:
+        check_csrf(request, csrf)
+        if kind not in REGISTER_TITLE:
+            raise ModelError("invalid_kind", "Choose how you will use Xpat")
+        if password != confirm:
+            raise ModelError("mismatch", "The passwords do not match")
+        with platform().tx() as conn:
+            start(
+                conn,
+                kind,
+                email,
+                display_name,
+                password,
+                org_name,
+                request=req_info(request),
+            )
+    except ModelError as exc:
+        return page(
+            request,
+            REGISTER_TITLE.get(kind, "Create an account"),
+            lead=REGISTER_LEAD.get(kind),
+            fields=_register_fields(kind, values),
+            action=f"/auth/register?kind={kind}",
+            submit="Create account",
+            error=str(exc),
+            status=400,
+        )
+    link = _dev_link(email.strip().lower())
+    return page(
+        request,
+        "Check your e-mail",
+        message=f"We sent a confirmation link to {email.strip()}. Open it within 24 hours to finish."
+        + (
+            " Your request goes to your organisation's administrators once confirmed."
+            if kind == "join"
+            else ""
+        ),
+        button={
+            "href": link,
+            "label": "Open the e-mailed link (development only: e-mail is not configured)",
+        }
+        if link
+        else None,
+        links=[{"href": "/auth/login", "label": "Back to sign in"}],
+    )
+
+
+@router.get("/register/confirm/{token}", response_class=HTMLResponse)
+def register_confirm(request: Request, token: str):
+    from .registration import confirm
+
+    info = req_info(request)
+    raw = None
+    try:
+        with platform().tx() as conn:
+            result = confirm(conn, token, request=info)
+            if result["org_id"]:
+                raw, _ = identity.start_session(
+                    conn, result["user_id"], result["org_id"], request=info
+                )
+                hours = identity.settings_for(conn, result["org_id"])[
+                    "session_max_hours"
+                ]
+    except ModelError as exc:
+        return page(
+            request,
+            "Link expired",
+            error=str(exc),
+            links=[{"href": "/auth/register", "label": "Register again"}],
+            status=400,
+        )
+    if raw:
+        return with_session(redirect(identity.app_url()), raw, hours)
+    if result["requested"]:
+        return page(
+            request,
+            "Request sent",
+            message=f"Your e-mail is confirmed. Your request to join {', '.join(result['requested'])} is with its administrators; "
+            "you will get an e-mail when it is approved.",
+            button={"href": "/auth/login", "label": "Sign in"},
+        )
+    return page(
+        request,
+        "E-mail confirmed",
+        message="No organisation on Xpat accepts members from your e-mail domain yet. Ask your administrator to invite you, "
+        "or set up a new organisation.",
+        button={"href": "/auth/register?kind=org", "label": "Set up an organisation"},
+    )
 
 
 MFA_FIELD = [

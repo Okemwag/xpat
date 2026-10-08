@@ -419,7 +419,11 @@ def invitation_for(conn, raw):
             "This invitation link is invalid or has expired. Ask your administrator for a new one.",
         )
     has_account = (
-        conn.execute(select(users.c.id).where(users.c.email == row["email"])).scalar()
+        conn.execute(
+            select(users.c.id).where(
+                users.c.email == row["email"], users.c.status != "unverified"
+            )
+        ).scalar()
         is not None
     )
     return {**dict(row), "has_account": has_account}
@@ -441,7 +445,23 @@ def accept_invitation(
         .mappings()
         .first()
     )
-    if user:
+    if user and user["status"] == "unverified":
+        # Registered but never confirmed: the invitation link proves the address, so finish the account here.
+        name = str(display_name or "").strip() or user["display_name"]
+        if not sso_user_id:
+            security.check_password(password, inv["email"], (name, inv["org_name"]))
+        conn.execute(
+            users.update()
+            .where(users.c.id == user["id"])
+            .values(
+                display_name=name[:120],
+                password_hash=None if sso_user_id else security.hash_password(password),
+                status="active",
+                email_verified_at=now(),
+            )
+        )
+        user_id = user["id"]
+    elif user:
         if user["status"] != "active":
             raise ModelError("account_inactive", "This account is not active")
         if sso_user_id != user["id"]:

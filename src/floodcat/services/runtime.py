@@ -19,9 +19,9 @@ class Runtime:
         self.data_dir = Path(
             data_dir or os.getenv("FLOODCAT_DATA_DIR") or ROOT / "data"
         )
-        self.store_dir = Path(
-            store_dir or os.getenv("FLOODCAT_STORE_DIR") or ROOT / "runtime" / "store"
-        )
+        from ..platform.db import store_dir as default_store
+
+        self.store_dir = Path(store_dir) if store_dir else default_store()
         self.config = load_config(config_path)
         self.hazard = RasterHazard(self.data_dir).load()
         self.hotspots = load_hotspots(self.data_dir / "nairobi_hotspots_geocoded.csv")

@@ -782,3 +782,15 @@ def test_ai_model_preference_and_policy(p):
         events.count("user.ai_preference_changed") == 2
         and "org.settings_changed" in events
     )
+
+
+def test_relative_store_dir_is_taken_from_the_project_folder(monkeypatch, tmp_path):
+    from floodcat.platform.db import PROJECT_ROOT, store_dir
+
+    monkeypatch.setenv("FLOODCAT_STORE_DIR", "runtime/store")
+    monkeypatch.chdir(
+        tmp_path
+    )  # a command run from another folder must find the same database
+    assert store_dir() == PROJECT_ROOT / "runtime" / "store"
+    monkeypatch.setenv("FLOODCAT_STORE_DIR", str(tmp_path))
+    assert store_dir() == tmp_path

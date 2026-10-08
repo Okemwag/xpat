@@ -26,6 +26,21 @@ principal, reason = state.resolve()
 P = lambda path, title, icon, **kw: st.Page(path, title=title, icon=icon, **kw)
 
 if principal is None:
+    # The sign-in cookie belongs to the host in FLOODCAT_APP_URL (localhost by default). Opened at another address
+    # (e.g. 127.0.0.1), the browser never sends it and the person looks signed out: say so instead of looping.
+    from urllib.parse import urlparse
+    from floodcat.platform.identity import app_url
+
+    try:
+        here = urlparse(st.context.url or "").hostname
+    except Exception:
+        here = None
+    expected = urlparse(app_url()).hostname
+    if here and expected and here != expected:
+        st.warning(
+            f"You opened Xpat at **{here}**, but sign-in works at **{expected}**. Use [{app_url()}]({app_url()}).",
+            icon=":material/link:",
+        )
     public = [
         P("views/landing.py", "Welcome", ":material/home:", default=True),
         P("views/solutions.py", "Solutions", ":material/category:"),

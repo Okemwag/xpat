@@ -9,7 +9,7 @@ with mid:
     site.hero(
         "Sign in",
         'Welcome back to <span class="x-accent">Xpat</span>',
-        "Sign in with your work account. Access is by invitation from your organisation's administrator.",
+        "Sign in with your work account, or create one: set up your organisation as its administrator, or ask to join it as a user.",
     )
     st.space("small")
     with st.container(border=True):
@@ -41,9 +41,32 @@ with mid:
                 primary=False,
                 icon="👀",
             )
-    st.caption(
-        "New to Xpat? Ask your administrator for an invitation, or contact us to set up your organisation."
-    )
+    from floodcat.platform.registration import signup_enabled
+
+    if signup_enabled():
+        with st.container(border=True):
+            st.markdown("**New to Xpat?**")
+            a, b = st.columns(2)
+            with a:
+                link(
+                    "Set up a new organisation",
+                    state.auth_link("/auth/register?kind=org"),
+                    primary=False,
+                    icon="🏛️",
+                )
+                st.caption("You become its administrator.")
+            with b:
+                link(
+                    "Join my organisation",
+                    state.auth_link("/auth/register?kind=join"),
+                    primary=False,
+                    icon="👤",
+                )
+                st.caption("As a user; an administrator approves you.")
+    else:
+        st.caption(
+            "New to Xpat? Ask your administrator for an invitation, or contact us to set up your organisation."
+        )
     st.caption(
         "All sign-ins and account changes are recorded in your organisation's audit log."
     )

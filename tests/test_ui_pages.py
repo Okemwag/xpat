@@ -378,3 +378,64 @@ def test_ask_results_and_drainage_page(store, monkeypatch):
     at.run()
     assert not at.exception, at.exception[0].value
     assert at.session_state["result"]["ai_contribution"]["drainage"]["mode"] == "prior"
+
+
+def test_admin_approves_join_request_and_edits_own_roles(store):
+    from ui_helpers import make_session, PW
+    from floodcat.platform import identity, registration
+    from floodcat.platform.email import recent
+    from floodcat.platform.service import Platform
+    import re
+
+    token = make_session(
+        store, roles=("owner",), org_name="Admin Re", email="boss@adminre.test"
+    )
+    plat = Platform(f"sqlite:///{store}/platform.db")
+    with plat.tx() as c:
+        p, _ = identity.resolve_session(c, token)
+        from floodcat.platform import orgs
+
+        identity.reauthenticate(c, p, password=PW)
+        orgs.update_settings(c, p, {"allowed_domains": ["adminre.test"]})
+        registration.start(
+            c, "join", "ula@adminre.test", "Ula", PW, request={"ip": "1.1.1.1"}
+        )
+        raw = re.search(
+            r"/auth/register/confirm/(\S+)",
+            next(
+                m
+                for m in recent(c, "ula@adminre.test")
+                if m["kind"] == "signup_confirm"
+            )["text"],
+        ).group(1)
+        registration.confirm(c, raw)
+    at = app(token)
+    at.switch_page("views/admin.py")
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert any("Ula" in m.value for m in at.markdown)
+    next(b for b in at.button if b.label == "Approve").click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    from sqlalchemy import select
+    from floodcat.platform.db import memberships, users
+
+    with plat.tx() as c:
+        ula = c.execute(
+            select(users.c.id).where(users.c.email == "ula@adminre.test")
+        ).scalar()
+        assert [o["name"] for o in identity.user_orgs(c, ula)] == ["Admin Re"]
+    # The owner can add working roles to their own account (and keeps the owner role).
+    assert any(e.label == "Your own roles" for e in at.expander)
+    own = next(m for m in at.multiselect if m.label == "Your roles")
+    own.set_value(["owner", "head_uw"])
+    next(b for b in at.button if b.label == "Save my roles").click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    with plat.tx() as c:
+        roles = c.execute(
+            select(memberships.c.roles)
+            .join(users, users.c.id == memberships.c.user_id)
+            .where(users.c.email == "boss@adminre.test")
+        ).scalar()
+    assert sorted(roles) == ["head_uw", "owner"]

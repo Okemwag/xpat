@@ -220,3 +220,13 @@ def test_written_book_is_built_from_accepted_decisions_only(
         assert (
             data.written_book(c, p, 250, exclude_run_id=written["analysis_id"])[1] == 0
         )
+
+
+def test_single_site_risk_is_not_warned_as_concentrated(config):
+    """One building is in one 1 km area by definition; the spread rule is for schedules, not single-site risks."""
+    report = portfolio(config, crowded=1, spread=0)
+    rec = recommend(report, 50_000_000, 10, RULES)
+    acc = rec["accumulation"]
+    assert not any(a["concentrated"] for a in acc["areas"])
+    assert not any(c["code"] == "concentration" and c["status"] == "warn" for c in rec["checks"])
+    assert any("single-site risk" in w["text"] and w["level"] == "info" for w in acc["warnings"])

@@ -172,6 +172,9 @@ def submission_flow(data, filename, review_and_run):
     st.caption(
         f"Model {sub['model']} · prompt {sub['prompt_version']} · {len(sub['properties'])} propert{'y' if len(sub['properties']) == 1 else 'ies'} found"
     )
+    from ui.document_view import document_analysis_panel
+
+    document_analysis_panel(sub.get("analysis"), key="doc_review")
     rows, apply_terms = [], False
     for i, prop in enumerate(sub["properties"]):
         with st.container(border=True):
@@ -338,7 +341,7 @@ def submission_flow(data, filename, review_and_run):
     terms = False
     if apply_terms:
         terms = st.checkbox(
-            "Apply the document's flood deductible and limit (adds an insured loss next to the gross loss)",
+            "Apply the document's flood deductible and limit (adds the gross loss next to the ground-up loss)",
             value=True,
             key="doc_terms",
         )
@@ -347,6 +350,7 @@ def submission_flow(data, filename, review_and_run):
         "properties": sub["properties"],
         "filename": sub["filename"],
         "model": sub["model"],
+        "analysis": sub.get("analysis"),
     }
     if terms:
         overrides = dict(st.session_state.get("config_overrides") or {})

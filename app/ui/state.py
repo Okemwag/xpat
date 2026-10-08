@@ -78,6 +78,17 @@ def guest_allowed():
     return os.getenv("FLOODCAT_ALLOW_GUEST", "0") == "1"
 
 
+def use_browser_host():
+    """Links to the sign-in pages and back follow the address this browser used (unless URLs are configured)."""
+    from floodcat.platform.identity import use_request_host
+
+    try:
+        host = st.context.headers.get("host")
+    except Exception:  # no request context (tests, scripts)
+        host = None
+    use_request_host(host if isinstance(host, str) else None)
+
+
 def auth_link(path):
     from floodcat.platform.identity import auth_url
 

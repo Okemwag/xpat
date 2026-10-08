@@ -42,13 +42,30 @@ runs = ["enhanced", "baseline"] if "enhanced" in report["runs"] else ["baseline"
 offer = st.session_state.get("uw_offer", {})
 if offer.get("analysis_id") != report["analysis_id"]:
     offer = {}
+# Form starting values: the submitted offer, else what the submission document states. Pre-filling never counts as
+# submitting: `offer` stays empty until "Get recommendation" is pressed.
+defaults = dict(offer)
+prefilled = False
+review = st.session_state.get("submission_review") or {}
+if not offer and review.get("analysis") and review.get("label") == st.session_state.get("run_label"):
+    # The submission document states the premium and the share on offer: start from them.
+    from floodcat.ai.document_analysis import term_value
+
+    pts = review["analysis"]["data_points"]
+    doc_premium = term_value(pts, "premium_100")
+    doc_share = term_value(pts, "accepted_share_pct") or term_value(pts, "placed_share_pct")
+    if doc_premium:
+        defaults = {"premium": doc_premium, **({"share": doc_share} if doc_share else {})}
+        prefilled = True
 with st.form("offer"):
     section("The offer", "Premium for 100% of the risk, and the share you are offered.")
+    if prefilled:
+        st.caption("Pre-filled from the submission document (premium for 100% and the accepted share); check before submitting.")
     with st.container(horizontal=True, vertical_alignment="bottom"):
         premium = st.number_input(
             "Offered premium for 100% (KES)",
             min_value=0.0,
-            value=float(offer.get("premium", 0.0)),
+            value=float(defaults.get("premium", 0.0)),
             step=100_000.0,
             format="%.0f",
         )
@@ -56,14 +73,14 @@ with st.form("offer"):
             "Offered share (%)",
             min_value=0.0,
             max_value=100.0,
-            value=float(offer.get("share", 10.0)),
+            value=float(defaults.get("share", 10.0)),
             step=0.5,
         )
         run = (
             st.segmented_control(
                 "Hazard",
                 runs,
-                default=offer.get("run", runs[0]),
+                default=defaults.get("run", runs[0]),
                 format_func={
                     "baseline": "Baseline map",
                     "enhanced": "With AI hazard adjustment",
@@ -76,8 +93,8 @@ with st.form("offer"):
             st.segmented_control(
                 "Loss basis",
                 ["insured", "gross"],
-                default=offer.get("basis", "insured"),
-                format_func={"gross": "Gross", "insured": "Insured"}.get,
+                default=defaults.get("basis", "insured"),
+                format_func={"gross": "Ground-up loss", "insured": "Gross loss (after deductible & limit)"}.get,
             )
             if "insured" in report["runs"]["baseline"]
             else "gross"

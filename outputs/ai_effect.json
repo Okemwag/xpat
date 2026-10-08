@@ -1,0 +1,196 @@
+{
+  "generated": "2026-10-08",
+  "free_text_ingestion": {
+    "description": "Portfolio: 30 mabati structures in Kiambiu (150k each); 4 stone houses in Donholm (3.5m each); 2 concrete apartment blocks in South B (80m each).",
+    "model": "gemini-3.5-flash",
+    "prompt_version": "ingest-v1",
+    "groups": [
+      {
+        "location_name": "Kiambiu",
+        "housing_class": "informal_iron_sheet",
+        "count": 30,
+        "tiv_kes_each": "150000.00",
+        "source_quote": "30 mabati structures in Kiambiu (150k each)",
+        "quote_verified": true,
+        "flags": []
+      },
+      {
+        "location_name": "Donholm",
+        "housing_class": "permanent_masonry",
+        "count": 4,
+        "tiv_kes_each": "3500000.00",
+        "source_quote": "4 stone houses in Donholm (3.5m each)",
+        "quote_verified": true,
+        "flags": []
+      },
+      {
+        "location_name": "South B",
+        "housing_class": "concrete_rcc",
+        "count": 2,
+        "tiv_kes_each": "80000000.00",
+        "source_quote": "2 concrete apartment blocks in South B (80m each)",
+        "quote_verified": true,
+        "flags": []
+      }
+    ],
+    "loss_by_class_1_in_250": {
+      "informal_iron_sheet": "1258668.30",
+      "concrete_rcc": "0.00",
+      "permanent_masonry": "0.00"
+    },
+    "rows": 36,
+    "expected": [
+      {
+        "location": "Kiambiu",
+        "housing_class": "informal_iron_sheet",
+        "count": 30,
+        "tiv_kes_each": 150000
+      },
+      {
+        "location": "Donholm",
+        "housing_class": "permanent_masonry",
+        "count": 4,
+        "tiv_kes_each": 3500000
+      },
+      {
+        "location": "South B",
+        "housing_class": "concrete_rcc",
+        "count": 2,
+        "tiv_kes_each": 80000000
+      }
+    ],
+    "result": {
+      "properties": 36,
+      "tiv_kes": "178500000.00",
+      "loss_kes": {
+        "extreme": "0.00",
+        "severe": "0.00",
+        "moderate": "402013.20",
+        "occasional": "927164.40",
+        "common": "1258668.30"
+      },
+      "aal_kes": "22258.19",
+      "insured_aal_kes": "20908.19"
+    },
+    "without_ai": "No rows can be produced from the text without the AI stage, so there is no loss to compare."
+  },
+  "flood_reports": {
+    "reports": [
+      {
+        "title": "Demonstration report A (SYNTHETIC)",
+        "text": "Residents of Kaloleni said blocked drains along the estate roads overflowed after the overnight downpour, leaving water standing in ground-floor homes for two days. In Kabiria, culverts choked with garbage could not carry the runoff and the main access road flooded."
+      },
+      {
+        "title": "Demonstration report B (SYNTHETIC)",
+        "text": "Traders in Kaloleni blamed the county for drains that have not been cleared in years. Every heavy shower now floods the market lane because the water has nowhere to go."
+      },
+      {
+        "title": "Demonstration report C (SYNTHETIC)",
+        "text": "In Githogoro and Marurui, rainwater had nowhere to drain and ponded between the houses after the storm, residents said. Further downstream the river rose but stayed within its banks."
+      }
+    ],
+    "passages": [
+      {
+        "report": "Demonstration report A (SYNTHETIC)",
+        "text": "Residents of Kaloleni said blocked drains along the estate roads overflowed after the overnight downpour, leaving water standing in ground-floor homes for two days.",
+        "drainage_similarity": 0.6931,
+        "contrast_similarity": 0.6252,
+        "strength": 0.643
+      },
+      {
+        "report": "Demonstration report A (SYNTHETIC)",
+        "text": "In Kabiria, culverts choked with garbage could not carry the runoff and the main access road flooded.",
+        "drainage_similarity": 0.698,
+        "contrast_similarity": 0.6161,
+        "strength": 0.7039
+      },
+      {
+        "report": "Demonstration report B (SYNTHETIC)",
+        "text": "Traders in Kaloleni blamed the county for drains that have not been cleared in years.",
+        "drainage_similarity": 0.667,
+        "contrast_similarity": 0.5941,
+        "strength": 0.6647
+      },
+      {
+        "report": "Demonstration report B (SYNTHETIC)",
+        "text": "Every heavy shower now floods the market lane because the water has nowhere to go.",
+        "drainage_similarity": 0.6065,
+        "contrast_similarity": 0.5662,
+        "strength": 0.523
+      },
+      {
+        "report": "Demonstration report C (SYNTHETIC)",
+        "text": "In Githogoro and Marurui, rainwater had nowhere to drain and ponded between the houses after the storm, residents said.",
+        "drainage_similarity": 0.7467,
+        "contrast_similarity": 0.6053,
+        "strength": 0.9625
+      },
+      {
+        "report": "Demonstration report C (SYNTHETIC)",
+        "text": "Further downstream the river rose but stayed within its banks.",
+        "drainage_similarity": 0.6201,
+        "contrast_similarity": 0.7529,
+        "strength": 0.0
+      }
+    ],
+    "places": [
+      {
+        "place": "Githogoro",
+        "factor": 0.9625,
+        "reports": 1
+      },
+      {
+        "place": "Marurui",
+        "factor": 0.9625,
+        "reports": 1
+      },
+      {
+        "place": "Kaloleni",
+        "factor": 0.8803,
+        "reports": 2
+      },
+      {
+        "place": "Kabiria",
+        "factor": 0.7039,
+        "reports": 1
+      }
+    ],
+    "evidence_used": 4,
+    "changed_properties": 21,
+    "before": {
+      "properties": 600,
+      "tiv_kes": "63635075000.00",
+      "loss_kes": {
+        "extreme": "263818826.82",
+        "severe": "447223201.90",
+        "moderate": "1011960060.30",
+        "occasional": "1699587953.49",
+        "common": "2649188965.42"
+      },
+      "aal_kes": "125887685.53",
+      "insured_aal_kes": "114806038.34"
+    },
+    "after": {
+      "properties": 600,
+      "tiv_kes": "63635075000.00",
+      "loss_kes": {
+        "extreme": "296476024.10",
+        "severe": "512469574.22",
+        "moderate": "1109717646.18",
+        "occasional": "1828144898.52",
+        "common": "2803295701.61"
+      },
+      "aal_kes": "139582262.30",
+      "insured_aal_kes": "119379727.06"
+    },
+    "loss_delta_kes": {
+      "extreme": "32657197.28",
+      "severe": "65246372.32",
+      "moderate": "97757585.88",
+      "occasional": "128556945.03",
+      "common": "154106736.19"
+    },
+    "aal_delta_kes": "13694576.77",
+    "embedding_model": "BAAI/bge-small-en-v1.5"
+  }
+}

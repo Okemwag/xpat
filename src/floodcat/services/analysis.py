@@ -179,6 +179,13 @@ def analyse(
             runs[name]["insured"] = {
                 "ep_curve": ep_curve(insured, config, covered_tiv),
                 "aal": average_annual_loss(insured, config),
+                # Ground-up = deductible + above the limit + gross loss, per scenario (owner bears the first two).
+                "deductible_kes": {
+                    t: money_string(total_loss(r, "deductible_kes_applied")) for t, r in scenarios.items()
+                },
+                "above_limit_kes": {
+                    t: money_string(total_loss(r, "above_limit_kes")) for t, r in scenarios.items()
+                },
                 "terms": dict(config.policy_terms),
                 "note": "Per-risk deductible and limit; reinsurance is shown separately",
             }

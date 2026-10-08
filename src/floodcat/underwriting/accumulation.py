@@ -10,7 +10,8 @@ assumed return period is nearest at or above it) on the same run and basis as th
 - **Limit (rule `max_area_pml_kes`):** our share of this risk plus the book in any cell must stay within it, which caps
   the share like the other capacity rules.
 - **Warning (rule `max_area_tiv_pct`):** a cell holding more than this share of the submission's insured value is flagged,
-  because one local flood would hit much of the risk at once.
+  because one local flood would hit much of the risk at once. Only for submissions with more than one property: a
+  single-site risk always has 100% in one cell, so it gets a plain note instead (the area limit and the book still apply).
 
 Cells are co-location buckets, not independent events: a single storm can affect several. The figures are as good as the
 hazard proxy behind them (no drainage, assumed return periods), which the advice states.
@@ -113,13 +114,24 @@ def assess(report, run, basis, pml_rp, rules, book=None, share_pct=None, written
         )
     rows.sort(key=lambda r: (-(r["loss_100_kes"]), -r["tiv_100_kes"]))
     share = share_pct
+    properties = sum(r["properties"] for r in rows)
     for r in rows:
         ours = r["loss_100_kes"] * Decimal(str(share or 0)) / 100
         r["our_loss_kes"] = ours
         r["combined_loss_kes"] = ours + r["book_loss_kes"]
         r["over_limit"] = r["combined_loss_kes"] > limit
-        r["concentrated"] = r["tiv_share_pct"] > rules["max_area_tiv_pct"]
+        # The rule spreads a schedule across areas; one building is in one place by definition.
+        r["concentrated"] = properties > 1 and r["tiv_share_pct"] > rules["max_area_tiv_pct"]
     warnings = []
+    if properties == 1 and rows:
+        warnings.append(
+            {
+                "level": "info",
+                "area": rows[0]["area"],
+                "text": f"{rows[0]['area']}: a single-site risk, so all of it is in one place — normal for one building. "
+                "What matters here is the area limit and how much we already hold nearby, both checked below.",
+            }
+        )
     for r in rows:
         if r["concentrated"]:
             warnings.append(

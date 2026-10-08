@@ -90,3 +90,30 @@ def test_property_aal_adds_up_to_the_portfolio_aal(starter_rows, config):
     assert [Decimal(r["aal_kes"]) for r in rows] == sorted((Decimal(r["aal_kes"]) for r in rows), reverse=True)
     assert all(Decimal(r["aal_kes"]) > 0 for r in rows)  # properties the map never flags are left out
     assert len(rows) == sum(1 for p in base["property_losses"][TIERS[-1]] if Decimal(p["loss_kes"]) > 0)
+
+
+def test_ground_up_splits_into_deductible_above_limit_and_gross(starter_rows, config):
+    cfg = config.replace(policy_terms={"enabled": True, "deductible_pct_of_tiv": 0.02, "limit_pct_of_tiv": 0.1})
+    base = analyse(starter_rows, cfg)["runs"]["baseline"]
+    ins = base["insured"]
+    for p, g in zip(base["ep_curve"], ins["ep_curve"]):
+        t = p["tier"]
+        total = Decimal(ins["deductible_kes"][t]) + Decimal(ins["above_limit_kes"][t]) + Decimal(g["loss_kes"])
+        assert abs(total - Decimal(p["loss_kes"])) <= Decimal("0.01") * len(base["property_losses"][t])
+    assert Decimal(ins["above_limit_kes"]["common"]) > 0  # a 10% limit binds on badly damaged buildings
+
+
+def test_waterfall_runs_from_ground_up_to_net(starter_rows, config):
+    from floodcat.reporting.terms import NAME, TERMS, waterfall
+
+    base = analyse(starter_rows, config)["runs"]["baseline"]
+    for p in base["ep_curve"]:
+        steps = dict((k, v) for k, _, v in waterfall(base, p["tier"]))
+        assert steps["ground_up"] == Decimal(p["loss_kes"])
+        assert abs(steps["ground_up"] + steps["deductible"] + steps["limit"] - steps["gross"]) <= Decimal(1)
+        assert steps["gross"] + steps["quota_share"] + steps["cat_xl"] == steps["net"]
+        split = next(t for t in base["reinsurance"]["by_tier"] if t["tier"] == p["tier"])
+        assert abs(steps["net"] - Decimal(split["net"])) <= Decimal("0.01")
+    assert [n for _, n, _ in TERMS] == ["Ground-up loss", "Deductible", "Limit", "Gross loss", "Quota share",
+                                        "Catastrophe excess of loss", "Net loss"]
+    assert "before insurance rules are applied" in dict((k, d) for k, _, d in TERMS)["ground_up"] and NAME["net"] == "Net loss"

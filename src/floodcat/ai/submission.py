@@ -26,8 +26,10 @@ from ..core.constants import CLASSES, TIERS
 from ..core.errors import ModelError
 from ..core.geo import distance_m, in_coverage
 from ..hazard.hotspots import nearest_hotspot
+from .document_analysis import PROPERTY_ADDITIONS, SCHEMA_ADDITIONS, SYSTEM_ADDENDUM as DOC_SYSTEM_ADDENDUM
+from .document_analysis import analyse as analyse_document
 
-PROMPT_VERSION = "submission-v1"
+PROMPT_VERSION = "submission-v2"
 LOCATION_TOLERANCE_M = 1000  # GPS vs geocoded address
 AREA_TOLERANCE = 0.05  # stated total vs sum of components
 COST_LOW, COST_HIGH = 0.75, 1.5  # implied cost/m² vs starter class median
@@ -55,6 +57,7 @@ For each distinct insured building or site, return one property with:
 - loss_history_years (number of years covered by the loss history) and flood_losses_reported (true/false/null).
 For every scalar field also give a verbatim supporting quote in the matching *_quote field (copy the exact words;
 "" if the value is null). Numbers only as stated; never estimate. Do not extract names, e-mails or phone numbers of people."""
+SYSTEM += DOC_SYSTEM_ADDENDUM
 
 _Q = {"type": "string"}
 _N = {"type": ["number", "null"]}
@@ -175,6 +178,13 @@ SCHEMA = {
         }
     },
 }
+
+
+# The same call also reads the document as a whole (ai/document_analysis.py).
+SCHEMA["properties"].update(SCHEMA_ADDITIONS)
+SCHEMA["required"] = ["properties", *SCHEMA_ADDITIONS]
+SCHEMA["properties"]["properties"]["items"]["properties"].update(PROPERTY_ADDITIONS)
+SCHEMA["properties"]["properties"]["items"]["required"] += list(PROPERTY_ADDITIONS)
 
 
 # Text utilities ----------------------------------------------------------------------------------
@@ -724,7 +734,8 @@ def build_submission(
         for p in response["properties"]
         if isinstance(p, dict)
     ]
-    return {"properties": assessed, "model": model, "prompt_version": PROMPT_VERSION}
+    return {"properties": assessed, "model": model, "prompt_version": PROMPT_VERSION,
+            "analysis": analyse_document(text, response, assessed, config)}
 
 
 def extract_submission(document, llm, gazetteer, provider, hotspots, config, defaults):

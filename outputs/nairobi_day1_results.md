@@ -13,7 +13,7 @@ Generated 2026-10-08 by `scripts/build_day1_outputs.py`. Config `nairobi-prototy
 | `data/nairobi_pluvial_proxy_*.tif` (5) | PROXY hazard | read directly |
 | `data/nairobi_hotspots_geocoded.csv` | REAL names, approximate points | `b597d843f80a800d…` |
 
-## Headline (gross loss)
+## Headline (ground-up loss)
 
 | Measure | Value | Plain English |
 |---|---|---|
@@ -35,11 +35,11 @@ Generated 2026-10-08 by `scripts/build_day1_outputs.py`. Config `nairobi-prototy
 Tier names describe how extreme a cell is, not how often it floods: `extreme` keeps the top 5% of cells (narrowest
 footprint, most frequent event); `common` keeps the top 40% (widest footprint, rarest event).
 
-## Gross, insured and reinsured loss (ASSUMPTION terms)
+## Ground-up, gross and net loss (ASSUMPTION terms)
 
-Insured = after a 1% deductible per property. Reinsured = illustrative programme: 30% quota share, then KES 1,909,052,250 xs KES 636,350,750 per event on the insurer's share. Not a real treaty; no reinstatements, aggregate covers or second events in a year.
+Gross loss = ground-up loss after a 1% deductible per property (limit 100% of value). Net loss = gross loss after an illustrative programme: 30% quota share, then a catastrophe excess of loss of KES 1,909,052,250 above KES 636,350,750 per catastrophe on the insurer's share. Not a real treaty; no reinstatements, aggregate covers or second events in a year.
 
-| Return period | Gross | Insured | Reinsurer pays | Insurer keeps |
+| Return period | Ground-up loss | Gross loss | Reinsurance recoveries | Net loss |
 |---|---|---|---|---|
 | 1-in-10 | KES 263,818,827 | KES 247,498,655 | KES 74,249,596 | KES 173,249,058 |
 | 1-in-25 | KES 447,223,202 | KES 398,478,466 | KES 119,543,540 | KES 278,934,926 |

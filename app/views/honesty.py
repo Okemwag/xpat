@@ -293,9 +293,9 @@ with st.container(border=True):
         "Hazard values are relative susceptibility, not measured depths or annual probabilities.",
         "The damage curve is a published regional curve adapted by assumption; it is not validated against Kenyan claims.",
         "The years attached to the five tiers are assumptions, so the loss curve compares assumed scenarios rather than forecasting annual loss.",
-        "Insured loss uses a default 1% deductible per property, and reinsured loss an illustrative programme (30% quota share, then "
-        "an excess-of-loss layer) — assumptions, not a real policy wording or treaty. No reinstatements, aggregate covers or second "
-        "events in a year.",
+        "The gross loss uses a default 1% deductible per property, and the net loss an illustrative reinsurance programme (30% quota "
+        "share, then a catastrophe excess of loss) — assumptions, not a real policy wording or treaty. No reinstatements, aggregate "
+        "covers or second events in a year.",
         "A zero score means the proxy did not flag a place, not that it cannot flood.",
         "Hotspot coordinates are approximate neighbourhood centres, not flooded buildings.",
         "The named-hotspot check uses only known flood areas, so it cannot measure false alarms.",

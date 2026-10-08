@@ -146,6 +146,9 @@ sum to portfolio loss → EP curve across return periods.
 - Report: loss per return period, average annual loss (AAL, with the
   integration assumptions stated), loss by housing class, top locations,
   loss as % of total insured value, accumulation by area.
+- **Names shown to people** (`reporting/terms.py`, the teams' definitions): ground-up loss → deductible → limit → **gross loss**
+  → quota share → catastrophe excess of loss → **net loss**. Internal keys keep their old names (`ep_curve` = ground-up,
+  `insured` = gross loss, `reinsurance.net` = net loss); never show "insured loss" or "gross" for ground-up to users.
 - Objective 1 asks for the **insured/reinsured** loss, so every default run reports three bases:
   - **Gross** (ground-up) loss.
   - **Insured** loss after per-risk policy terms (`policy_terms`: deductible / limit as % of TIV, or per-row

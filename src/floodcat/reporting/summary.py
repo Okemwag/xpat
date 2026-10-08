@@ -17,9 +17,9 @@ def markdown_summary(report, ranges=None, ylt=None):
         "",
         f"> Indicative, uncalibrated model: {' + '.join(report.get('exposure_origin', {}).get('labels', ['SYNTHETIC']))} exposure, PROXY hazard, ASSUMED return periods. "
         + (
-            "Gross loss plus insured loss after simple per-property terms."
+            "Ground-up loss, and gross loss after each property's deductible and limit."
             if "insured" in run
-            else "Gross loss, no policy terms."
+            else "Ground-up loss (no deductible or limit applied)."
         ),
         "",
         f"- Properties modelled: {report['modelled_count']} of {report['input_count']} supplied",
@@ -38,11 +38,11 @@ def markdown_summary(report, ranges=None, ylt=None):
         t = run["insured"]["terms"]
         lines += [
             "",
-            f"## Insured loss (deductible {t['deductible_pct_of_tiv']:.1%}, limit {t['limit_pct_of_tiv']:.0%} of value)",
+            f"## Gross loss (deductible {t['deductible_pct_of_tiv']:.1%}, limit {t['limit_pct_of_tiv']:.0%} of value)",
             "",
-            f"- Insured average annual loss: {_kes(run['insured']['aal']['aal_kes'])}",
+            f"- Gross average annual loss: {_kes(run['insured']['aal']['aal_kes'])}",
             "",
-            "| Return period | Insured loss |",
+            "| Return period | Gross loss |",
             "|---|---|",
         ]
         lines += [
@@ -53,14 +53,14 @@ def markdown_summary(report, ranges=None, ylt=None):
         ri, stc = run["reinsurance"], run["reinsurance"]["structure"]
         lines += [
             "",
-            "## Reinsured loss (illustrative programme, ASSUMPTION)",
+            "## Net loss after reinsurance (illustrative programme, ASSUMPTION)",
             "",
             f"- {stc['quota_share_cession']:.0%} quota share of the {ri['basis']} loss, then {_kes(stc['xol_limit_kes'])} xs "
             f"{_kes(stc['xol_retention_kes'])} per event on the insurer's share (used up at {_kes(stc['xol_exhaustion_kes'])}).",
-            f"- Reinsurer average annual loss: {_kes(ri['ceded']['aal']['aal_kes'])}; insurer keeps: {_kes(ri['net']['aal']['aal_kes'])}.",
+            f"- Reinsurance recoveries average annual loss: {_kes(ri['ceded']['aal']['aal_kes'])}; net loss: {_kes(ri['net']['aal']['aal_kes'])}.",
             "- No reinstatements, aggregate covers or second events in a year.",
             "",
-            "| Return period | Loss before reinsurance | Quota share | Excess of loss | Reinsurer total | Insurer keeps |",
+            "| Return period | Gross loss | Quota share | Catastrophe excess of loss | Recoveries | Net loss |",
             "|---|---|---|---|---|---|",
         ]
         lines += [

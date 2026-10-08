@@ -263,8 +263,9 @@ maintenance.
 
 Two steps, both stated:
 
-1. **Score → depth:** `depth = score × max_depth`, with **max_depth = 1.5 m** as the base case (ASSUMPTION). Pluvial flooding in Nairobi
-   typically reaches 0.3–1.5 m; the brief's 4 m example is shown as a sensitivity (1, 1.5, 2, 4 m).
+1. **Score → depth:** `depth = score × max_depth`, with **max_depth = 1.5 m** as the base case (ASSUMPTION). This is a Team A
+   judgement of street and household flooding depths, not a cited figure; it is the weakest and most influential input. The brief's
+   4 m example is shown as a sensitivity (1, 1.5, 2, 4 m). Observed Nairobi depths would replace it.
 2. **Depth → damage:** the published **JRC Africa residential** curve (REAL), adapted per construction class (ASSUMPTION).
 
 | Depth (m) | 0 | 0.5 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 |
@@ -397,17 +398,35 @@ tier of a property, so each simulated curve still rises with rarity. ρ matters:
 largely cancel and the 1-in-100 range shrinks to a misleading KES 1.49–1.95 bn; with ρ = 0.5 it is KES 1.01–2.59 bn. Only damage varies —
 hazard, frequency and values are held fixed — so these are **assumption ranges, not confidence intervals**.
 
-### 8.5 Policy terms (on by default)
+### 8.5a Financial terms
+
+The interface, reports and this document use these terms (the definitions given to the teams):
+
+| Term | Meaning |
+|---|---|
+| Ground-up loss | The total physical damage caused to a building before insurance rules are applied. |
+| Deductible | The part of the loss that the building owner must pay themselves before the insurer pays. |
+| Limit | The maximum amount the insurer will pay for the building. |
+| Gross loss | The amount the insurer is responsible for paying after applying the deductible and limit. |
+| Quota share | A reinsurance arrangement where the insurer and reinsurer share every loss by an agreed percentage (a 25% quota share means the reinsurer pays 25% of the gross loss). |
+| Catastrophe excess of loss | Reinsurance that protects the insurer when the total loss from one catastrophe becomes large: the reinsurer pays after the loss passes an agreed threshold, up to an agreed maximum. |
+| Net loss | The amount of the loss that remains with the insurer after payments from reinsurers. |
+
+So ground-up = deductible + amount above the limit + gross loss, and gross loss = quota share + catastrophe excess of loss + net
+loss, for every scenario and every simulated year (tested). Overview shows the waterfall for any scenario, with each term's value.
+Internally the ground-up loss is the run's `ep_curve`, the gross loss its `insured` block and the net loss `reinsurance.net`.
+
+### 8.5 Deductible and limit: ground-up to gross loss (on by default)
 
 A per-property deductible and limit, as a percentage of insured value or set per row (`deductible_kes`, `limit_kes`):
 `insured = min(max(gross − deductible, 0), limit − deductible)`. The default is a **1% deductible and no limit below the insured value**
-(ASSUMPTION, illustrative), so every run has an insured EP curve, insured AAL and insured ranges next to the gross ones. Sample: 1-in-100
-**KES 1.51 bn insured** against KES 1.70 bn gross; insured AAL **KES 114.8 m** against KES 125.9 m gross.
+(ASSUMPTION, illustrative), so every run has a gross-loss EP curve, AAL and ranges next to the ground-up ones. Sample: 1-in-100
+**KES 1.51 bn gross loss** against KES 1.70 bn ground-up; gross AAL **KES 114.8 m** against KES 125.9 m ground-up.
 
 Rows may also give `deductible_pct_of_loss` with `deductible_kes` as its minimum — the usual form of a flood deductible ("5% of each loss,
 minimum KES 5 m").
 
-### 8.5b Reinsured loss (illustrative programme, on by default)
+### 8.5b Quota share and catastrophe excess of loss: gross to net loss (illustrative programme, on by default)
 
 `financial/reinsurance.py`. Per event, on the insured loss L (gross when policy terms are off):
 
@@ -419,7 +438,7 @@ Default (ASSUMPTION, not a real treaty): c = 30%; layer starts at 1% and is 3% o
 xs KES 636 m**, used up at an insured loss of KES 3.64 bn. Retention and limit scale with the portfolio so any upload gets a sensible
 layer; they are set on the Assumptions page to match the treaty being priced.
 
-| Return period | Insured | Reinsurer pays | Insurer keeps |
+| Return period | Gross loss | Reinsurance recoveries | Net loss |
 |---|---:|---:|---:|
 | 1-in-10 | KES 247.5 m | KES 74.2 m | KES 173.2 m |
 | 1-in-25 | KES 398.5 m | KES 119.5 m | KES 278.9 m |
@@ -581,6 +600,23 @@ PDF, Word and free-text documents — and schedules whose columns do not match t
 **Multi-storey exposure (ASSUMPTION).** JRC damage factors describe flooded storeys. When a document gives storey counts, only basements
 plus the lowest storey are treated as flood-exposed: for Landmark Plaza (18 storeys + 2 basements) that is 3/20 = **15%** of value.
 Without this, a ground-level flood would be charged against all eighteen storeys.
+
+**Reading the whole document.** The same single AI call also returns the document's placement terms, its sections and any
+flood history, each with a verbatim quote, and `ai/document_analysis.py` then, by fixed rules:
+
+1. **Locates data points across the text** — sum insured and premium (100%), shares placed and accepted, deductions, period,
+   parties, deductibles, limits, debris-removal and event-definition clauses, valuation basis. A value is kept only if its
+   quote is in the document and, for numbers, the number is in its quote; key terms that are missing are listed.
+2. **Distinguishes relevant from irrelevant information** — every clause tagged by topic and flood-relevant or not, with a
+   reason (bush fire, explosion and earthquake clauses are set aside; a debris-removal extension is kept because it adds to a loss).
+3. **Cross-references building specifications with risk indicators** — construction against the class damage curve,
+   occupancy against the residential JRC curve (industrial use is flagged as indicative), location against the hazard map and
+   the named flood areas, value against floor area, and the document's flood statements against the model.
+4. **Summarises flood history** — dated events as a timeline with counts, causes, depths and stated losses; with none, it says
+   so and lists what to ask the broker.
+5. **Calculates implied risk metrics** — premium rate and per mille, payback, premium after deductions, the share arithmetic
+   (placed and accepted sums insured and premiums recomputed), the debris-removal add-on, and once the model has run, modelled
+   loss against premium and sum insured. The premium and share then pre-fill the underwriting decision.
 
 ### 10.1c Underwriting briefing
 
@@ -749,7 +785,7 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | # | Assumption | Value | Label | Why | Effect if wrong |
 |---|---|---|---|---|---|
 | A1 | Tier → return period | 10 / 25 / 50 / 100 / 250 yr | ASSUMPTION | Dataset metadata reference mapping | Relabels the curve; AAL scales roughly inversely |
-| A2 | Score → depth | depth = score × 1.5 m | ASSUMPTION | Typical Nairobi pluvial depths 0.3–1.5 m | Largest single lever: 1 m → ×0.68, 4 m → ×2.4 |
+| A2 | Score → depth | depth = score × 1.5 m | ASSUMPTION | Team judgement of street/household flood depth; no citation yet | Largest single lever: 1 m → ×0.68, 4 m → ×2.4 |
 | A3 | Base damage curve | JRC Africa residential, Table 3-1 | REAL | Published, documented, the brief's reference | Built from two countries' data |
 | A4 | Class depth scales | 0.5 / 0.75 / 1.0 / 1.3 | ASSUMPTION | Relative fragility of construction | RCC scale dominates this portfolio's loss |
 | A5 | Damage caps | 95 / 90 / 85 / 80% | ASSUMPTION | Brief's 80–95% guidance | Do not bind at 1.5 m |
@@ -760,7 +796,7 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | A10 | Interpolation between points | linear in annual chance | ASSUMPTION | Same rule for AAL and YLT | Small effect between points |
 | A11 | Year-loss table | 10,000 years, 200 bootstraps, 5–95% band, fixed seed | ASSUMPTION | Matches the reference dashboard; reproducible | Band reflects sampling, not model error |
 | A12 | Damage uncertainty | σ = 0.4, ρ = 0.5, 2,000 trials | ASSUMPTION | Judgement; no claims to fit | Range width scales with σ and ρ |
-| A13 | Policy terms | on; 1% deductible, no limit below insured value | ASSUMPTION | Objective asks for insured loss; illustrative terms | Insured AAL KES 114.8 m vs 125.9 m gross |
+| A13 | Deductible and limit | on; 1% deductible, no limit below insured value | ASSUMPTION | Objective asks for insured loss; illustrative terms | Gross AAL KES 114.8 m vs 125.9 m ground-up |
 | A13b | Reinsurance programme | 30% quota share; per-event XL 3% xs 1% of insured value | ASSUMPTION | Objective asks for reinsured loss; illustrative, not a real treaty | Reinsurer AAL KES 44.9 m; insurer keeps KES 69.9 m |
 | A14 | Hotspot grouping radius | 2 km | ASSUMPTION | Few properties within 1 km of each hotspot | Changes accumulation groups only |
 | A15 | Grid cell | 1 km | ASSUMPTION | Simple, transparent accumulation unit | Changes accumulation groups only |

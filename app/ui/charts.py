@@ -6,6 +6,7 @@ import altair as alt
 import pandas as pd
 import pydeck as pdk
 from floodcat.core.constants import CLASSES
+from floodcat.reporting.terms import BASIS as BASIS_LABEL  # ground-up, gross, recoveries, net
 from floodcat.vulnerability.functions import damage_from_depth
 from . import state
 
@@ -344,14 +345,6 @@ def portfolio_map(rows, hotspots=(), evidence=(), color_by="loss"):
 
 
 BAND_GREY = "#9ca3af"
-
-
-BASIS_LABEL = {
-    "gross": "Gross (ground-up)",
-    "insured": "Insured (after policy terms)",
-    "ceded": "Reinsurer's share",
-    "net": "Insurer keeps (net)",
-}
 
 
 def scenario_source(report, run, basis):
@@ -851,25 +844,21 @@ def place_factor_map(places):
 
 
 def who_pays_chart(report, run="baseline", height=280):
-    """Stacked bars per scenario: what the policyholder bears (deductibles and limits), what the reinsurer pays, and
-    what the insurer keeps. The three add up to the gross loss."""
+    """Stacked bars per scenario: the ground-up loss split into deductible, above the limit, quota share, catastrophe
+    excess of loss and net loss (they add up to the ground-up loss)."""
+    from floodcat.reporting.terms import waterfall
+
     r = report["runs"][run]
-    gross = {p["tier"]: float(p["loss_kes"]) for p in r["ep_curve"]}
-    insured = {p["tier"]: float(p["loss_kes"]) for p in r["insured"]["ep_curve"]} if "insured" in r else gross
-    ri = {t["tier"]: t for t in r["reinsurance"]["by_tier"]} if "reinsurance" in r else None
+    order = ["Deductible", "Above the limit", "Quota share", "Catastrophe excess of loss", "Net loss"]
+    keys = {"deductible": 0, "limit": 1, "quota_share": 2, "cat_xl": 3, "net": 4}
     rows = []
     for p in r["ep_curve"]:
-        t, label = p["tier"], f"1-in-{p['return_period_years']:g}"
-        parts = [("Policyholder (deductibles, limits)", gross[t] - insured[t])]
-        if ri:
-            parts += [("Reinsurer", float(ri[t]["ceded"])), ("Insurer keeps", float(ri[t]["net"]))]
-        else:
-            parts += [("Insurer keeps", insured[t])]
-        for order, (who, v) in enumerate(parts):
-            rows.append({"Return period": label, "Who": who, "Loss (KES bn)": v / 1e9, "Amount": state.kes(v),
-                         "order": order, "Gross": state.kes(gross[t])})
+        steps = {k: v for k, _, v in waterfall(r, p["tier"])}
+        for key, i in keys.items():
+            v = abs(float(steps[key]))
+            rows.append({"Return period": f"1-in-{p['return_period_years']:g}", "Part": order[i], "Loss (KES bn)": v / 1e9,
+                         "Amount": state.kes(v), "order": i, "Ground-up loss": state.kes(p["loss_kes"])})
     data = pd.DataFrame(rows)
-    domain = ["Policyholder (deductibles, limits)", "Reinsurer", "Insurer keeps"]
     return (
         alt.Chart(data)
         .mark_bar(size=34)
@@ -877,10 +866,45 @@ def who_pays_chart(report, run="baseline", height=280):
             x=alt.X("Return period:N", sort=[f"1-in-{p['return_period_years']:g}" for p in r["ep_curve"]], title=None,
                     axis=alt.Axis(labelAngle=0)),
             y=alt.Y("Loss (KES bn):Q", stack="zero", axis=alt.Axis(gridOpacity=0.4)),
-            color=alt.Color("Who:N", scale=alt.Scale(domain=domain, range=["#b8b8b8", SERIES[1], BASE]),
+            color=alt.Color("Part:N", scale=alt.Scale(domain=order, range=["#b8b8b8", "#d9d9d9", SERIES[1], "#f2a074", BASE]),
                             legend=alt.Legend(orient="bottom", title=None)),
             order=alt.Order("order:Q"),
-            tooltip=["Return period", "Who", "Amount", alt.Tooltip("Gross", title="Gross loss")],
+            tooltip=["Return period", "Part", "Amount", "Ground-up loss"],
         )
         .properties(height=height)
     )
+
+
+def waterfall_chart(report, tier, run="baseline", height=300):
+    """From ground-up to net loss for one scenario: totals as full bars, each deduction as a floating step down."""
+    from floodcat.reporting.terms import waterfall
+
+    steps = waterfall(report["runs"][run], tier)
+    rows, level = [], 0.0
+    for key, label, amount in steps:
+        v = float(amount) / 1e9
+        if key in ("ground_up", "gross", "net"):
+            start, end, kind = 0.0, v, "total"
+            level = v
+        else:
+            start, end, kind = level + v, level, "deduction"
+            level = level + v
+        rows.append({"Step": label, "start": start, "end": end, "kind": kind, "Amount": state.kes(abs(float(amount))),
+                     "label": state.kes(abs(float(amount))) if abs(float(amount)) > 0 else "0"})
+    data = pd.DataFrame(rows)
+    order = [label for _, label, _ in steps]
+    color = alt.Color("kind:N", scale=alt.Scale(domain=["total", "deduction"], range=[BASE, SERIES[1]]), legend=None)
+    bars = (
+        alt.Chart(data)
+        .mark_bar(size=38, cornerRadius=2)
+        .encode(
+            x=alt.X("Step:N", sort=order, title=None, axis=alt.Axis(labelAngle=0, labelLimit=110)),
+            y=alt.Y("start:Q", title="KES bn", axis=alt.Axis(gridOpacity=0.4)),
+            y2="end:Q",
+            color=color,
+            tooltip=["Step", "Amount"],
+        )
+    )
+    text = alt.Chart(data).transform_calculate(top="max(datum.start, datum.end)").mark_text(dy=-8, fontSize=11).encode(
+        x=alt.X("Step:N", sort=order), y="top:Q", text="label:N")
+    return (bars + text).properties(height=height)

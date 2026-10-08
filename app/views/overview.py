@@ -3,7 +3,8 @@ import streamlit as st
 from floodcat.core.errors import ModelError
 from ui import state
 from ui.briefing_view import briefing_panel
-from ui.charts import donut, hbars, who_pays_chart, ylt_chart
+from ui.charts import donut, hbars, ylt_chart
+from ui.financial_view import financial_terms_panel
 from ui.components import (
     badges,
     explain,
@@ -61,6 +62,10 @@ kpis(
 )
 
 review = st.session_state.get("submission_review")
+if review and review.get("label") == st.session_state.get("run_label") and review.get("analysis"):
+    from ui.document_view import document_analysis_panel
+
+    document_analysis_panel(review["analysis"], report=report, key="overview_doc")
 if review and review.get("label") == st.session_state.get("run_label"):
     warn = [
         c
@@ -121,15 +126,7 @@ with right.container(border=True):
         [*state.exposure_labels(report), "ASSUMPTION"],
     )
 
-if "insured" in run or "reinsurance" in run:
-    with st.container(border=True):
-        section("Who pays", "Policyholders, reinsurer and insurer, per scenario")
-        st.altair_chart(who_pays_chart(report, height=210), width="stretch")
-        explain(
-            "Each bar is the gross loss in one scenario, split into what policyholders bear, what the reinsurer pays and what the insurer keeps.",
-            "Above the layer's start the insurer's share stops growing until the layer is used up.",
-            ["ASSUMPTION", *state.exposure_labels(report)],
-        )
+financial_terms_panel(report, "overview_terms")
 
 c1, c2 = st.columns(2, gap="large")
 with c1.container(border=True, height="stretch"):

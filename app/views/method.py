@@ -66,7 +66,7 @@ st.caption(
 st.header("2 · Vulnerability")
 badges("REAL", "ASSUMPTION")
 st.write(
-    f"Score → depth: **depth = score × {cfg.max_depth_m:g} m** (ASSUMPTION; pluvial flooding in Nairobi is typically 0.3–1.5 m). "
+    f"Score → depth: **depth = score × {cfg.max_depth_m:g} m** (ASSUMPTION: our judgement of street and household flood depths, not a cited figure). "
     f"Depth → damage: {cfg.vulnerability_source}."
 )
 st.altair_chart(vulnerability_chart(cfg), width="stretch")
@@ -105,10 +105,10 @@ st.write(
     f"{state.rp_label(max(cfg.return_periods.values()))}."
 )
 st.markdown(
-    "**Gross, insured and reinsured.** Every run gives the **gross** (ground-up) loss; the **insured** loss after each property's "
-    "deductible and limit (including terms read from a submission); and the **reinsured** split from an illustrative programme — a "
-    "quota share, then a per-event excess-of-loss layer on the insurer's share — as what the **reinsurer pays** and what the "
-    "**insurer keeps**, on the five scenarios and on every simulated year. The programme is an assumption to replace with the "
+    "**Ground-up, gross and net loss.** Every run gives the **ground-up loss** (physical damage before insurance); the **gross "
+    "loss** after each property's **deductible** and **limit** (including terms read from a submission); and the **net loss** "
+    "after an illustrative reinsurance programme — a **quota share** of every gross loss, then a **catastrophe excess of loss** on "
+    "the insurer's share — on the five scenarios and on every simulated year. The programme is an assumption to replace with the "
     "real treaty on the Assumptions page; reinstatements, aggregate covers and second events in a year are not modelled."
 )
 

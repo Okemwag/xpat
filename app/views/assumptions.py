@@ -362,7 +362,7 @@ with change_tab:
             4.0,
             float(current.max_depth_m),
             0.1,
-            help="Pluvial flooding in Nairobi is typically 0.3–1.5 m; the brief's example uses 4 m.",
+            help="Our judgement of street and household flood depths (no citation yet); the brief's example uses 4 m. The biggest lever on every loss.",
         )
         st.markdown(
             "**Assumed return period for each tier** (must increase from extreme to common)"
@@ -422,12 +422,12 @@ with change_tab:
             250.0,
         )
         section(
-            "Policy terms",
-            "Per-property deductible and limit, giving an insured loss next to the gross loss. Rows with their own "
+            "Deductible and limit",
+            "Per property. They turn the ground-up loss into the gross loss (what the insurer pays). Rows with their own "
             "`deductible_kes` / `limit_kes` columns override these percentages.",
         )
         pt = current.policy_terms
-        terms_on = st.toggle("Apply policy terms", value=pt["enabled"])
+        terms_on = st.toggle("Apply the deductible and limit", value=pt["enabled"])
         a, b = st.columns(2)
         deductible = a.number_input(
             "Deductible (% of insured value)",
@@ -441,16 +441,17 @@ with change_tab:
         )
         section(
             "Reinsurance",
-            "An illustrative programme: a quota share, then a per-event excess-of-loss layer on the insurer's share. "
-            "Retention and limit are shares of the portfolio's insured value, so they scale to any upload.",
+            "An illustrative programme: a quota share of every gross loss, then a catastrophe excess of loss on the insurer's "
+            "share; what remains is the net loss. Its threshold and maximum are shares of the portfolio's insured value, so "
+            "they scale to any upload.",
         )
         ri = current.reinsurance
         ri_on = st.toggle("Apply reinsurance", value=ri["enabled"])
         a, b, c = st.columns(3)
         cession = a.number_input("Quota share ceded (%)", 0.0, 95.0, ri["quota_share_cession"] * 100, 5.0)
-        retention = b.number_input("Layer starts at (% of insured value)", 0.0, 50.0, ri["xol_retention_pct_of_tiv"] * 100, 0.25)
-        layer = c.number_input("Layer size (% of insured value)", 0.0, 100.0, ri["xol_limit_pct_of_tiv"] * 100, 0.5,
-                               help="0 = no excess-of-loss layer, quota share only.")
+        retention = b.number_input("Catastrophe XL threshold (% of insured value)", 0.0, 50.0, ri["xol_retention_pct_of_tiv"] * 100, 0.25)
+        layer = c.number_input("Catastrophe XL maximum (% of insured value)", 0.0, 100.0, ri["xol_limit_pct_of_tiv"] * 100, 0.5,
+                               help="0 = no catastrophe excess of loss, quota share only.")
         section(
             "Uncertainty ranges",
             "Monte Carlo on the damage ratio only. σ is the spread of each property's damage around the curve; "

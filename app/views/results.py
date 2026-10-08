@@ -162,15 +162,15 @@ with st.expander(
 # Who pays ---------------------------------------------------------------------------------------------------
 r_run = report["runs"][run]
 if "insured" in r_run or "reinsurance" in r_run:
-    section("Who pays", "The gross loss split between policyholders, the reinsurer and the insurer, per scenario")
+    section("Who pays in each scenario", "Ground-up loss split into deductible, above the limit, quota share, catastrophe excess of loss and net loss")
     left, right = st.columns([3, 2], gap="large")
     with left.container(border=True, height="stretch"):
         st.altair_chart(who_pays_chart(report, run), width="stretch")
         explain(
-            "Each bar is the gross loss in one scenario, split into what policyholders bear (deductibles and limits), "
-            "what the reinsurer pays and what the insurer keeps.",
-            "As floods get rarer the reinsurer's layer takes over: above the layer's start the insurer's share stops growing "
-            "until the layer is used up.",
+            "Each bar is the ground-up loss in one scenario. Owners bear the deductible and anything above the limit; the rest is "
+            "the gross loss, which the quota share and the catastrophe excess of loss reduce to the net loss.",
+            "As floods get rarer the catastrophe excess of loss takes over: above its threshold the net loss stops growing until "
+            "the layer's maximum is used up.",
             ["ASSUMPTION", *state.exposure_labels(report)],
             source="policy terms and reinsurance programme on the Assumptions page ·",
         )
@@ -178,19 +178,19 @@ if "insured" in r_run or "reinsurance" in r_run:
         rows = []
         if "insured" in r_run:
             t = r_run["insured"]["terms"]
-            rows.append(("Policy terms", f"deductible {t['deductible_pct_of_tiv']:.1%}, limit {t['limit_pct_of_tiv']:.0%} of value per property (or each row's own terms)"))
+            rows.append(("Deductible · limit", f"{t['deductible_pct_of_tiv']:.1%} · {t['limit_pct_of_tiv']:.0%} of each property's value (or each row's own terms)"))
         if "reinsurance" in r_run:
             ri = r_run["reinsurance"]
             stc = ri["structure"]
             rows += [
-                ("Quota share", f"reinsurer takes {stc['quota_share_cession']:.0%} of every {ri['basis']} loss"),
-                ("Excess of loss", f"{state.kes(stc['xol_limit_kes'])} xs {state.kes(stc['xol_retention_kes'])} per event, on the insurer's share"),
-                ("Layer used up at", f"{state.kes(stc['xol_exhaustion_kes'])} {ri['basis']} loss"),
+                ("Quota share", f"the reinsurer pays {stc['quota_share_cession']:.0%} of every {BASIS_LABEL[ri['basis']].lower()}"),
+                ("Catastrophe excess of loss", f"pays above {state.kes(stc['xol_retention_kes'])} per catastrophe, up to {state.kes(stc['xol_limit_kes'])}, on the insurer's share"),
+                ("Layer used up at", f"{state.kes(stc['xol_exhaustion_kes'])} {BASIS_LABEL[ri['basis']].lower()}"),
             ]
             kpis(
                 [
-                    ("Reinsurer AAL", state.kes(ri["ceded"]["aal"]["aal_kes"]), "Expected yearly cost to the reinsurer"),
-                    ("Insurer keeps AAL", state.kes(ri["net"]["aal"]["aal_kes"]), "Expected yearly retained loss"),
+                    ("Reinsurance recoveries AAL", state.kes(ri["ceded"]["aal"]["aal_kes"]), "Quota share + catastrophe excess of loss, per year"),
+                    ("Net loss AAL", state.kes(ri["net"]["aal"]["aal_kes"]), "What the insurer keeps, per year"),
                 ],
                 columns=2,
             )
@@ -208,14 +208,16 @@ if "insured" in r_run or "reinsurance" in r_run:
                 [
                     {
                         "Rarity": state.rp_label(p["return_period_years"]),
-                        "Gross": state.kes(p["loss_kes"]),
-                        **({"Insured": state.kes(insured[t]["loss_kes"])} if insured else {}),
+                        "Ground-up loss": state.kes(p["loss_kes"]),
+                        **({"Deductible": state.kes(r_run["insured"]["deductible_kes"][t]),
+                            "Above the limit": state.kes(r_run["insured"]["above_limit_kes"][t]),
+                            "Gross loss": state.kes(insured[t]["loss_kes"])} if insured and "deductible_kes" in r_run["insured"]
+                           else {"Gross loss": state.kes(insured[t]["loss_kes"])} if insured else {}),
                         **(
                             {
                                 "Quota share": state.kes(split[t]["quota_share"]),
-                                "Excess of loss": state.kes(split[t]["excess_of_loss"]),
-                                "Reinsurer total": state.kes(split[t]["ceded"]),
-                                "Insurer keeps": state.kes(split[t]["net"]),
+                                "Catastrophe excess of loss": state.kes(split[t]["excess_of_loss"]),
+                                "Net loss": state.kes(split[t]["net"]),
                             }
                             if split
                             else {}

@@ -2,6 +2,7 @@
 administrator approves. One step, no e-mail confirmation; never a way to become an administrator of someone else's
 organisation."""
 
+from datetime import timedelta
 import pytest
 from sqlalchemy import select, update
 from floodcat.core.errors import ModelError
@@ -132,10 +133,12 @@ def test_existing_accounts_are_not_changed(plat):
 
 def test_registration_input_rules_and_production_switch(plat, monkeypatch):
     with plat.tx() as c:
-        with pytest.raises(ModelError):
-            registration.register(
-                c, "org", "a@b.re", "A", PW, "", request=REQ
-            )  # organisation name
+        # The organisation name is optional: a blank one becomes the person's own workspace, ready to use.
+        result = registration.register(c, "org", "solo@b.re", "Sam Solo", PW, "", request=REQ)
+        org = identity.settings_for(c, result["org_id"])
+        assert org["mfa_policy"] == "off"
+        name = c.execute(select(organisations.c.name).where(organisations.c.id == result["org_id"])).scalar()
+        assert name == "Sam Solo's workspace"
         with pytest.raises(ModelError):
             registration.register(c, "join", "a@b.re", "", PW, request=REQ)  # name
         with pytest.raises(ModelError):
@@ -156,22 +159,20 @@ def test_register_pages_end_to_end(env):  # noqa: F811
     client, plat, _ = env
     assert "Create an account" in client.get("/auth/login").text
     page = client.get("/auth/register")
-    assert "I&#39;m an administrator" in page.text and "I&#39;m a user" in page.text
+    assert "Create your account" in page.text and "I&#39;m an administrator" not in page.text  # no chooser
     r = client.post(
         "/auth/register?kind=org",
         data={
-            "org_name": "Web Re",
             "display_name": "Wes",
             "email": "wes@web.re",
             "password": PW,
-            "confirm": PW,
             "csrf": csrf(client, "/auth/register?kind=org"),
         },
-    )
+    )  # no company and no confirmation needed
     assert r.status_code == 303 and "xpat_session" in r.headers.get(
         "set-cookie", ""
     )  # signed straight in
-    assert r.headers["location"].endswith("/?as=admin")
+    assert r.headers["location"] == "http://testserver/app"  # straight to the dashboard
     bad = client.post(
         "/auth/register?kind=join",
         data={
@@ -220,30 +221,14 @@ def test_join_request_page_and_pending_sign_in_message(env):  # noqa: F811
     assert r.status_code == 400 and "waiting for an administrator" in r.text
 
 
-def test_role_switch_on_sign_in_and_registration(env):  # noqa: F811
+def test_sign_in_and_registration_have_no_role_switch(env):  # noqa: F811
     client, plat, _ = env
-    admin = client.get("/auth/login?as=admin")
-    assert (
-        "Administrator sign in" in admin.text
-        and 'class="on"' in admin.text
-        and "?as=user" in admin.text
-    )
-    assert "<h1>Sign in" in client.get("/auth/login").text
-    chooser = client.get("/auth/register").text
-    assert "I&#39;m a user" in chooser and "I&#39;m an administrator" in chooser
-    org_form = client.get("/auth/register?kind=org").text
-    assert (
-        "Create an organisation" in org_form and "kind=join" in org_form
-    )  # the tab back to the user route
-    r = client.post(
-        "/auth/login?as=admin",
-        data={
-            "email": "nobody@acme.re",
-            "password": "wrong password here",
-            "csrf": csrf(client, "/auth/login?as=admin"),
-        },
-    )
-    assert r.status_code == 400 and "Administrator sign in" in r.text
+    login = client.get("/auth/login").text
+    assert "<h1>Sign in" in login and 'class="on"' not in login and "?as=admin" not in login
+    form = client.get("/auth/register").text
+    assert "Create your account" in form and "kind=join" in form  # joining by code is still reachable
+    join = client.get("/auth/register?kind=join").text
+    assert "Join your organisation" in join and "org_code" in join
 
 
 def test_organisation_code_lets_anyone_ask_to_join_and_still_needs_approval(plat):
@@ -339,3 +324,50 @@ def test_join_form_has_code_field_and_submit_guard(env):  # noqa: F811
     client, plat, _ = env
     page = client.get("/auth/register?kind=join").text
     assert 'name="org_code"' in page and "b.disabled=true" in page
+
+
+def test_sign_in_throttles_are_off_outside_production_but_quotas_stay(plat, monkeypatch):
+    from floodcat.platform import orgs
+
+    monkeypatch.delenv("FLOODCAT_AUTH_THROTTLE", raising=False)
+    monkeypatch.delenv("FLOODCAT_ENV", raising=False)
+    with plat.tx() as c:
+        for i in range(6):  # well past the 3-per-hour limit for one address
+            identity.rate_limit(c, "signup:repeat@b.re", 3, timedelta(hours=1))
+        assert not identity.auth_throttling()
+        result = registration.register(c, "org", "quota@b.re", "Quinn", PW, "", request=REQ)
+        owner = identity.principal_for(
+            c, result["user_id"], result["org_id"]
+        )
+        monkeypatch.setenv("FLOODCAT_QUOTA_AI_USER_PER_HOUR", "2")
+        orgs.check_ai_quota(c, owner)
+        orgs.check_ai_quota(c, owner)
+        with pytest.raises(ModelError):
+            orgs.check_ai_quota(c, owner)  # spending quotas still apply
+    monkeypatch.setenv("FLOODCAT_ENV", "production")
+    assert identity.auth_throttling()
+    with plat.tx() as c, pytest.raises(ModelError):
+        for i in range(4):
+            identity.rate_limit(c, "signup:prod@b.re", 3, timedelta(hours=1))
+
+
+def test_links_follow_the_browser_host_unless_urls_are_configured(monkeypatch):
+    monkeypatch.delenv("FLOODCAT_APP_URL", raising=False)
+    monkeypatch.delenv("FLOODCAT_AUTH_URL", raising=False)
+    identity.use_request_host("192.168.1.20:8501")
+    assert identity.app_url() == "http://192.168.1.20:8501" and identity.auth_url() == "http://192.168.1.20:8000"
+    identity.use_request_host("localhost:8501")  # Windows resolves localhost to IPv6 first; servers listen on IPv4
+    assert identity.app_url() == "http://127.0.0.1:8501"
+    identity.use_request_host("evil.example/<script>")  # not a host name: ignored
+    assert identity.auth_url() == "http://127.0.0.1:8000"
+    monkeypatch.setenv("FLOODCAT_APP_URL", "https://app.xpat.example/")
+    identity.use_request_host("192.168.1.20")
+    assert identity.app_url() == "https://app.xpat.example"  # configured URLs always win
+    identity.use_request_host(None)
+
+
+def test_auth_server_root_goes_to_the_app(env):  # noqa: F811
+    client, plat, _ = env
+    r = client.get("/")
+    assert r.status_code == 307 and r.headers["location"] == "http://testserver/app"
+    assert 'class="brand" href="http://testserver/app"' in client.get("/auth/login").text

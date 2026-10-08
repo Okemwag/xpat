@@ -10,7 +10,7 @@ from ..core.numeric import money_string
 from ..exposure.validation import validate_rows
 from ..hazard.providers import AttachedHazard
 from ..hazard.interpretation import validate_scores, enhance
-from ..hazard.hotspots import nearest_hotspot
+from ..hazard.hotspots import drainage_hints, nearest_hotspot
 from ..ai.evidence import evidence_signal, usable
 from ..ai.evaluation import spread
 from ..financial.loss import property_loss, total_loss
@@ -244,6 +244,8 @@ def analyse(
         "issues": issues,
         "runs": runs,
         "ai_contribution": contribution,
+        # Computed from the finished results; nothing reads it back into a loss.
+        "drainage_hints": drainage_hints(results["baseline"][TIERS[-1]], config) if hotspots else None,
         "config": config.to_dict(),
         "config_fingerprint": config.fingerprint,
         "exposure_origin": exposure_origin(hazard_ok),

@@ -198,7 +198,8 @@ def cross_reference(properties, response, config):
                 "indicator": "Location → named flood areas",
                 "document": "—",
                 "model": f"nearest: {tag.get('nearest_hotspot')} at {tag.get('hotspot_distance_m', 0) / 1000:.1f} km",
-                "flag": "within the grouping radius of a government-named flood area" if tag.get("within_hotspot_radius") else None,
+                "flag": next((c["message"] for c in p["checks"] if c["code"] == "near_named_area_low_score"),
+                             "within the grouping radius of a government-named flood area" if tag.get("within_hotspot_radius") else None),
             })
         claims = p.get("flood_claims") or []
         if claims:

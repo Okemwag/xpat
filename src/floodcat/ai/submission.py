@@ -562,6 +562,20 @@ def assess_property(prop, text, gazetteer, provider, hotspots, config, defaults)
                 'Kileleshwa, Parklands); treat a zero as "not flagged", not "safe". Consider AI drainage evidence.',
             )
         )
+    # Near a named flood area but scored low: a warning only (hazard/hotspots.drainage_hints uses the same rule).
+    tag = (primary or {}).get("nearest_hotspot")
+    rarest = ((primary or {}).get("scores") or {}).get(TIERS[-1])
+    hint = config.drainage_hint
+    if tag and rarest is not None and tag["hotspot_distance_m"] <= hint["radius_m"] and rarest < hint["max_rarest_score"]:
+        checks.append(
+            _check(
+                "warning",
+                "near_named_area_low_score",
+                f"Within {hint['radius_m'] / 1000:g} km of a named flood area ({tag['nearest_hotspot']}, "
+                f"{tag['hotspot_distance_m'] / 1000:.1f} km) the map scores low (rarest tier {rarest:.2f}) — consider drainage "
+                "evidence. The terrain map cannot see drainage flooding. Warning only; the loss is unchanged.",
+            )
+        )
     # Landmark claims against OpenStreetMap.
     landmark_checks = []
     if primary and gazetteer:

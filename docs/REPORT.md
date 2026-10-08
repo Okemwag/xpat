@@ -217,6 +217,12 @@ Each property is tagged with its nearest named hotspot and the distance. For acc
 within 2 km (ASSUMPTION; 217 of 600 properties); otherwise it falls in "no named hotspot within radius". Hotspots are never used as
 exposure, and never as training labels.
 
+
+**Drainage hint (warning only).** A property within 1 km of a named flood area whose 1-in-250 score is below 0.1 (ASSUMPTIONS,
+`drainage_hint` in config) is flagged on the property, the map, Overview, the document review and the reports: "the map scores
+low here — consider drainage evidence". It is computed after the losses and never feeds back into them (tested: changing the
+thresholds changes no loss). Using proximity to the named list as a hazard input would make the 12-of-24 check circular; the
+remedy is reviewed drainage evidence. On the starter portfolio 46 of 600 properties are flagged.
 ### 5.6 Infrastructure & Maintenance Deficit index (evaluation layer)
 
 **Why.** The 12 misses are pluvial: rain on built-up ground exceeds what the drains carry. Terrain cannot see this. Drains themselves

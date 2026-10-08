@@ -68,6 +68,12 @@ def markdown_summary(report, ranges=None, ylt=None):
             f"{_kes(t['ceded'])} | {_kes(t['net'])} |"
             for t in ri["by_tier"]
         ]
+    hints = (report.get("drainage_hints") or {}).get("properties") or []
+    if hints:
+        lines += ["", f"> ⚠ {len(hints)} propert{'y' if len(hints) == 1 else 'ies'} within "
+                  f"{report['drainage_hints']['radius_m'] / 1000:g} km of a named flood area but scored low by the map — consider "
+                  "drainage evidence (warning only; losses unchanged): " + ", ".join(h["loc_id"] for h in hints[:10])
+                  + (" …" if len(hints) > 10 else "")]
     if run.get("property_aal"):
         lines += ["", "## Largest expected annual losses", "", "| Property | Construction | Average annual loss |", "|---|---|---|"]
         lines += [f"| {r['loc_id']} | {r['housing_class']} | {_kes(r['aal_kes'])} |" for r in run["property_aal"][:10]]

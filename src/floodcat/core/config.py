@@ -29,6 +29,7 @@ class ModelConfig:
     aal_zero_loss_return_period: float
     aal_tail: str
     hotspot_tag_radius_m: float
+    drainage_hint: dict
     top_n: int
     storey_exposure: dict
     policy_terms: dict
@@ -88,6 +89,11 @@ class ModelConfig:
             object.__setattr__(
                 self, "evidence_mechanisms", tuple(self.evidence_mechanisms)
             )
+            h = self.drainage_hint
+            if set(h) != {"radius_m", "max_rarest_score", "source"} or float(h["radius_m"]) <= 0:
+                raise ModelError("invalid_config", "drainage_hint needs a positive radius_m, max_rarest_score and source")
+            object.__setattr__(self, "drainage_hint", {**h, "radius_m": float(h["radius_m"]),
+                                                       "max_rarest_score": bounded(h["max_rarest_score"], "max_rarest_score")})
             object.__setattr__(self, "imd_index", validate_imd(self.imd_index))
             from ..financial.reinsurance import validate_settings as validate_reinsurance
 

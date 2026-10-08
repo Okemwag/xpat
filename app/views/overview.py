@@ -61,6 +61,18 @@ kpis(
     ]
 )
 
+hints = (report.get("drainage_hints") or {}).get("properties", [])
+if hints:
+    with st.container(border=True, horizontal=True, vertical_alignment="center"):
+        st.markdown(
+            f":material/water_drop: **{len(hints)} propert{'y' if len(hints) == 1 else 'ies'}** within "
+            f"{cfg.drainage_hint['radius_m'] / 1000:g} km of a named flood area, but the map scores "
+            f"{'it' if len(hints) == 1 else 'them'} low — consider drainage evidence. "
+            "Warning only: the losses above are unchanged."
+        )
+        if st.button("Drainage evidence", icon=":material/auto_awesome:", key="overview_hint"):
+            st.switch_page("views/evidence.py")
+
 review = st.session_state.get("submission_review")
 if review and review.get("label") == st.session_state.get("run_label") and review.get("analysis"):
     from ui.document_view import document_analysis_panel

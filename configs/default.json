@@ -68,6 +68,11 @@
   "aal_zero_loss_return_period": 2.0,
   "aal_tail": "hold_rarest",
   "hotspot_tag_radius_m": 2000.0,
+  "drainage_hint": {
+    "radius_m": 1000.0,
+    "max_rarest_score": 0.1,
+    "source": "Warning only, never a loss input (Team A ASSUMPTION): a property within radius_m of a government-named flood area whose rarest-tier score is below max_rarest_score (about 15 cm at the default depth) may sit where the terrain proxy is blind to drainage flooding; consider reviewed drainage evidence."
+  },
   "top_n": 10,
   "storey_exposure": {
     "enabled": true,

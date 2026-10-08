@@ -82,3 +82,41 @@ def hotspot_check(hotspots, provider):
         "rule": "score > 0 at the geocoded point counts as flagged",
         "points": points,
     }
+
+
+def drainage_hints(rows, config):
+    """Properties near a named flood area that the map scores low: a warning for the reviewer, never a loss input.
+
+    `rows` are one run's property-loss rows for the rarest tier (they carry the nearest-hotspot tag). The terrain proxy
+    is blind to drainage flooding, so a low score next to a government-named flood area is worth a second look; the
+    remedy is reviewed drainage evidence, not proximity.
+    """
+    h = config.drainage_hint
+    hits = [
+        {
+            "loc_id": r["loc_id"],
+            "nearest_hotspot": r["nearest_hotspot"],
+            "distance_m": r["hotspot_distance_m"],
+            "rarest_score": r["hazard_score"],
+        }
+        for r in rows
+        if r.get("nearest_hotspot") is not None
+        and r["hotspot_distance_m"] <= h["radius_m"]
+        and r["hazard_score"] < h["max_rarest_score"]
+    ]
+    return {
+        "radius_m": h["radius_m"],
+        "max_rarest_score": h["max_rarest_score"],
+        "properties": sorted(hits, key=lambda x: (x["distance_m"], x["loc_id"])),
+        "note": f"Within {h['radius_m'] / 1000:g} km of a named flood area but the map scores them low — consider drainage "
+        "evidence. A warning only: it does not change any loss.",
+    }
+
+
+def hint_text(hint, config):
+    """The one-line warning for a property in `drainage_hints(...)["properties"]`."""
+    return (
+        f"Within {config.drainage_hint['radius_m'] / 1000:g} km of a named flood area ({hint['nearest_hotspot']}, "
+        f"{hint['distance_m'] / 1000:.1f} km) the map scores low (rarest tier {hint['rarest_score']:.2f}) — consider drainage "
+        "evidence. The terrain map cannot see drainage flooding. Warning only; the loss is unchanged."
+    )

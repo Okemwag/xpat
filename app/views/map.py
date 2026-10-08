@@ -51,6 +51,7 @@ from html import (
 )  # tooltips are rendered as HTML: escape every uploaded value
 
 rows = report["runs"][run]["property_losses"][tier]
+hinted = {h["loc_id"] for h in (report.get("drainage_hints") or {}).get("properties", [])}
 points = [
     {
         "lat": r["lat"],
@@ -77,6 +78,11 @@ points = [
         + (
             f"<br/>Nearest hotspot: {_h(r['nearest_hotspot'])} ({r['hotspot_distance_m'] / 1000:.1f} km)"
             if r.get("nearest_hotspot")
+            else ""
+        )
+        + (
+            "<br/><b>⚠ Near a named flood area but the map scores it low — consider drainage evidence</b> (warning only)"
+            if r["loc_id"] in hinted
             else ""
         ),
     }

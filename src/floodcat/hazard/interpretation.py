@@ -1,15 +1,24 @@
 """Nairobi flood CAT backend."""
+
 from ..core.constants import TIERS
 from ..core.errors import ModelError
 from ..core.numeric import bounded
 
+
 def validate_scores(scores):
     if any(scores.get(t) is None for t in TIERS):
-        raise ModelError("hazard_unavailable", "No hazard value at this location (off the hazard maps or a masked cell)")
-    values=[bounded(scores[t],t) for t in TIERS]
-    if any(a>b+1e-9 for a,b in zip(values,values[1:])):
-        raise ModelError("nonmonotonic_hazard", "Scores must not decrease from extreme to common; do not reorder losses to hide this")
-    return dict(zip(TIERS,values))
+        raise ModelError(
+            "hazard_unavailable",
+            "No hazard value at this location (off the hazard maps or a masked cell)",
+        )
+    values = [bounded(scores[t], t) for t in TIERS]
+    if any(a > b + 1e-9 for a, b in zip(values, values[1:])):
+        raise ModelError(
+            "nonmonotonic_hazard",
+            "Scores must not decrease from extreme to common; do not reorder losses to hide this",
+        )
+    return dict(zip(TIERS, values))
+
 
 def enhance(scores, signal, config):
     """Raise scores toward 1 where approved drainage evidence applies (AI stage, ASSUMPTION mapping).
@@ -18,7 +27,18 @@ def enhance(scores, signal, config):
     adjusted scores keep the extreme→common order. The evidence signal is not a depth or a
     probability; the weight and tier factors that turn it into severity are config assumptions.
     """
-    signal=bounded(signal,'evidence_signal')
-    if signal==0: return validate_scores(dict(scores))
+    signal = bounded(signal, "evidence_signal")
+    if signal == 0:
+        return validate_scores(dict(scores))
     # max() guards against floating-point round-off pulling a score below its baseline.
-    return validate_scores({t: max(scores[t],1-(1-scores[t])*(1-config.uplift_weight*config.uplift_factors[t]*signal)) for t in TIERS})
+    return validate_scores(
+        {
+            t: max(
+                scores[t],
+                1
+                - (1 - scores[t])
+                * (1 - config.uplift_weight * config.uplift_factors[t] * signal),
+            )
+            for t in TIERS
+        }
+    )

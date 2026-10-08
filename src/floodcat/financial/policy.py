@@ -5,17 +5,31 @@ the maximum the policy pays before the deductible is applied. A row's own deduct
 override the portfolio-wide percentages of TIV from config; a row's deductible_pct_of_loss makes the
 deductible a share of each loss, with deductible_kes as its minimum.
 """
+
 from decimal import Decimal
+
 
 def terms(asset, config):
     pct = config.policy_terms
-    deductible = asset.deductible_kes if asset.deductible_kes is not None else asset.tiv_kes*Decimal(str(pct['deductible_pct_of_tiv']))
-    limit = asset.limit_kes if asset.limit_kes is not None else asset.tiv_kes*Decimal(str(pct['limit_pct_of_tiv']))
+    deductible = (
+        asset.deductible_kes
+        if asset.deductible_kes is not None
+        else asset.tiv_kes * Decimal(str(pct["deductible_pct_of_tiv"]))
+    )
+    limit = (
+        asset.limit_kes
+        if asset.limit_kes is not None
+        else asset.tiv_kes * Decimal(str(pct["limit_pct_of_tiv"]))
+    )
     return deductible, limit
+
 
 def insured_loss(gross, asset, config):
     """A row with deductible_pct_of_loss uses max(pct × loss, deductible_kes) — "5% of loss, minimum KES 5m"."""
     deductible, limit = terms(asset, config)
     if asset.deductible_pct_of_loss is not None:
-        deductible = max(gross*Decimal(str(asset.deductible_pct_of_loss)), asset.deductible_kes or Decimal(0))
-    return min(max(gross-deductible, Decimal(0)), max(limit-deductible, Decimal(0)))
+        deductible = max(
+            gross * Decimal(str(asset.deductible_pct_of_loss)),
+            asset.deductible_kes or Decimal(0),
+        )
+    return min(max(gross - deductible, Decimal(0)), max(limit - deductible, Decimal(0)))

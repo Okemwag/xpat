@@ -122,7 +122,11 @@ def save_run(
     if submission_id:
         _submission(conn, principal, submission_id)
     run_id = report["analysis_id"]
-    clean_settings = {k: v for k, v in (settings or {}).items() if k != "evidence"}
+    clean_settings = {
+        k: v
+        for k, v in (settings or {}).items()
+        if k not in ("evidence", "drainage_evidence", "drainage_extra_positives")
+    }
     conn.execute(
         runs.insert().values(
             id=run_id,
@@ -528,10 +532,10 @@ def delete_evidence(conn, principal, evidence_id, request=None):
 
 # Assumption sets / house view (GOV-01…03) ----------------------------------------------------------------
 def _validate_config(config):
-    from ..core.config import ModelConfig
+    from ..core.config import ModelConfig, merge_defaults
 
     try:
-        return ModelConfig(**config).to_dict()
+        return ModelConfig(**merge_defaults(dict(config))).to_dict()
     except TypeError:
         raise ModelError(
             "invalid_config", "Assumption set has unknown or missing fields"
@@ -747,10 +751,10 @@ def house_config(conn, org_id):
             assumption_sets.c.org_id == org_id, assumption_sets.c.is_default.is_(True)
         )
     ).scalar()
-    if row:
-        return dict(row)
-    from ..core.config import load_config
+    from ..core.config import load_config, merge_defaults
 
+    if row:
+        return merge_defaults(dict(row))
     return load_config().to_dict()
 
 

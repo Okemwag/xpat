@@ -104,11 +104,13 @@ def markdown_summary(report, ranges=None, ylt=None):
         ]
     ai = report["ai_contribution"]
     if ai["enabled"]:
+        from ..ai.evaluation import describe_adjustment
+
         lines += [
             "",
-            "## AI drainage evidence",
+            "## AI hazard adjustment",
             "",
-            f"{ai['applied_evidence_count']} approved report(s) raised hazard at {ai['changed_properties']} properties; "
+            f"{describe_adjustment(ai)} raised hazard at {ai['changed_properties']} properties; "
             f"average annual loss changed by {_kes(ai['aal_delta_kes'])}. A higher loss is not by itself proof of a better model.",
         ]
     if report["partial"]:

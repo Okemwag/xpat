@@ -219,10 +219,12 @@ def build_facts(report, ylt=None, ranges=None, hotspot_check=None, submission=No
         )
     ai = report["ai_contribution"]
     if ai["enabled"]:
+        from .evaluation import describe_adjustment
+
         facts.append(
             (
                 "AI evidence",
-                f"{ai['applied_evidence_count']} approved drainage reports raised hazard at {ai['changed_properties']} properties and changed "
+                f"{describe_adjustment(ai)} raised hazard at {ai['changed_properties']} properties and changed "
                 f"average annual loss by {_kes(ai['aal_delta_kes'])}",
                 "AI",
             )
@@ -274,20 +276,11 @@ def _numbers(text):
     return out
 
 
-def verify(briefing, facts):
-    """Return the figures in the briefing that do not appear in any fact."""
+def unsupported_numbers(texts, facts):
+    """Figures in the texts that appear in no fact (small counts 0–10 are allowed). Used by every AI writer."""
     allowed = set().union(*(_numbers(f["text"]) for f in facts)) if facts else set()
-    text = " ".join(
-        [briefing.get("headline", "")]
-        + [
-            p
-            for s in briefing.get("sections", [])
-            for p in [s.get("heading", "")] + list(s.get("paragraphs", []))
-        ]
-        + list(briefing.get("checks", []))
-    )
     unsupported = []
-    for n in sorted(_numbers(text)):
+    for n in sorted(_numbers(" ".join(texts))):
         try:
             small = float(n) in SMALL_COUNTS
         except ValueError:
@@ -295,6 +288,20 @@ def verify(briefing, facts):
         if n not in allowed and not small:
             unsupported.append(n)
     return unsupported
+
+
+def verify(briefing, facts):
+    """Return the figures in the briefing that do not appear in any fact."""
+    return unsupported_numbers(
+        [briefing.get("headline", "")]
+        + [
+            p
+            for s in briefing.get("sections", [])
+            for p in [s.get("heading", "")] + list(s.get("paragraphs", []))
+        ]
+        + list(briefing.get("checks", [])),
+        facts,
+    )
 
 
 def validate(response):

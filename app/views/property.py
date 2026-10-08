@@ -192,8 +192,20 @@ if all(r["Hazard score"] == 0 for r in rows):
 ai = report["ai_contribution"]
 if ai["enabled"] and choice in ai["property_changes"]:
     change = ai["property_changes"][choice]
+    why = " and ".join(
+        x
+        for x in (
+            f"evidence signal {change['evidence_signal']:.2f}"
+            if change["evidence_signal"]
+            else "",
+            f"drainage-model signal {change.get('drainage_signal', 0):.2f}"
+            if change.get("drainage_signal")
+            else "",
+        )
+        if x
+    )
     st.success(
-        f"AI evidence raised this property's hazard (signal {change['evidence_signal']:.2f}): common-tier score "
+        f"The AI hazard adjustment raised this property's hazard ({why}): common-tier score "
         f"{change['baseline']['common']:.3f} → {change['adjusted']['common']:.3f}.",
         icon=":material/auto_awesome:",
     )

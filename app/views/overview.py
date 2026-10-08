@@ -191,3 +191,10 @@ with b.container(border=True, height="stretch"):
         )
     if st.button("Flood evidence", icon=":material/auto_awesome:"):
         st.switch_page("views/evidence.py")
+
+with st.container(border=True):
+    section("Ask the results")
+    badges("AI")
+    from ui.ask_view import ask_panel
+
+    ask_panel(report, key="ask_overview")

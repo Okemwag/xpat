@@ -66,7 +66,7 @@ with st.form("offer"):
                 default=offer.get("run", runs[0]),
                 format_func={
                     "baseline": "Baseline map",
-                    "enhanced": "With AI evidence",
+                    "enhanced": "With AI hazard adjustment",
                 }.get,
             )
             if len(runs) > 1
@@ -302,7 +302,13 @@ else:
                         with st.spinner(
                             "Writing the explanation from the rule results…"
                         ):
-                            rationale = ai_explain(rec, state.runtime().llm(), report)
+                            rationale = ai_explain(
+                                rec,
+                                state.llm(
+                                    client_data=state.run_has_client_data(report)
+                                ),
+                                report,
+                            )
                         with state.platform().tx() as conn:
                             audit.record(
                                 conn,
@@ -362,6 +368,14 @@ else:
             st.caption(
                 f"AI-written by {rationale['model']} from the rule results. It cannot change the recommendation; you decide."
             )
+
+    with st.container(border=True):
+        head = st.container(horizontal=True, vertical_alignment="center")
+        head.markdown("#### Referral note or quote letter — drafted by AI")
+        badges("AI")
+        from ui.memo_view import memo_panel
+
+        memo_panel(rec, report, key)
 
     # The person's decision -----------------------------------------------------------------------------------
     if p.can("underwriting.decide"):

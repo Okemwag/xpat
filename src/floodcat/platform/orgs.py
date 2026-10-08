@@ -33,6 +33,7 @@ from .rbac import require
 
 MFA_POLICIES = ("off", "admins", "all")
 AI_MODES = ("off", "extraction", "full")
+AI_PROVIDERS = ("gemini", "ollama")
 VISIBILITIES = ("private", "team", "org")
 DORMANT_DAYS = 90
 
@@ -56,6 +57,8 @@ def update_settings(conn, principal, changes, request=None):
         "session_max_hours",
         "allowed_domains",
         "enforce_separation_of_duties",
+        "ai_providers",
+        "ai_local_for_client_data",
     }
     require(
         principal,
@@ -74,6 +77,24 @@ def update_settings(conn, principal, changes, request=None):
             raise ModelError(
                 "invalid_setting", "AI mode must be off, extraction or full"
             )
+        if key == "ai_preferences":
+            raise ModelError(
+                "invalid_setting",
+                "Each member sets their own AI model on their profile page",
+            )
+        if key == "ai_providers":
+            value = [x for x in AI_PROVIDERS if x in set(value or [])]
+            if not value or len(value) != len(set(value or [])):
+                raise ModelError(
+                    "invalid_setting",
+                    "Allow at least one known AI model (gemini, ollama)",
+                )
+        if key == "ai_local_for_client_data":
+            value = bool(value)
+        if key == "ai_default_provider" and value not in (None, "", *AI_PROVIDERS):
+            raise ModelError("invalid_setting", "Unknown AI model")
+        if key == "ai_default_provider":
+            value = value or None
         if key == "default_visibility" and value not in VISIBILITIES:
             raise ModelError("invalid_setting", "Unknown visibility")
         if key == "session_idle_minutes" and not 5 <= int(value) <= 480:
@@ -102,6 +123,13 @@ def update_settings(conn, principal, changes, request=None):
             if value <= 0:
                 raise ModelError("invalid_setting", "Authority limits must be positive")
         new[key] = value
+    if (
+        new["ai_default_provider"]
+        and new["ai_default_provider"] not in new["ai_providers"]
+    ):
+        raise ModelError(
+            "invalid_setting", "The default AI model must be one of the allowed models"
+        )
     conn.execute(
         organisations.update()
         .where(organisations.c.id == principal.org_id)
@@ -120,6 +148,37 @@ def update_settings(conn, principal, changes, request=None):
         request=request,
     )
     return new
+
+
+def set_ai_preference(conn, principal, provider, request=None):
+    """A member chooses the AI model used for their requests (None = organisation default). Only allowed models."""
+    require(principal, "ai.extract")
+    current = settings_for(conn, principal.org_id)
+    if provider not in (None, "", *current["ai_providers"]):
+        raise ModelError(
+            "invalid_setting", "Your organisation does not allow that AI model"
+        )
+    preferences = dict(current.get("ai_preferences") or {})
+    before = preferences.get(principal.user_id)
+    if provider:
+        preferences[principal.user_id] = provider
+    else:
+        preferences.pop(principal.user_id, None)
+    conn.execute(
+        organisations.update()
+        .where(organisations.c.id == principal.org_id)
+        .values(settings={**current, "ai_preferences": preferences})
+    )
+    audit.record(
+        conn,
+        "user.ai_preference_changed",
+        actor=principal,
+        target_type="user",
+        target_id=principal.user_id,
+        details={"before": before, "after": provider or None},
+        request=request,
+    )
+    return provider or None
 
 
 def update_profile(conn, principal, profile, request=None):

@@ -38,6 +38,12 @@ DEFAULT_SETTINGS = {
     "authority_limit_tiv_kes": None,
     "default_visibility": "team",
     "enforce_separation_of_duties": True,
+    # AI model choice (ai/llm.choose): allowed providers, organisation default, client data kept on this server,
+    # and each member's own preference {user_id: provider} (set only through orgs.set_ai_preference).
+    "ai_providers": ["gemini", "ollama"],
+    "ai_default_provider": None,
+    "ai_local_for_client_data": False,
+    "ai_preferences": {},
 }
 ADMIN_ROLES = {"owner", "admin"}
 INVITE_TTL = timedelta(hours=72)

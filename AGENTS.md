@@ -275,6 +275,18 @@ Two AI features, served by Gemini (`ai/gemini.py`, model from `GEMINI_MODEL`) or
    uplift `s' = 1 − (1 − s)(1 − w·f_tier·signal)` near approved drainage /
    surface-runoff evidence. Off by default (`ai_adjustment=False`).
 
+3. **Eight further enhancements** (docs/AI_ENHANCEMENTS.md):
+   - drainage-aware hazard (`hazard/drainage.py`; prior or learned weights, never trained on the 24 hotspots)
+   - news evidence harvester (`ai/harvest.py`; public URLs only, candidates unapproved)
+   - Sentinel-1 satellite flood check (`hazard/satellite.py`; change detection, not AI, the independent test)
+   - Open Buildings storeys (`exposure/buildings.py`)
+   - schedule quality reviewer (`exposure/quality.py` checks + `ai/quality.py` explanations)
+   - Ask the results (`ai/ask.py`)
+   - referral / quote memo (`ai/memo.py`)
+   - English + Kiswahili public risk notes (`ai/public_note.py`; hazard maps only, no money, Kiswahili review before use)
+
+   Every AI writer checks its figures with `ai/briefing.unsupported_numbers`.
+
 Rules:
 - Gemini output is untrusted data. Re-validate everything deterministically;
   never let it set a depth, damage ratio or loss directly.

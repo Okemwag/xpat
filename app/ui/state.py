@@ -25,20 +25,47 @@ def platform():
     return Platform()
 
 
-def ai_name():
-    """The model serving AI features, for consent text and captions."""
+def ai_choice(client_data=False):
+    """(provider, reason) for this user's next AI request under the organisation's rules; (None, why) when none may be used."""
+    from floodcat.ai.llm import choose
+
+    p = principal()
+    try:
+        return choose(
+            org().get("settings") or {}, p.user_id if p else None, client_data
+        )
+    except ModelError as exc:
+        return None, str(exc)
+
+
+def llm(client_data=False):
+    """The model client for one request. client_data=True for documents, schedules, descriptions and results on real exposure:
+    when the organisation keeps client data on its own server, only the local model is used (never a silent cloud fallback)."""
+    from floodcat.ai.llm import choose
+
+    p = principal()
+    chosen, _ = choose(
+        org().get("settings") or {}, p.user_id if p else None, client_data
+    )
+    st.session_state["ai_provider_used"] = chosen
+    return runtime().llm(chosen)
+
+
+def run_has_client_data(report=None):
+    """True when the current results include real (client) exposure."""
+    return "REAL" in exposure_labels(report)
+
+
+def ai_name(client_data=False):
+    """The model that will serve this user's request, for consent text and captions."""
     from floodcat.ai.llm import describe
 
-    return describe()
+    chosen, _ = ai_choice(client_data)
+    return describe(chosen) if chosen else "no model allowed"
 
 
-def ai_local():
-    from floodcat.ai.llm import provider
-
-    try:
-        return provider() == "ollama"
-    except ModelError:
-        return False
+def ai_local(client_data=False):
+    return ai_choice(client_data)[0] == "ollama"
 
 
 def ai_available():
@@ -167,7 +194,7 @@ def ai_mode():
 
 def ai_enabled(kind="extraction"):
     """An AI model configured (Gemini or local Ollama), the organisation allows this AI feature, and the user may use it."""
-    if not ai_available() or not can("ai.extract"):
+    if not ai_available() or not can("ai.extract") or ai_choice()[0] is None:
         return False
     mode = ai_mode()
     return mode == "full" or (mode == "extraction" and kind == "extraction")
@@ -489,7 +516,7 @@ def draft_briefing():
         return None
     facts = briefing_facts(report)
     try:
-        briefing = draft(facts, runtime().llm())
+        briefing = draft(facts, llm(client_data=run_has_client_data(report)))
     except ModelError as exc:
         st.error(str(exc))
         return None
@@ -541,3 +568,34 @@ def people():
                 )
             )
         }
+
+
+def audit_ai(action, target_type, target_id, details):
+    """Audit one AI action (model, prompt version, counts — never the text sent or received)."""
+    from floodcat.platform import audit
+
+    with platform().tx() as conn:
+        audit.record(
+            conn,
+            action,
+            actor=principal(),
+            target_type=target_type,
+            target_id=str(target_id)[:120],
+            details={**details, "provider": st.session_state.get("ai_provider_used")},
+            request=request_info(),
+        )
+
+
+def drainage_ready():
+    return runtime().drainage_layers is not None
+
+
+def org_evidence():
+    """The organisation's evidence library (tenant-scoped)."""
+    from floodcat.platform import data
+
+    p = principal()
+    if p is None or not p.org_id:
+        return []
+    with platform().tx() as conn:
+        return [e for e, _ in data.list_evidence(conn, p.org_id)]

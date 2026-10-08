@@ -114,14 +114,16 @@ def submission_flow(data, filename, review_and_run):
             icon=":material/key_off:",
         )
         return
-    where = "the local AI model" if state.ai_local() else "Google Gemini"
+    where = (
+        "the local AI model" if state.ai_local(client_data=True) else "Google Gemini"
+    )
     consent = st.checkbox(
-        f"Send the text above to {where} ({state.ai_name()}) to extract the property details",
+        f"Send the text above to {where} ({state.ai_name(client_data=True)}) to extract the property details",
         key=f"consent_{digest[:8]}",
         help="Contact details are removed first. Names of people and companies may remain."
         + (
             " The model runs on this organisation's own server; the text does not leave it."
-            if state.ai_local()
+            if state.ai_local(client_data=True)
             else ""
         ),
     )
@@ -139,12 +141,12 @@ def submission_flow(data, filename, review_and_run):
             return
         try:
             with st.spinner(
-                f"{state.ai_name()} is reading the document; checking it against the map and the model…"
+                f"{state.ai_name(client_data=True)} is reading the document; checking it against the map and the model…"
             ):
                 st.session_state["submission"] = extract_submission(
                     doc,
-                    rt.llm(),
-                    rt.gazetteer(),
+                    (client := state.llm(client_data=True)),
+                    rt.gazetteer(llm=client),
                     rt.hazard,
                     rt.hotspots,
                     state.config(),

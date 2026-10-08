@@ -111,6 +111,53 @@ with st.form("settings"):
         if state.guarded(orgs.update_settings, changes) is not state.FAILED:
             st.success("Saved.")
 
+if p.can("security.manage"):
+    from floodcat.ai.llm import LABEL, configured
+
+    with st.form("ai_models"):
+        section(
+            "AI models",
+            "Which models your members may use, and where client data may go. Changing this needs a recent password check.",
+        )
+        ready = configured()
+        providers = st.multiselect(
+            "Allowed models",
+            ["gemini", "ollama"],
+            default=s["ai_providers"],
+            format_func=lambda x: (
+                LABEL[x] + ("" if x in ready else " (not set up on this server)")
+            ),
+        )
+        default = st.selectbox(
+            "Default for members without a preference",
+            [None, "gemini", "ollama"],
+            index=[None, "gemini", "ollama"].index(s["ai_default_provider"]),
+            format_func=lambda x: "Server default" if x is None else LABEL[x],
+        )
+        local = st.checkbox(
+            "Keep client data on this server: documents, schedules, descriptions and results on real exposure use only the local model",
+            value=s["ai_local_for_client_data"],
+            help="If no local model is configured, those AI features are refused rather than sent to the cloud.",
+        )
+        chosen = sum(1 for v in (s.get("ai_preferences") or {}).values() if v)
+        st.caption(
+            f"{chosen} member(s) have chosen their own model. Their choice applies only within what is allowed here."
+        )
+        if st.form_submit_button("Save AI models", type="primary"):
+            if (
+                state.guarded(
+                    orgs.update_settings,
+                    {
+                        "ai_providers": providers,
+                        "ai_default_provider": default,
+                        "ai_local_for_client_data": local,
+                    },
+                )
+                is not state.FAILED
+            ):
+                state.resolve()
+                st.success("Saved.")
+
 with st.form("profile"):
     section("Organisation profile")
     a, b = st.columns(2)

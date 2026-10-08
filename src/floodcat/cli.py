@@ -52,6 +52,23 @@ def main():
     org.add_argument(
         "--domains", default="", help="Comma-separated allowed e-mail domains"
     )
+    sat = commands.add_parser(
+        "satellite-check",
+        help="Score the hazard maps against a Sentinel-1 flood map (scripts/gee_sentinel1_flood.js)",
+    )
+    sat.add_argument("flood_tif")
+    sat.add_argument("--rasters", default="data")
+    sat.add_argument("--hotspots", default="data/nairobi_hotspots_geocoded.csv")
+    sat.add_argument("--output", default="runtime/satellite_check.json")
+    sat.add_argument("--config")
+    drain = commands.add_parser(
+        "drainage-check",
+        help="Named-hotspot hit rate with the drainage model (prior weights; no evidence)",
+    )
+    drain.add_argument("--layers", default="runtime/drainage/osm_layers.json")
+    drain.add_argument("--rasters", default="data")
+    drain.add_argument("--hotspots", default="data/nairobi_hotspots_geocoded.csv")
+    drain.add_argument("--config")
     commands.add_parser(
         "retention", help="Delete data past each organisation's retention period"
     )
@@ -98,6 +115,40 @@ def main():
             Path(args.output).parent.mkdir(parents=True, exist_ok=True)
             Path(args.output).write_text(json.dumps(result, indent=2) + "\n")
             print(f"Saved {args.output}")
+        elif args.command == "satellite-check":
+            from .hazard.satellite import FloodExtent, compare
+
+            result = compare(
+                FloodExtent.read(args.flood_tif),
+                RasterHazard(args.rasters).load(),
+                load_config(args.config),
+                load_hotspots(args.hotspots),
+            )
+            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.output).write_text(json.dumps(result, indent=2) + chr(10))
+            print(
+                f"Flooded pixels flagged: {result['hit_rate_any_pct']}% · dry pixels flagged: {result['dry_flag_rate_any_pct']}% · saved {args.output}"
+            )
+        elif args.command == "drainage-check":
+            from .hazard.drainage import (
+                DrainageAdjustment,
+                DrainageLayers,
+                hit_rate,
+                prior_model,
+            )
+
+            config = load_config(args.config)
+            result = hit_rate(
+                load_hotspots(args.hotspots),
+                RasterHazard(args.rasters).load(),
+                DrainageAdjustment(
+                    DrainageLayers.load(args.layers), prior_model(config), config
+                ),
+            )
+            print(
+                f"Named hotspots flagged: {result['before_flagged']} of {result['hotspot_count']} by the map alone, "
+                f"{result['after_flagged']} with the drainage model (prior weights). Newly flagged: {', '.join(result['newly_flagged']) or 'none'}"
+            )
         elif args.command == "import-data":
             from .storage.repository import Repository
 

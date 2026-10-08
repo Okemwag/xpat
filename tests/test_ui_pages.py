@@ -23,6 +23,8 @@ PAGES = [
     "property",
     "assumptions",
     "evidence",
+    "hazard_checks",
+    "public_notes",
     "honesty",
     "method",
     "history",
@@ -242,7 +244,7 @@ def test_briefing_from_overview(store, monkeypatch):
             }
 
     monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
-    monkeypatch.setattr(state.runtime(), "llm", lambda: FakeLLM())
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
     at.run()
     next(b for b in at.button if b.label == "Draft briefing").click()
     at.run()
@@ -293,7 +295,7 @@ def test_underwriting_decision_flow(store, monkeypatch):
             }
 
     monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
-    monkeypatch.setattr(state.runtime(), "llm", lambda: FakeLLM())
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
     at.run()
     next(b for b in at.button if b.label == "Explain this recommendation").click()
     at.run()
@@ -313,3 +315,66 @@ def test_underwriting_decision_flow(store, monkeypatch):
         "Word report",
         "Excel workbook",
     }
+
+
+def test_ask_results_and_drainage_page(store, monkeypatch):
+    from ui_helpers import make_session
+
+    token = make_session(
+        store, roles=("analyst",), org_name="Ask Re", email="an@ask.re"
+    )
+    at = app(token)
+    at.switch_page("views/portfolio.py")
+    at.run()
+    next(b for b in at.button if b.label == "Run the sample portfolio").click()
+    at.run()
+    from ui import state
+
+    class FakeLLM:
+        model = "fake-gemini"
+
+        def generate_json(self, system, prompt, schema):
+            return {
+                "answerable": True,
+                "answer": "Average annual loss is in the facts; 9,876 is not.",
+                "fact_labels": ["Average annual loss"],
+                "chart": "loss_curve",
+            }
+
+    monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
+    at.switch_page("views/overview.py")
+    at.run()
+    next(t for t in at.text_input if t.label == "Your question").input(
+        "What is the average annual loss?"
+    )
+    next(b for b in at.button if b.label == "Ask").click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert "ask_overview_answer" in at.session_state
+    assert at.session_state["ask_overview_answer"][1]["unsupported_figures"] == ["9876"]
+    # Drainage page with small in-memory layers (the real ones are built by scripts/build_drainage_layers.py).
+    from floodcat.hazard.drainage import DrainageLayers
+
+    monkeypatch.setitem(
+        state.runtime().__dict__,
+        "drainage_layers",
+        DrainageLayers(
+            drains=[[[36.80, -1.40], [36.80, -1.15]]],
+            culverts=[[36.80, -1.30]],
+            buildings=[[36.78, -1.31]] * 200,
+            source="test",
+        ),
+    )
+    at.switch_page("views/hazard_checks.py")
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert any(m.label == "Named hotspots flagged" for m in at.metric)
+    next(
+        b
+        for b in at.button
+        if b.label == "Re-run the current portfolio with the drainage model"
+    ).click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert at.session_state["result"]["ai_contribution"]["drainage"]["mode"] == "prior"

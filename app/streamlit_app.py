@@ -78,6 +78,9 @@ results = [
 model = [P("views/assumptions.py", "Assumptions & governance", ":material/tune:")]
 if can("evidence.add") or can("evidence.approve"):
     model.append(P("views/evidence.py", "AI flood evidence", ":material/auto_awesome:"))
+if can("runs.read"):
+    model.append(P("views/hazard_checks.py", "Hazard checks", ":material/water_drop:"))
+model.append(P("views/public_notes.py", "Public risk notes", ":material/campaign:"))
 model += [
     P("views/honesty.py", "Data & honesty", ":material/verified:"),
     P("views/method.py", "How the model works", ":material/menu_book:"),
@@ -186,6 +189,11 @@ with st.sidebar:
             + f" · {state.ai_name()}"
             if state.ai_available()
             else "not configured on this server"
+        )
+        + (
+            " · client data stays on this server"
+            if state.org().get("settings", {}).get("ai_local_for_client_data")
+            else ""
         )
     )
     st.caption(

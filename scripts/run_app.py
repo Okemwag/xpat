@@ -83,9 +83,15 @@ def run() -> int:
     from floodcat.platform.identity import app_url
 
     print(
-        f"\nOpen Xpat at {app_url()}  (use this address, not 127.0.0.1: the sign-in cookie belongs to it)\n",
+        f"\nOpen Xpat at {app_url()}  (use exactly this address: the sign-in cookie belongs to it)\n",
         flush=True,
     )
+    if "localhost" in app_url():
+        print(
+            "Note: FLOODCAT_APP_URL uses 'localhost'. If the browser says the site cannot be reached, "
+            "set FLOODCAT_APP_URL and FLOODCAT_AUTH_URL to http://127.0.0.1:8501 and http://127.0.0.1:8000 in .env.\n",
+            flush=True,
+        )
     try:
         for _, command in commands:
             children.append(subprocess.Popen(command, cwd=ROOT))

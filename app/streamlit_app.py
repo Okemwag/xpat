@@ -26,8 +26,8 @@ principal, reason = state.resolve()
 P = lambda path, title, icon, **kw: st.Page(path, title=title, icon=icon, **kw)
 
 if principal is None:
-    # The sign-in cookie belongs to the host in FLOODCAT_APP_URL (localhost by default). Opened at another address
-    # (e.g. 127.0.0.1), the browser never sends it and the person looks signed out: say so instead of looping.
+    # The sign-in cookie belongs to the host in FLOODCAT_APP_URL (127.0.0.1 by default). Opened at another address
+    # (e.g. localhost), the browser never sends it and the person looks signed out: say so instead of looping.
     from urllib.parse import urlparse
     from floodcat.platform.identity import app_url
 

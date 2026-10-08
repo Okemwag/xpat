@@ -1,7 +1,7 @@
 """Authentication web pages (FastAPI). Issues the HttpOnly session cookie the Streamlit app reads.
 
 Routes live under /auth. In production a reverse proxy serves /auth and /v1 from FastAPI and everything else from
-Streamlit on one domain; locally they share `localhost` on different ports, which cookies allow.
+Streamlit on one domain; locally they share 127.0.0.1 on different ports, which cookies allow.
 """
 
 import os

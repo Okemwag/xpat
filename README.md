@@ -118,8 +118,9 @@ same checks as Gemini's. Small local models are much slower on a CPU and less re
 
 Both routes are confirmed by an e-mailed link first. Without Resend configured, the link is shown on the page in
 development. Registration is on by default outside production; set `FLOODCAT_ALLOW_SIGNUP=1` to allow it in production.
-Open the app at the address in `FLOODCAT_APP_URL` (default `http://localhost:8501`), not `127.0.0.1`, because the
-sign-in cookie belongs to that address.
+Open the app at the address in `FLOODCAT_APP_URL` (default `http://127.0.0.1:8501`). The sign-in cookie belongs to
+that address. The default is `127.0.0.1` rather than `localhost` because on many Windows machines `localhost` resolves to
+IPv6 first while the local servers listen on IPv4, so the browser reports "site cannot be reached".
 
 **First organisation from the command line.** An administrator can also create an organisation and invite its owner:
 

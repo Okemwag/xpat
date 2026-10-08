@@ -57,11 +57,13 @@ TOUCH_INTERVAL = timedelta(seconds=60)
 
 
 def app_url():
-    return os.getenv("FLOODCAT_APP_URL", "http://localhost:8501").rstrip("/")
+    # 127.0.0.1, not "localhost": on many Windows machines localhost resolves to IPv6 (::1) first, while the local
+    # servers listen on IPv4, so browsers report "site cannot be reached".
+    return os.getenv("FLOODCAT_APP_URL", "http://127.0.0.1:8501").rstrip("/")
 
 
 def auth_url():
-    return os.getenv("FLOODCAT_AUTH_URL", "http://localhost:8000").rstrip("/")
+    return os.getenv("FLOODCAT_AUTH_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def _email(value):

@@ -44,7 +44,7 @@ def create_app(runtime=None):
     )
     origins = [
         x.strip()
-        for x in os.getenv("FLOODCAT_CORS_ORIGINS", "http://localhost:8501").split(",")
+        for x in os.getenv("FLOODCAT_CORS_ORIGINS", "http://127.0.0.1:8501").split(",")
         if x.strip()
     ]
     app.add_middleware(

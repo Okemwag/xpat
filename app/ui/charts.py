@@ -6,6 +6,7 @@ import altair as alt
 import pandas as pd
 import pydeck as pdk
 from floodcat.core.constants import CLASSES
+from floodcat.reporting.terms import BASIS as BASIS_LABEL  # ground-up, gross, recoveries, net
 from floodcat.vulnerability.functions import damage_from_depth
 from . import state
 
@@ -346,6 +347,16 @@ def portfolio_map(rows, hotspots=(), evidence=(), color_by="loss"):
 BAND_GREY = "#9ca3af"
 
 
+def scenario_source(report, run, basis):
+    """The block holding the five scenario points for a loss basis: gross, insured, ceded or net."""
+    r = report["runs"][run]
+    if basis == "insured":
+        return r["insured"]
+    if basis in ("ceded", "net"):
+        return r["reinsurance"][basis]
+    return r
+
+
 def ylt_chart(curves, report, compare_ai=False, basis="gross"):
     """EP curve from the simulated year-loss table: log return-period axis to 10,000 years, grey bootstrap band,
     and the five scenario points the simulation is built from."""
@@ -354,7 +365,7 @@ def ylt_chart(curves, report, compare_ai=False, basis="gross"):
         series.append(("enhanced", "With AI drainage evidence", AI))
     lines, bands, points = [], [], []
     for run, name, _ in series:
-        sim = curves[run]["insured" if basis == "insured" else "gross"]
+        sim = curves[run].get(basis) or curves[run]["gross"]
         low, high = sim["band_pct"]
         for p in sim["curve"]:
             rp = p["return_period_years"]
@@ -376,9 +387,7 @@ def ylt_chart(curves, report, compare_ai=False, basis="gross"):
                     "Series": name,
                 }
             )
-        source = (
-            report["runs"][run] if basis == "gross" else report["runs"][run]["insured"]
-        )
+        source = scenario_source(report, run, basis)
         for p in source["ep_curve"]:
             points.append(
                 {
@@ -534,18 +543,26 @@ def damage_vs_score_chart(cfg, reference=None):
 
 def hotspot_check_map(points):
     """Named hotspots: filled = flagged by the proxy, hollow = missed. Labels carry the status, not colour alone."""
-    data = [
-        {
-            "lat": p["lat"],
-            "lon": p["lon"],
-            "name": f"{p['name']} {'✓' if p['flagged_any_tier'] else '✗'}",
-            "tooltip": f"<b>{html.escape(p['name'])}</b><br/>{'Flagged' if p['flagged_any_tier'] else 'Missed'} by the proxy<br/>common-tier score {p['common']:.3f}",
-            "fill": [42, 120, 214, 230]
-            if p["flagged_any_tier"]
-            else [255, 255, 255, 0],
-        }
-        for p in points
-    ]
+    def status(p):
+        if p.get("newly_flagged"):
+            return "+", "Flagged only with the infrastructure-deficit index", [235, 104, 52, 230]
+        if p["flagged_any_tier"]:
+            return "✓", "Flagged by the proxy", [42, 120, 214, 230]
+        return "✗", "Missed by the proxy", [255, 255, 255, 0]
+
+    data = []
+    for p in points:
+        mark, words, fill = status(p)
+        extra = f"<br/>index {p['imd_index']:.2f}" if "imd_index" in p else ""
+        data.append(
+            {
+                "lat": p["lat"],
+                "lon": p["lon"],
+                "name": f"{p['name']} {mark}",
+                "tooltip": f"<b>{html.escape(p['name'])}</b><br/>{words}<br/>common-tier score {p['common']:.3f}{extra}",
+                "fill": fill,
+            }
+        )
     layers = [
         pdk.Layer(
             "ScatterplotLayer",
@@ -767,3 +784,127 @@ def scenario_lines(rows, base_name, height=320):
         )
     )
     return lines.properties(height=height)
+
+
+def imd_hotspot_bars(rows, height=None):
+    """Index at each named hotspot, longest first; colour (and the tooltip) says what found the area."""
+    data = pd.DataFrame(rows)
+    if data.empty:
+        return None
+    order = ["terrain", "index only", "neither"]
+    return (
+        alt.Chart(data)
+        .mark_bar(cornerRadiusEnd=3)
+        .encode(
+            y=alt.Y("Area:N", sort="-x", title=None),
+            x=alt.X("Index:Q", title="Index (0–1)", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(gridOpacity=0.4)),
+            color=alt.Color(
+                "Found by:N",
+                scale=alt.Scale(domain=order, range=["#2a78d6", "#eb6834", "#b8b8b8"]),
+                legend=alt.Legend(orient="bottom", title=None),
+            ),
+            tooltip=["Area", alt.Tooltip("Index:Q", format=".2f"), "Found by"],
+        )
+        .properties(height=height or 18 * len(data))
+    )
+
+
+def place_factor_map(places):
+    """Places with a drainage-deficit factor from reports: radius and colour depth grow with the factor."""
+    data = [
+        {
+            "lat": p["lat"],
+            "lon": p["lon"],
+            "r": 250 + 900 * p["factor"],
+            "fill": [235, 104, 52, int(60 + 180 * p["factor"])],
+            "name": p["place"],
+            "tooltip": f"<b>{html.escape(p['place'])}</b><br/>Drainage-deficit factor {p['factor']:.2f}<br/>"
+            f"{p['report_count']} independent report(s)",
+        }
+        for p in places
+    ]
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=data,
+        get_position="[lon, lat]",
+        get_radius="r",
+        radius_min_pixels=4,
+        get_fill_color="fill",
+        stroked=True,
+        get_line_color=[180, 70, 30, 255],
+        line_width_min_pixels=1,
+        pickable=True,
+    )
+    return pdk.Deck(
+        layers=[layer],
+        initial_view_state=pdk.ViewState(latitude=-1.29, longitude=36.83, zoom=10.3),
+        tooltip={"html": "{tooltip}"},
+        map_style=None,
+    )
+
+
+def who_pays_chart(report, run="baseline", height=280):
+    """Stacked bars per scenario: the ground-up loss split into deductible, above the limit, quota share, catastrophe
+    excess of loss and net loss (they add up to the ground-up loss)."""
+    from floodcat.reporting.terms import waterfall
+
+    r = report["runs"][run]
+    order = ["Deductible", "Above the limit", "Quota share", "Catastrophe excess of loss", "Net loss"]
+    keys = {"deductible": 0, "limit": 1, "quota_share": 2, "cat_xl": 3, "net": 4}
+    rows = []
+    for p in r["ep_curve"]:
+        steps = {k: v for k, _, v in waterfall(r, p["tier"])}
+        for key, i in keys.items():
+            v = abs(float(steps[key]))
+            rows.append({"Return period": f"1-in-{p['return_period_years']:g}", "Part": order[i], "Loss (KES bn)": v / 1e9,
+                         "Amount": state.kes(v), "order": i, "Ground-up loss": state.kes(p["loss_kes"])})
+    data = pd.DataFrame(rows)
+    return (
+        alt.Chart(data)
+        .mark_bar(size=34)
+        .encode(
+            x=alt.X("Return period:N", sort=[f"1-in-{p['return_period_years']:g}" for p in r["ep_curve"]], title=None,
+                    axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("Loss (KES bn):Q", stack="zero", axis=alt.Axis(gridOpacity=0.4)),
+            color=alt.Color("Part:N", scale=alt.Scale(domain=order, range=["#b8b8b8", "#d9d9d9", SERIES[1], "#f2a074", BASE]),
+                            legend=alt.Legend(orient="bottom", title=None)),
+            order=alt.Order("order:Q"),
+            tooltip=["Return period", "Part", "Amount", "Ground-up loss"],
+        )
+        .properties(height=height)
+    )
+
+
+def waterfall_chart(report, tier, run="baseline", height=300):
+    """From ground-up to net loss for one scenario: totals as full bars, each deduction as a floating step down."""
+    from floodcat.reporting.terms import waterfall
+
+    steps = waterfall(report["runs"][run], tier)
+    rows, level = [], 0.0
+    for key, label, amount in steps:
+        v = float(amount) / 1e9
+        if key in ("ground_up", "gross", "net"):
+            start, end, kind = 0.0, v, "total"
+            level = v
+        else:
+            start, end, kind = level + v, level, "deduction"
+            level = level + v
+        rows.append({"Step": label, "start": start, "end": end, "kind": kind, "Amount": state.kes(abs(float(amount))),
+                     "label": state.kes(abs(float(amount))) if abs(float(amount)) > 0 else "0"})
+    data = pd.DataFrame(rows)
+    order = [label for _, label, _ in steps]
+    color = alt.Color("kind:N", scale=alt.Scale(domain=["total", "deduction"], range=[BASE, SERIES[1]]), legend=None)
+    bars = (
+        alt.Chart(data)
+        .mark_bar(size=38, cornerRadius=2)
+        .encode(
+            x=alt.X("Step:N", sort=order, title=None, axis=alt.Axis(labelAngle=0, labelLimit=110)),
+            y=alt.Y("start:Q", title="KES bn", axis=alt.Axis(gridOpacity=0.4)),
+            y2="end:Q",
+            color=color,
+            tooltip=["Step", "Amount"],
+        )
+    )
+    text = alt.Chart(data).transform_calculate(top="max(datum.start, datum.end)").mark_text(dy=-8, fontSize=11).encode(
+        x=alt.X("Step:N", sort=order), y="top:Q", text="label:N")
+    return (bars + text).properties(height=height)

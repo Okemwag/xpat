@@ -57,6 +57,7 @@ def create_app(runtime=None):
 
     @app.middleware("http")
     async def headers(request, call_next):
+        identity.use_request_host(request.url.hostname)
         response = await call_next(request)
         for k, v in SECURITY_HEADERS.items():
             response.headers.setdefault(k, v)
@@ -67,6 +68,13 @@ def create_app(runtime=None):
         if request.url.path.startswith("/auth"):
             response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.get("/", include_in_schema=False)
+    def home():
+        """The auth server's root has nothing to show; send people to the app."""
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse(identity.app_url(), status_code=307)
 
     @app.exception_handler(ModelError)
     async def model_error(request, exc):

@@ -1,0 +1,12 @@
+{
+  "title": "Infrastructure & Maintenance Deficit index components (Nairobi)",
+  "source": "OpenStreetMap building footprints; \u00a9 OpenStreetMap contributors, ODbL 1.0",
+  "extract": "https://download.geofabrik.de/africa/kenya-261006.osm.pbf",
+  "building_count": "612126",
+  "skipped_ways": "{\"outside\": 7422349, \"incomplete\": 0, \"degenerate\": 3}",
+  "window_radius_m": "250.0",
+  "cell_deg": "0.0008333333333333334",
+  "generated": "2026-10-08T13:04:33+00:00",
+  "provenance": "PROXY",
+  "script": "scripts/build_imd_index.py"
+}

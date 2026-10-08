@@ -3,7 +3,7 @@
 from decimal import Decimal
 from ..core.numeric import money_string
 from ..vulnerability.functions import assumed_depth, damage_ratio
-from .policy import insured_loss
+from .policy import split
 
 
 def exposed_fraction(asset, config):
@@ -43,7 +43,10 @@ def property_loss(asset, score, config, tag=None):
     }
     if config.policy_terms["enabled"]:
         gross = Decimal(row["loss_kes"])
-        row["insured_loss_kes"] = money_string(insured_loss(gross, asset, config))
+        deductible, above_limit, paid = split(gross, asset, config)
+        row["insured_loss_kes"] = money_string(paid)  # the gross loss: what the insurer pays
+        row["deductible_kes_applied"] = money_string(deductible)
+        row["above_limit_kes"] = money_string(above_limit)
     if tag:
         row.update(tag)
     return row

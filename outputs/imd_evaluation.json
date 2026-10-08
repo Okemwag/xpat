@@ -1,0 +1,368 @@
+{
+  "generated": "2026-10-08",
+  "grid": {
+    "building_count": "612126",
+    "cell_deg": "0.0008333333333333334",
+    "extract": "https://download.geofabrik.de/africa/kenya-261006.osm.pbf",
+    "generated": "2026-10-08T13:04:33+00:00",
+    "provenance": "PROXY",
+    "script": "scripts/build_imd_index.py",
+    "skipped_ways": "{\"outside\": 7422349, \"incomplete\": 0, \"degenerate\": 3}",
+    "source": "OpenStreetMap building footprints; \u00a9 OpenStreetMap contributors, ODbL 1.0",
+    "title": "Infrastructure & Maintenance Deficit index components (Nairobi)",
+    "window_radius_m": "250.0",
+    "AREA_OR_POINT": "Area"
+  },
+  "settings": {
+    "source": "Infrastructure & Maintenance Deficit index (evaluation only; the drainage model applies building density to hazard): OpenStreetMap building footprints (ODbL) reduced by scripts/build_imd_index.py. Thresholds fixed before any check against the named hotspots: built fraction 0.15\u20130.45 (roofs are roughly half of urban impervious cover, so \u224830% to near-total sealing; Schueler 1994 impervious-cover model marks degraded drainage above ~25%); density 25\u2013125 buildings/ha (planned low-rise to dense informal). Team A assumptions.",
+    "grid_path": "outputs/imd_index.tif",
+    "window_radius_m": 250.0,
+    "built_fraction_range": [
+      0.15,
+      0.45
+    ],
+    "density_per_ha_range": [
+      25.0,
+      125.0
+    ],
+    "component_weights": {
+      "built_fraction": 0.5,
+      "buildings_per_ha": 0.5
+    },
+    "weight": 0.4,
+    "tier_factors": {
+      "extreme": 0.2,
+      "severe": 0.4,
+      "moderate": 0.6,
+      "occasional": 0.8,
+      "common": 1.0
+    }
+  },
+  "hotspots": {
+    "marginal_new": [
+      "Madaraka",
+      "Lang'ata",
+      "Kileleshwa"
+    ],
+    "marginal_index": 0.05,
+    "hotspot_count": 24,
+    "flagged_terrain_only": 12,
+    "flagged_with_index": 21,
+    "newly_flagged": [
+      "Donholm",
+      "Fedha",
+      "Madaraka",
+      "Lang'ata",
+      "Kawangware",
+      "Kangemi",
+      "Parklands",
+      "Kileleshwa",
+      "Kibera"
+    ],
+    "still_missed": [
+      "Lavington",
+      "Westlands",
+      "Kitisuru"
+    ],
+    "rule": "flagged when the score is above zero in any tier at the geocoded point",
+    "points": [
+      {
+        "name": "Kiambiu",
+        "lat": -1.2822758,
+        "lon": 36.8634101,
+        "built_fraction": 0.1033,
+        "buildings_per_ha": 5.0,
+        "imd_index": 0.0,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.22885838150978088,
+        "adjusted_common": 0.2289
+      },
+      {
+        "name": "Dandora",
+        "lat": -1.2449083,
+        "lon": 36.9060802,
+        "built_fraction": 0.4189,
+        "buildings_per_ha": 53.5,
+        "imd_index": 0.5906,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.13889116048812866,
+        "adjusted_common": 0.3423
+      },
+      {
+        "name": "Kariobangi",
+        "lat": -1.2590939,
+        "lon": 36.8819135,
+        "built_fraction": 0.2204,
+        "buildings_per_ha": 24.7,
+        "imd_index": 0.1174,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.08686068654060364,
+        "adjusted_common": 0.1297
+      },
+      {
+        "name": "Kayole",
+        "lat": -1.2667475,
+        "lon": 36.9193623,
+        "built_fraction": 0.5472,
+        "buildings_per_ha": 78.4,
+        "imd_index": 0.767,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.38380682468414307,
+        "adjusted_common": 0.5729
+      },
+      {
+        "name": "Komarock",
+        "lat": -1.2726556,
+        "lon": 36.9077371,
+        "built_fraction": 0.3084,
+        "buildings_per_ha": 40.0,
+        "imd_index": 0.339,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.058353736996650696,
+        "adjusted_common": 0.186
+      },
+      {
+        "name": "Njiru",
+        "lat": -1.2545703,
+        "lon": 36.9920563,
+        "built_fraction": 0.0827,
+        "buildings_per_ha": 13.7,
+        "imd_index": 0.0,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.25003448128700256,
+        "adjusted_common": 0.25
+      },
+      {
+        "name": "Ruai",
+        "lat": -1.2689967,
+        "lon": 36.9915483,
+        "built_fraction": 0.2577,
+        "buildings_per_ha": 28.3,
+        "imd_index": 0.1961,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.06448159366846085,
+        "adjusted_common": 0.1379
+      },
+      {
+        "name": "Mwiki",
+        "lat": -1.2327573,
+        "lon": 36.9332678,
+        "built_fraction": 0.3628,
+        "buildings_per_ha": 29.4,
+        "imd_index": 0.3766,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.19427430629730225,
+        "adjusted_common": 0.3156
+      },
+      {
+        "name": "Donholm",
+        "lat": -1.2992254,
+        "lon": 36.8886888,
+        "built_fraction": 0.243,
+        "buildings_per_ha": 19.7,
+        "imd_index": 0.1551,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.062
+      },
+      {
+        "name": "Tassia",
+        "lat": -1.307049,
+        "lon": 36.8986034,
+        "built_fraction": 0.3844,
+        "buildings_per_ha": 15.2,
+        "imd_index": 0.3907,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.08869533240795135,
+        "adjusted_common": 0.2311
+      },
+      {
+        "name": "Fedha",
+        "lat": -1.3156695,
+        "lon": 36.8984952,
+        "built_fraction": 0.3078,
+        "buildings_per_ha": 14.2,
+        "imd_index": 0.263,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.1052
+      },
+      {
+        "name": "Madaraka",
+        "lat": -1.3074039,
+        "lon": 36.8153361,
+        "built_fraction": 0.1526,
+        "buildings_per_ha": 4.1,
+        "imd_index": 0.0043,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0017
+      },
+      {
+        "name": "Nairobi West",
+        "lat": -1.3087022,
+        "lon": 36.8230975,
+        "built_fraction": 0.2333,
+        "buildings_per_ha": 18.2,
+        "imd_index": 0.1388,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.06836303323507309,
+        "adjusted_common": 0.1201
+      },
+      {
+        "name": "Lang'ata",
+        "lat": -1.3189569,
+        "lon": 36.7899763,
+        "built_fraction": 0.1508,
+        "buildings_per_ha": 7.0,
+        "imd_index": 0.0013,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0005
+      },
+      {
+        "name": "Kawangware",
+        "lat": -1.2784631,
+        "lon": 36.751643,
+        "built_fraction": 0.3668,
+        "buildings_per_ha": 27.3,
+        "imd_index": 0.3729,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.1492
+      },
+      {
+        "name": "Kangemi",
+        "lat": -1.2680073,
+        "lon": 36.7522966,
+        "built_fraction": 0.4055,
+        "buildings_per_ha": 39.3,
+        "imd_index": 0.4975,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.199
+      },
+      {
+        "name": "Lavington",
+        "lat": -1.2740678,
+        "lon": 36.7762269,
+        "built_fraction": 0.1381,
+        "buildings_per_ha": 8.4,
+        "imd_index": 0.0,
+        "terrain_flagged": false,
+        "flagged_with_index": false,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0
+      },
+      {
+        "name": "Westlands",
+        "lat": -1.2465281,
+        "lon": 36.7860759,
+        "built_fraction": 0.1017,
+        "buildings_per_ha": 4.5,
+        "imd_index": 0.0,
+        "terrain_flagged": false,
+        "flagged_with_index": false,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0
+      },
+      {
+        "name": "Parklands",
+        "lat": -1.2630616,
+        "lon": 36.8106288,
+        "built_fraction": 0.2531,
+        "buildings_per_ha": 7.6,
+        "imd_index": 0.1718,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0687
+      },
+      {
+        "name": "Kitisuru",
+        "lat": -1.2403787,
+        "lon": 36.77103,
+        "built_fraction": 0.0835,
+        "buildings_per_ha": 4.2,
+        "imd_index": 0.0,
+        "terrain_flagged": false,
+        "flagged_with_index": false,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0
+      },
+      {
+        "name": "Kileleshwa",
+        "lat": -1.2767338,
+        "lon": 36.7879011,
+        "built_fraction": 0.1576,
+        "buildings_per_ha": 8.9,
+        "imd_index": 0.0127,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.0051
+      },
+      {
+        "name": "Chiromo",
+        "lat": -1.2708313,
+        "lon": 36.8063848,
+        "built_fraction": 0.1714,
+        "buildings_per_ha": 6.7,
+        "imd_index": 0.0357,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.17619404196739197,
+        "adjusted_common": 0.188
+      },
+      {
+        "name": "Mathare",
+        "lat": -1.2584151,
+        "lon": 36.8712653,
+        "built_fraction": 0.0875,
+        "buildings_per_ha": 7.1,
+        "imd_index": 0.0,
+        "terrain_flagged": true,
+        "flagged_with_index": true,
+        "terrain_common": 0.14849376678466797,
+        "adjusted_common": 0.1485
+      },
+      {
+        "name": "Kibera",
+        "lat": -1.3113332,
+        "lon": 36.7890001,
+        "built_fraction": 0.4085,
+        "buildings_per_ha": 50.1,
+        "imd_index": 0.5566,
+        "terrain_flagged": false,
+        "flagged_with_index": true,
+        "terrain_common": 0.0,
+        "adjusted_common": 0.2226
+      }
+    ]
+  },
+  "map_area": {
+    "built_up_per_ha": 2.0,
+    "built_up_share_index_above_zero": 0.3592090540565328,
+    "built_up_share_index_not_marginal": 0.2923124896821175,
+    "cells": 1813140,
+    "share_flagged_terrain_only": 0.4,
+    "share_flagged_with_index": 0.4481595464222288,
+    "share_index_above_zero": 0.10406035937655117
+  }
+}

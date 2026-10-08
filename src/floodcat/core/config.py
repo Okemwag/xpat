@@ -7,6 +7,7 @@ from pathlib import Path
 from .constants import TIERS, CLASSES, MECHANISMS
 from .errors import ModelError
 from .numeric import bounded, finite
+from ..hazard.imd import validate_settings as validate_imd
 
 # configs/default.json is the single source of truth; ModelConfig carries no default values.
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[3] / "configs" / "default.json"
@@ -31,6 +32,7 @@ class ModelConfig:
     top_n: int
     storey_exposure: dict
     policy_terms: dict
+    reinsurance: dict
     uncertainty: dict
     year_loss_table: dict
     uplift_weight: float
@@ -39,6 +41,8 @@ class ModelConfig:
     evidence_min_confidence: float
     grid_size_m: float
     evidence_radius_m: float
+    imd_index: dict
+    drainage_reports: dict
     drainage_model: dict
     evidence_harvest: dict
     satellite_check: dict
@@ -84,6 +88,13 @@ class ModelConfig:
             object.__setattr__(
                 self, "evidence_mechanisms", tuple(self.evidence_mechanisms)
             )
+            object.__setattr__(self, "imd_index", validate_imd(self.imd_index))
+            from ..financial.reinsurance import validate_settings as validate_reinsurance
+
+            object.__setattr__(self, "reinsurance", validate_reinsurance(self.reinsurance))
+            from ..ai.drainage import validate_settings as validate_drainage
+
+            object.__setattr__(self, "drainage_reports", validate_drainage(self.drainage_reports))
             object.__setattr__(
                 self,
                 "storey_exposure",
@@ -493,9 +504,16 @@ def _ai_sections(cfg):
 
 
 def merge_defaults(stored):
-    """Fill settings added after an assumption set was saved from the shipped defaults (new sections only, never edits)."""
+    """Fill settings added after an assumption set was saved from the shipped defaults (new sections only, never edits).
+
+    A filled-in reinsurance section starts switched off, so a house view approved before reinsurance existed keeps
+    the results it was approved on.
+    """
     shipped = load_config(DEFAULT_CONFIG_PATH).to_dict()
-    return {**{k: v for k, v in shipped.items() if k not in stored}, **stored}
+    filled = {k: v for k, v in shipped.items() if k not in stored}
+    if "reinsurance" in filled:
+        filled["reinsurance"] = {**filled["reinsurance"], "enabled": False}
+    return {**filled, **stored}
 
 
 def load_config(path=None):

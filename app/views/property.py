@@ -82,6 +82,9 @@ share = (
     if Decimal(p["tiv_kes"])
     else Decimal(0)
 )
+aal_list = report["runs"][run].get("property_aal", [])
+aal_row = next((r for r in aal_list if r["loc_id"] == choice), None)
+aal_rank = aal_list.index(aal_row) + 1 if aal_row else None
 kpis(
     [
         (
@@ -95,6 +98,13 @@ kpis(
             state.kes(p["loss_kes"]),
             f"Rank {rank} of {len(by_id[rarest])} by loss",
             f"{share:.1%} of value",
+        ),
+        (
+            "Expected annual loss",
+            state.kes(aal_row["aal_kes"]) if aal_row else "KES 0",
+            "This property's own AAL; all properties add up to the portfolio's"
+            + (f" · insured {state.kes(aal_row['insured_aal_kes'])}" if aal_row and "insured_aal_kes" in aal_row else ""),
+            f"Rank {aal_rank} of {len(aal_list)}" if aal_row else "Never flagged by the hazard map",
         ),
         (
             "Nearest named hotspot",

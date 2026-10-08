@@ -594,6 +594,7 @@ def export_org(conn, principal, request=None):
         decisions,
         evidence,
         extractions,
+        report_documents,
         submissions,
     )
 
@@ -627,6 +628,8 @@ def export_org(conn, principal, request=None):
         "runs": rows(runs, ("inputs_enc",)),
         "extractions": rows(extractions),
         "evidence": rows(evidence),
+        # Report metadata and place assessments; chunk text and vectors stay out of the export.
+        "flood_reports": rows(report_documents, ("vector",)),
         "assumption_sets": rows(assumption_sets),
         "submissions": rows(submissions),
         "decisions": rows(decisions),

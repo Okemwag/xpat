@@ -117,8 +117,8 @@ def build_facts(report, ylt=None, ranges=None, hotspot_check=None, submission=No
         rp = 100.0 if 100.0 in ins else max(ins)
         facts.append(
             (
-                "Insured",
-                f"after per-property policy terms the 1-in-{rp:g} insured loss is {_kes(ins[rp]['loss_kes'])} and insured average annual loss "
+                "Gross loss",
+                f"after each property's deductible and limit the 1-in-{rp:g} gross loss is {_kes(ins[rp]['loss_kes'])} and gross average annual loss "
                 f"{_kes(base['insured']['aal']['aal_kes'])}",
                 "ASSUMPTION",
             )

@@ -477,3 +477,25 @@ def test_public_assistant_on_the_home_page(store, monkeypatch):
     reply = at.session_state["home_assistant_messages"][-1]
     assert reply["role"] == "assistant" and "Creating an account" in reply["content"]
     assert reply["meta"]["sources"][0]["heading"] == "Creating an account"
+
+
+def test_decision_page_prefills_from_a_submission_without_submitting(store):
+    """Regression: pre-filling from a document must seed the form only, never act as a submitted offer (KeyError 'run')."""
+    from ui_helpers import make_session
+
+    token = make_session(store, roles=("head_uw",), org_name="Prefill Re", email="head@prefill.re")
+    at = app(token)
+    at.switch_page("views/portfolio.py")
+    at.run()
+    next(b for b in at.button if b.label == "Run the sample portfolio").click()
+    at.run()
+    terms = [{"term": "premium_100", "value_number": 1743210.0}, {"term": "accepted_share_pct", "value_number": 7.5}]
+    at.session_state["submission_review"] = {
+        "label": at.session_state["run_label"], "properties": [], "filename": "slip.docx", "model": "fake",
+        "analysis": {"data_points": {"terms": terms, "unverified": [], "missing": [], "count": 2}},
+    }
+    errors = visit(at, "decision")
+    assert errors == [], errors[0][:400] if errors else None
+    values = {n.label: n.value for n in at.number_input}
+    assert values["Offered premium for 100% (KES)"] == 1743210.0 and values["Offered share (%)"] == 7.5
+    assert "uw_offer" not in at.session_state  # nothing submitted yet

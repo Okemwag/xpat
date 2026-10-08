@@ -131,9 +131,10 @@ def build_document(
             + " exposure, a PROXY hazard map (terrain and rivers, "
             "blind to drainage), ASSUMED return periods and adapted published damage curves. Not a price and not underwriting advice. "
             + (
-                "Losses are gross and, where shown, insured after simple per-property terms."
+                "Losses are shown ground-up, as gross loss after each property's deductible and limit, and as net loss after "
+                "an illustrative reinsurance programme."
                 if "insured" in base
-                else "Losses are gross (no policy terms)."
+                else "Losses are ground-up (no deductible or limit applied)."
             ),
         )
     )
@@ -159,7 +160,7 @@ def build_document(
             else "",
         ),
         (
-            "Average annual loss",
+            "Average annual loss (ground-up)",
             kes(base["aal"]["aal_kes"]),
             "Long-run yearly average from the curve",
         ),
@@ -167,9 +168,9 @@ def build_document(
     if "insured" in base:
         kpis.append(
             (
-                "Insured average annual loss",
+                "Gross average annual loss",
                 kes(base["insured"]["aal"]["aal_kes"]),
-                "After policy terms",
+                "After deductible and limit",
             )
         )
     add(("kpis", kpis))
@@ -209,10 +210,10 @@ def build_document(
                 ("Return period", "rp"),
                 ("Tier", "text"),
                 ("Annual chance", "ratio"),
-                ("Loss", "kes"),
+                ("Ground-up loss", "kes"),
                 ("% of insured value", "pct"),
             ]
-            + ([("Insured loss", "kes")] if "insured" in base else []),
+            + ([("Gross loss", "kes")] if "insured" in base else []),
             [
                 [
                     p["return_period_years"],
@@ -297,6 +298,61 @@ def build_document(
                 sheet="Damage uncertainty",
             )
         )
+
+    # From ground-up to net loss
+    if "insured" in base or "reinsurance" in base:
+        from .terms import TERMS, waterfall
+
+        add(("heading", "From ground-up to net loss", 1, ("ASSUMPTION", *origin)))
+        add(Table(
+            "Financial terms",
+            [("Term", "text"), ("Meaning", "text")],
+            [[name, text] for _, name, text in TERMS],
+            sheet="Financial terms",
+        ))
+        steps = {p["tier"]: {k: abs(v) for k, _, v in waterfall(base, p["tier"])} for p in base["ep_curve"]}
+        columns = [("Return period", "rp"), ("Ground-up loss", "kes"), ("Deductible", "kes"), ("Above the limit", "kes"),
+                   ("Gross loss", "kes"), ("Quota share", "kes"), ("Catastrophe XL", "kes"), ("Net loss", "kes")]
+        rows = [[p["return_period_years"]] + [str(steps[p["tier"]][k]) for k in ("ground_up", "deductible", "limit", "gross",
+                                                                                   "quota_share", "cat_xl", "net")]
+                for p in base["ep_curve"]]
+        note = []
+        if "insured" in base:
+            terms = base["insured"]["terms"]
+            note.append(f"Deductible {terms['deductible_pct_of_tiv']:.1%} and limit {terms['limit_pct_of_tiv']:.0%} of each "
+                        "property's value (or the row's own terms).")
+        if "reinsurance" in base:
+            ri, stc = base["reinsurance"], base["reinsurance"]["structure"]
+            note.append(f"Reinsurance (illustrative, ASSUMPTION): {stc['quota_share_cession']:.0%} quota share of the gross loss, "
+                        f"then a catastrophe excess of loss paying above {kes(stc['xol_retention_kes'])} per catastrophe up to "
+                        f"{kes(stc['xol_limit_kes'])}, on the insurer's share. Recoveries AAL {kes(ri['ceded']['aal']['aal_kes'])}; "
+                        f"net loss AAL {kes(ri['net']['aal']['aal_kes'])}. No reinstatements, aggregate covers or second events in a year.")
+        add(Table("Ground-up, gross and net loss per scenario", columns, rows, note=" ".join(note),
+                  labels=("ASSUMPTION",), sheet="Who pays"))
+        if ylt and "ceded" in ylt["baseline"]:
+            y = ylt["baseline"]
+            add(Table(
+                f"Simulated curves: ground-up, gross and net loss ({y['gross']['years']:,} years)",
+                [("Return period", "rp"), ("Ground-up loss", "kes")] + ([("Gross loss", "kes")] if "insured" in y else [])
+                + [("Reinsurance recoveries", "kes"), ("Net loss", "kes")],
+                [[g["return_period_years"], g["loss_kes"]] + ([i["loss_kes"]] if "insured" in y else []) + [c["loss_kes"], n["loss_kes"]]
+                 for g, i, c, n in zip(y["gross"]["table"], y.get("insured", y["gross"])["table"], y["ceded"]["table"], y["net"]["table"])],
+                note="The same simulated years, split by the programme year by year (one worst flood per year).",
+                labels=("ASSUMPTION",), sheet="Who pays"))
+
+    # Largest expected annual losses
+    if base.get("property_aal"):
+        add(("heading", "Largest expected annual losses", 1, ("ASSUMPTION", *origin)))
+        aal_cols = [("Property", "text"), ("Construction", "text"), ("Insured value", "kes"), ("Ground-up AAL", "kes")]
+        has_ins = "insured_aal_kes" in base["property_aal"][0]
+        aal_cols += [("Gross AAL", "kes")] if has_ins else []
+        aal_rows = [[r["loc_id"], CLASS_LABEL.get(r["housing_class"], r["housing_class"]), r["tiv_kes"], r["aal_kes"]]
+                    + ([r["insured_aal_kes"]] if has_ins else []) for r in base["property_aal"]]
+        add(Table("Top 10 properties by expected annual loss", aal_cols, aal_rows[:10],
+                  note=f"{len(aal_rows)} properties carry an expected annual loss; they add up to the portfolio AAL.",
+                  labels=("ASSUMPTION",), sheet="Property AAL"))
+        add(Table("Every property's expected annual loss", aal_cols, aal_rows, labels=("ASSUMPTION",),
+                  sheet="Property AAL", data_only=True))
 
     # What drives it
     add(("heading", "What drives the loss", 1, ("ASSUMPTION", *origin)))
@@ -547,11 +603,11 @@ def build_document(
                     f"no loss below 1-in-{cfg['aal_zero_loss_return_period']:g}; rarest loss held beyond the last tier",
                 ],
                 [
-                    "Policy terms",
+                    "Deductible and limit",
                     (
                         f"deductible {cfg['policy_terms']['deductible_pct_of_tiv']:.1%}, limit {cfg['policy_terms']['limit_pct_of_tiv']:.0%} of value per property"
                         if cfg["policy_terms"]["enabled"]
-                        else "off — gross loss"
+                        else "off — losses are ground-up"
                     ),
                 ],
             ],

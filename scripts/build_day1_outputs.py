@@ -125,6 +125,27 @@ def main():
         ],
     )
     run = report["runs"]["baseline"]
+    who_pays = "Policy terms and reinsurance are off in this configuration."
+    if "insured" in run:
+        ins = {p["tier"]: p["loss_kes"] for p in run["insured"]["ep_curve"]}
+        split = {t["tier"]: t for t in run["reinsurance"]["by_tier"]} if "reinsurance" in run else {}
+        terms = run["insured"]["terms"]
+        header = ["Return period", "Ground-up loss", "Gross loss"] + (["Reinsurance recoveries", "Net loss"] if split else [])
+        rows_ = [
+            [f"1-in-{p['return_period_years']:g}", kes(p["loss_kes"]), kes(ins[p["tier"]])]
+            + ([kes(split[p["tier"]]["ceded"]), kes(split[p["tier"]]["net"])] if split else [])
+            for p in run["ep_curve"]
+        ]
+        rows_.append(["AAL", kes(run["aal"]["aal_kes"]), kes(run["insured"]["aal"]["aal_kes"])]
+                     + ([kes(run["reinsurance"]["ceded"]["aal"]["aal_kes"]), kes(run["reinsurance"]["net"]["aal"]["aal_kes"])] if split else []))
+        who_pays = (f"Gross loss = ground-up loss after a {terms['deductible_pct_of_tiv']:.0%} deductible per property (limit "
+                    f"{terms['limit_pct_of_tiv']:.0%} of value). ")
+        if split:
+            st_ = run["reinsurance"]["structure"]
+            who_pays += (f"Net loss = gross loss after an illustrative programme: {st_['quota_share_cession']:.0%} quota share, then a catastrophe excess of loss of "
+                         f"{kes(st_['xol_limit_kes'])} above {kes(st_['xol_retention_kes'])} per catastrophe on the insurer's share. "
+                         "Not a real treaty; no reinstatements, aggregate covers or second events in a year.")
+        who_pays += "\n\n" + md_table(header, rows_)
     write_csv(
         "nairobi_property_losses.csv",
         [
@@ -207,7 +228,7 @@ Generated {date.today().isoformat()} by `scripts/build_day1_outputs.py`. Config 
         sha256(HOTSPOTS)[:16]
     }…` |
 
-## Headline (gross loss, no policy terms)
+## Headline (ground-up loss)
 
 {
         md_table(
@@ -257,6 +278,10 @@ Generated {date.today().isoformat()} by `scripts/build_day1_outputs.py`. Config 
 
 Tier names describe how extreme a cell is, not how often it floods: `extreme` keeps the top 5% of cells (narrowest
 footprint, most frequent event); `common` keeps the top 40% (widest footprint, rarest event).
+
+## Ground-up, gross and net loss (ASSUMPTION terms)
+
+{who_pays}
 
 ## EP curve from {ylt["years"]:,} simulated years
 

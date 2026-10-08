@@ -37,3 +37,9 @@ def row(
         **{f"hazard_score_{t}": str(s) for t, s in zip(tiers, scores)},
     }
     return {**base, **extra}
+
+
+@pytest.fixture(autouse=True)
+def auth_throttles_on(monkeypatch):
+    """Sign-in throttles are off outside production; the suite tests them as production runs them."""
+    monkeypatch.setenv("FLOODCAT_AUTH_THROTTLE", "1")

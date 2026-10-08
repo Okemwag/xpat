@@ -16,9 +16,35 @@ from ..ai.evaluation import spread
 from ..financial.loss import property_loss, total_loss
 from ..financial.ep import ep_curve, average_annual_loss
 from ..financial.accumulation import group_losses
+from ..financial.reinsurance import programme as reinsurance_programme
 from ..reporting.provenance import provenance, exposure_origin
 
 SUPPLIED_SCORE_TOLERANCE = 1e-6
+
+
+def property_aal(scenarios, config):
+    """Each property's own average annual loss (same integration as the portfolio), largest first.
+
+    The integral is linear in the losses, so these add up to the portfolio AAL (to rounding).
+    """
+    by_id = {}
+    for tier, rows in scenarios.items():
+        for r in rows:
+            e = by_id.setdefault(r["loc_id"], {"gross": {}, "insured": {}, "housing_class": r["housing_class"],
+                                               "tiv_kes": r["tiv_kes"]})
+            e["gross"][tier] = Decimal(r["loss_kes"])
+            if "insured_loss_kes" in r:
+                e["insured"][tier] = Decimal(r["insured_loss_kes"])
+    out = []
+    for loc_id, e in by_id.items():
+        if not any(e["gross"].values()):
+            continue
+        row = {"loc_id": loc_id, "housing_class": e["housing_class"], "tiv_kes": e["tiv_kes"],
+               "aal_kes": average_annual_loss(e["gross"], config)["aal_kes"]}
+        if e["insured"]:
+            row["insured_aal_kes"] = average_annual_loss(e["insured"], config)["aal_kes"]
+        out.append(row)
+    return sorted(out, key=lambda r: (-Decimal(r["aal_kes"]), r["loc_id"]))
 
 
 def analyse(
@@ -153,9 +179,23 @@ def analyse(
             runs[name]["insured"] = {
                 "ep_curve": ep_curve(insured, config, covered_tiv),
                 "aal": average_annual_loss(insured, config),
+                # Ground-up = deductible + above the limit + gross loss, per scenario (owner bears the first two).
+                "deductible_kes": {
+                    t: money_string(total_loss(r, "deductible_kes_applied")) for t, r in scenarios.items()
+                },
+                "above_limit_kes": {
+                    t: money_string(total_loss(r, "above_limit_kes")) for t, r in scenarios.items()
+                },
                 "terms": dict(config.policy_terms),
-                "note": "Per-risk deductible and limit only; no layers or reinsurance",
+                "note": "Per-risk deductible and limit; reinsurance is shown separately",
             }
+        if config.reinsurance["enabled"]:
+            basis = "insured" if config.policy_terms["enabled"] else "gross"
+            basis_totals = insured if basis == "insured" else totals
+            runs[name]["reinsurance"] = reinsurance_programme(
+                basis_totals, config.reinsurance, covered_tiv, basis, config
+            )
+        runs[name]["property_aal"] = property_aal(scenarios, config)
     contribution = {
         "enabled": adjusting,
         "evidence_enabled": ai_adjustment,
@@ -211,9 +251,15 @@ def analyse(
         "limitations": [
             "Scenario EP points and AAL use assumed return periods, not a calibrated annual loss distribution.",
             (
-                "Insured loss applies a simple per-property deductible and limit; no layers or reinsurance."
+                "Insured loss applies a simple per-property deductible and limit."
                 if config.policy_terms["enabled"]
-                else "Losses are gross of policy terms; no deductible, limit or reinsurance is applied."
+                else "Losses are gross of policy terms; no deductible or limit is applied."
+            ),
+            (
+                "Reinsured loss uses an illustrative programme (quota share, then a per-event excess-of-loss layer), "
+                "not a real treaty; no reinstatements, aggregate covers or multiple events per year."
+                if config.reinsurance["enabled"]
+                else "No reinsurance is applied."
             ),
             "Depth = score × max_depth_m is an assumption; the score is relative susceptibility, not measured depth.",
             "The JRC Africa residential curve rests on South African and Mozambican functions only; class scales and caps are assumptions.",

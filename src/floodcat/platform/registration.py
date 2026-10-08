@@ -175,7 +175,7 @@ def register(
     if not display_name:
         raise ModelError("invalid_name", "Enter your name")
     if kind == "org" and not org_name:
-        raise ModelError("invalid_org", "Enter your organisation's name")
+        org_name = f"{display_name}'s workspace"[:200]  # optional: rename it later in Settings
     ip = (request or {}).get("ip") or "unknown"
     rate_limit(
         conn,
@@ -275,6 +275,8 @@ def register(
                 trial_ends_at=now() + timedelta(days=60),
                 settings={
                     **DEFAULT_SETTINGS,
+                    # Straight to the dashboard: two-step verification is optional until an administrator requires it.
+                    "mfa_policy": "off",
                     "allowed_domains": [] if domain in PUBLIC_DOMAINS else [domain],
                     "join_code": new_code(),
                 },

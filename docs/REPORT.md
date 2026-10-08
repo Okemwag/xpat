@@ -46,6 +46,7 @@ open as a demo and upload a CSV.
 | Average annual loss | **KES 125.9 m** (simulated 124.7 m, range 119–130 m) | Long-run yearly average |
 | Damage-uncertainty range at 1-in-100 | KES 1.01–2.59 bn (5th–95th pct) | If the damage curves are wrong in a plausible way |
 | Named flood hotspots flagged by the hazard proxy | **12 of 24** | The proxy cannot see drainage failures |
+| … if the infrastructure-deficit index were applied (check only) | **21 of 24** (3 marginal) | Map area flagged 40% → 45%; see §5.6 |
 
 **Three findings an underwriter should take away**
 
@@ -95,9 +96,9 @@ output, and is honest about what is real and what is assumed.
 | County & disaster bodies | A map of where the baseline hazard is blind, and a route to fix it with local evidence |
 | Cedants & brokers | Faster, consistent first-look flood quotes from a CSV or a description |
 
-Out of scope by the brief, and not built: reinsurance treaties, layers, net-of-reinsurance loss, multi-peril aggregation, claims-data
-integration and physically based hydrology. The objective's "insured/reinsured loss" is therefore met as **gross and per-risk insured
-loss** (§8.5); reinsurance structuring is deliberately not attempted.
+The objective's "insured/reinsured loss" is met with three bases on every run: gross, insured after per-property terms (§8.5) and
+reinsured from an illustrative quota share plus per-event excess-of-loss programme (§8.5b). Not built: treaty pricing, reinstatements,
+aggregate covers, multi-peril aggregation, claims-data integration and physically based hydrology.
 
 Real use is in scope beyond the brief: the platform accepts real schedules and broker documents, labels them REAL, and handles them under
 the data rules in §11.4.
@@ -216,6 +217,44 @@ Each property is tagged with its nearest named hotspot and the distance. For acc
 within 2 km (ASSUMPTION; 217 of 600 properties); otherwise it falls in "no named hotspot within radius". Hotspots are never used as
 exposure, and never as training labels.
 
+### 5.6 Infrastructure & Maintenance Deficit index (evaluation layer)
+
+**Why.** The 12 misses are pluvial: rain on built-up ground exceeds what the drains carry. Terrain cannot see this. Drains themselves
+are not mapped, so the index measures the pressure side, which can be mapped: how much of the ground is roofed and how crowded it is.
+Dense, roofed ground sheds more water, faster, and in Nairobi is where drains are most often undersized, blocked or missing.
+
+**How** (`hazard/imd.py`, `scripts/build_imd_index.py`, `make imd-index`). 612,126 building outlines from OpenStreetMap (Geofabrik
+Kenya extract of 6 October 2026, geometry only; © OpenStreetMap contributors, ODbL) are reduced to a 3-arc-second (~93 m) grid over
+the hazard maps (`outputs/imd_index.tif`). For each cell, within 250 m:
+
+- *roofed share* = footprint area ÷ ground area (impervious-surface proxy), scaled 0 → 1 between 15% and 45%;
+- *density* = buildings per hectare, scaled 0 → 1 between 25 and 125;
+- index I = the mean of the two (0–1).
+
+Scores are raised as `s' = 1 − (1 − s)(1 − 0.4·f_tier·I)`, with tier factors 0.2 (1-in-10) to 1.0 (1-in-250), before any AI evidence.
+Fully dense ground with no terrain hazard reaches a 1-in-250 score of 0.4 (≈ 0.6 m at the default depth). The thresholds and weights
+were **fixed before the hotspot check was run** and a test pins them; tuning them on the 24 places would make the only check circular.
+
+**Result** (`make eval-imd` → `outputs/imd_evaluation.md`), same 24 places, same rule:
+
+| Check | Terrain only | With index |
+|---|---:|---:|
+| Named areas flagged | 12 of 24 | **21 of 24** |
+| Newly flagged | — | Kibera, Kangemi, Kawangware, Fedha, Parklands, Donholm; marginal (I < 0.05): Madaraka, Lang'ata, Kileleshwa |
+| Still missed | — | Lavington, Westlands, Kitisuru |
+| Hazard-map area flagged | 40.0% | 44.8% |
+
+**Is it better than chance?** Every named area is built-up. Over built-up ground the index is above zero on 36% of cells, so an index
+switched on at random would be expected to find about 4.3 of the 12 misses (3.5 non-marginal). It finds 9 (6 non-marginal). With
+twelve places that is a promising signal, not proof, and it does not show the loss numbers are more accurate.
+
+**What it cannot do.** The three remaining misses are low-density, well-off areas where flooding comes from blocked drains and
+streams, not crowding; the index cannot see them by design. OSM completeness varies: Mathare and Kiambiu, two of the densest settlements
+in Nairobi, read as sparse (the terrain proxy flags both anyway). Roads, car parks and paved yards are not counted. It never measures
+maintenance.
+
+**Status: evaluation only.** Building density reaches losses through the drainage model (§AI enhancements, `hazard/drainage.py`), which also uses mapped drains and culverts and can learn from approved reports. Applying both would count density twice, so the index is kept as an independent check of what density alone explains (Data & honesty page, `make eval-imd`); its roofed-share measure and the chance comparison are candidates to fold into the drainage model.
+
 ---
 
 ## 6. Stage 2 — Vulnerability
@@ -224,8 +263,9 @@ exposure, and never as training labels.
 
 Two steps, both stated:
 
-1. **Score → depth:** `depth = score × max_depth`, with **max_depth = 1.5 m** as the base case (ASSUMPTION). Pluvial flooding in Nairobi
-   typically reaches 0.3–1.5 m; the brief's 4 m example is shown as a sensitivity (1, 1.5, 2, 4 m).
+1. **Score → depth:** `depth = score × max_depth`, with **max_depth = 1.5 m** as the base case (ASSUMPTION). This is a Team A
+   judgement of street and household flooding depths, not a cited figure; it is the weakest and most influential input. The brief's
+   4 m example is shown as a sensitivity (1, 1.5, 2, 4 m). Observed Nairobi depths would replace it.
 2. **Depth → damage:** the published **JRC Africa residential** curve (REAL), adapted per construction class (ASSUMPTION).
 
 | Depth (m) | 0 | 0.5 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 |
@@ -358,15 +398,63 @@ tier of a property, so each simulated curve still rises with rarity. ρ matters:
 largely cancel and the 1-in-100 range shrinks to a misleading KES 1.49–1.95 bn; with ρ = 0.5 it is KES 1.01–2.59 bn. Only damage varies —
 hazard, frequency and values are held fixed — so these are **assumption ranges, not confidence intervals**.
 
-### 8.5 Policy terms (optional, off by default)
+### 8.5a Financial terms
 
-A simple per-property deductible and limit, as a percentage of insured value or set per row (`deductible_kes`, `limit_kes`):
-`insured = min(max(gross − deductible, 0), limit − deductible)`. Turning it on adds an insured EP curve, insured AAL and insured
-ranges. Example: a 1% deductible and 50% limit gives a sample 1-in-100 of **KES 1.51 bn insured** against KES 1.70 bn gross.
+The interface, reports and this document use these terms (the definitions given to the teams):
+
+| Term | Meaning |
+|---|---|
+| Ground-up loss | The total physical damage caused to a building before insurance rules are applied. |
+| Deductible | The part of the loss that the building owner must pay themselves before the insurer pays. |
+| Limit | The maximum amount the insurer will pay for the building. |
+| Gross loss | The amount the insurer is responsible for paying after applying the deductible and limit. |
+| Quota share | A reinsurance arrangement where the insurer and reinsurer share every loss by an agreed percentage (a 25% quota share means the reinsurer pays 25% of the gross loss). |
+| Catastrophe excess of loss | Reinsurance that protects the insurer when the total loss from one catastrophe becomes large: the reinsurer pays after the loss passes an agreed threshold, up to an agreed maximum. |
+| Net loss | The amount of the loss that remains with the insurer after payments from reinsurers. |
+
+So ground-up = deductible + amount above the limit + gross loss, and gross loss = quota share + catastrophe excess of loss + net
+loss, for every scenario and every simulated year (tested). Overview shows the waterfall for any scenario, with each term's value.
+Internally the ground-up loss is the run's `ep_curve`, the gross loss its `insured` block and the net loss `reinsurance.net`.
+
+### 8.5 Deductible and limit: ground-up to gross loss (on by default)
+
+A per-property deductible and limit, as a percentage of insured value or set per row (`deductible_kes`, `limit_kes`):
+`insured = min(max(gross − deductible, 0), limit − deductible)`. The default is a **1% deductible and no limit below the insured value**
+(ASSUMPTION, illustrative), so every run has a gross-loss EP curve, AAL and ranges next to the ground-up ones. Sample: 1-in-100
+**KES 1.51 bn gross loss** against KES 1.70 bn ground-up; gross AAL **KES 114.8 m** against KES 125.9 m ground-up.
 
 Rows may also give `deductible_pct_of_loss` with `deductible_kes` as its minimum — the usual form of a flood deductible ("5% of each loss,
-minimum KES 5 m"). This is the **insured** loss of the objective. **Reinsured** (net of treaty) loss is out of scope by the brief: no
-quota share, surplus, excess-of-loss layers or reinstatements are modelled.
+minimum KES 5 m").
+
+### 8.5b Quota share and catastrophe excess of loss: gross to net loss (illustrative programme, on by default)
+
+`financial/reinsurance.py`. Per event, on the insured loss L (gross when policy terms are off):
+
+1. **Quota share:** the reinsurer takes a share c of every loss: `QS = c·L`.
+2. **Excess of loss** on the insurer's retained share: `XL = min(limit, max(0, (1 − c)·L − retention))`.
+3. **Reinsurer pays** `QS + XL`; **insurer keeps** `L − QS − XL`.
+
+Default (ASSUMPTION, not a real treaty): c = 30%; layer starts at 1% and is 3% of modelled insured value — for the sample, **KES 1.91 bn
+xs KES 636 m**, used up at an insured loss of KES 3.64 bn. Retention and limit scale with the portfolio so any upload gets a sensible
+layer; they are set on the Assumptions page to match the treaty being priced.
+
+| Return period | Gross loss | Reinsurance recoveries | Net loss |
+|---|---:|---:|---:|
+| 1-in-10 | KES 247.5 m | KES 74.2 m | KES 173.2 m |
+| 1-in-25 | KES 398.5 m | KES 119.5 m | KES 278.9 m |
+| 1-in-50 | KES 894.0 m | KES 268.2 m | KES 625.8 m |
+| 1-in-100 | KES 1.51 bn | KES 872.2 m | KES 636.4 m |
+| 1-in-250 | KES 2.35 bn | KES 1.72 bn | KES 636.4 m |
+| **AAL** | **KES 114.8 m** | **KES 44.9 m** | **KES 69.9 m** |
+
+From 1-in-100 the insurer's share stops at the KES 636 m retention: the layer pays the rest. The same split is applied to each of the
+10,000 simulated years (one worst flood per year), giving reinsurer and insurer-keeps curves to 1-in-10,000. Not modelled: reinstatements
+and their premium, aggregate covers, second events in a year, per-risk layers and treaty pricing. The AAL of the layer integrates through
+the five points, which approximates a non-linear layer; the simulated AAL applies it year by year.
+
+**Per-property AAL.** Each property's own average annual loss (gross and insured), integrated the same way. Because the integration is
+linear, the 259 property figures add up to the portfolio AAL (tested). They rank risks by expected yearly cost — the basis for pricing
+an individual risk.
 
 ### 8.6 Accumulation
 
@@ -513,6 +601,23 @@ PDF, Word and free-text documents — and schedules whose columns do not match t
 plus the lowest storey are treated as flood-exposed: for Landmark Plaza (18 storeys + 2 basements) that is 3/20 = **15%** of value.
 Without this, a ground-level flood would be charged against all eighteen storeys.
 
+**Reading the whole document.** The same single AI call also returns the document's placement terms, its sections and any
+flood history, each with a verbatim quote, and `ai/document_analysis.py` then, by fixed rules:
+
+1. **Locates data points across the text** — sum insured and premium (100%), shares placed and accepted, deductions, period,
+   parties, deductibles, limits, debris-removal and event-definition clauses, valuation basis. A value is kept only if its
+   quote is in the document and, for numbers, the number is in its quote; key terms that are missing are listed.
+2. **Distinguishes relevant from irrelevant information** — every clause tagged by topic and flood-relevant or not, with a
+   reason (bush fire, explosion and earthquake clauses are set aside; a debris-removal extension is kept because it adds to a loss).
+3. **Cross-references building specifications with risk indicators** — construction against the class damage curve,
+   occupancy against the residential JRC curve (industrial use is flagged as indicative), location against the hazard map and
+   the named flood areas, value against floor area, and the document's flood statements against the model.
+4. **Summarises flood history** — dated events as a timeline with counts, causes, depths and stated losses; with none, it says
+   so and lists what to ask the broker.
+5. **Calculates implied risk metrics** — premium rate and per mille, payback, premium after deductions, the share arithmetic
+   (placed and accepted sums insured and premiums recomputed), the debris-removal add-on, and once the model has run, modelled
+   loss against premium and sum insured. The premium and share then pre-fill the underwriting decision.
+
 ### 10.1c Underwriting briefing
 
 A one-click briefing on the Overview page, written by Gemini **only from a fact pack** that code builds from the run: portfolio size and
@@ -555,6 +660,52 @@ properties changed, AAL rose by KES 0.53 m and the hit rate moved from 12 to 14 
 **Caveats stated in the interface:** the hotspot check is positive-only (there is no list of places known not to flood, so false alarms
 cannot be measured); hotspot coordinates are approximate; evidence near a hotspot flags it by construction, so the real test is whether
 independent reports exist for the places the proxy misses; and a higher loss is never presented as proof of a better model.
+
+### 10.2b Drainage-deficit factor from many reports (local embeddings)
+
+**Why.** Pasting one report at a time into a language model is slow and does not scale to a season of news and situation reports.
+Most of a report is not about drainage. A small local embedding model can find the passages that are, on this server, in seconds.
+
+**How** (Flood evidence → Flood reports; `ai/reports.py`, `ai/embeddings.py`, `ai/places.py`, `ai/drainage.py`).
+
+1. **Sources.** ReliefWeb's public API (Kenya, search terms and dates; needs a free approved app name) or bulk upload of PDF, Word,
+   text or a CSV of articles. E-mails and phone numbers are removed first; the original file is not kept; passage text is stored
+   encrypted per organisation.
+2. **Chunks.** Single sentences (up to 25 words; a longer sentence stays whole), so every passage shown is a verbatim quote.
+3. **Embeddings.** BAAI/bge-small-en-v1.5 (384 dimensions, quantised ONNX via fastembed, ~65 MB, MIT licence), run locally.
+4. **Semantic scoring.** Each sentence is compared with five fixed descriptions of drainage failure and four contrasts (a river
+   overflowing, a forecast, unrelated news). It counts as drainage evidence when its drainage similarity is ≥ 0.60 **and** beats the
+   best contrast by ≥ 0.035; its strength runs from 0.5 to 1 as that margin grows to 0.15 (ASSUMPTIONS, set on the dev split below).
+5. **Places.** Local mode: 433 Nairobi place names from OpenStreetMap (`outputs/nairobi_places.json`, built offline from the Geofabrik
+   extract — *not* from the county hotspot list), matched as whole capitalised words; a name followed by "River", "Road" and similar is
+   skipped (Ngong River is not Ngong town); names mapped at two places far apart are dropped as ambiguous. If the drainage sentence
+   names no place, the sentence before it is used unless that sentence reads as river overflow. In **Ollama** or **Gemini** mode a
+   language model names place and cause, but reads only the drainage sentences (at most 8 per report), not the whole report.
+6. **Factor per place.** Independent reports combine by noisy-OR, each report counted once through its strongest passage:
+   `factor = 1 − Π(1 − strength)`. Re-published copies (same text, or document vectors ≥ 0.97 similar) count once. One clear report
+   gives about 0.5–0.7; two give about 0.85. It is an AI-derived PROXY, not a probability.
+7. **To exposure.** "Send to review" makes the place an ordinary evidence item (mechanism drainage, confidence = factor, OSM location).
+   After a named reviewer approves it, it raises hazard within 1 km exactly as in §10.2, and the hit-rate check applies (independent
+   sources only). Nothing changes losses before approval.
+
+**Check** (`make eval-drainage` → `outputs/drainage_eval.md`). 56 hand-written passages (SYNTHETIC, labelled drainage / river / other),
+split in half. Thresholds were chosen on the dev half; the test half was scored afterwards and not used for tuning.
+
+| Split | Precision | Recall | River passages wrongly flagged |
+|---|---:|---:|---:|
+| dev | 90% | 75% | 0 |
+| test (held out) | 100% | 83% | 0 |
+
+The errors are drainage sentences the model under-scores ("Blocked drains turned the bus stage into a lake…") and general flood news
+without a cause that it over-scores. Written passages are not real reports: this shows the scoring separates the kinds of sentences we
+expect, not its accuracy on real reports, which needs a labelled sample of real reports.
+
+**Modes** (allowed per organisation by an admin; users pick among them): *Local only* (no generation, nothing leaves the server,
+seconds per report), *Local + Ollama* (offline), *Local + Gemini* (consent each time; only the drainage sentences are sent).
+
+**Limits.** English only. Place matching depends on OSM names (e.g. "Buru Buru" alone is not mapped). A sentence naming several places
+gives each the same strength. Roads are not located. ReliefWeb carries mostly national situation reports, so Nairobi neighbourhood
+detail is thinner than in local news.
 
 ### 10.3 Gemini integration and safeguards
 
@@ -634,7 +785,7 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | # | Assumption | Value | Label | Why | Effect if wrong |
 |---|---|---|---|---|---|
 | A1 | Tier → return period | 10 / 25 / 50 / 100 / 250 yr | ASSUMPTION | Dataset metadata reference mapping | Relabels the curve; AAL scales roughly inversely |
-| A2 | Score → depth | depth = score × 1.5 m | ASSUMPTION | Typical Nairobi pluvial depths 0.3–1.5 m | Largest single lever: 1 m → ×0.68, 4 m → ×2.4 |
+| A2 | Score → depth | depth = score × 1.5 m | ASSUMPTION | Team judgement of street/household flood depth; no citation yet | Largest single lever: 1 m → ×0.68, 4 m → ×2.4 |
 | A3 | Base damage curve | JRC Africa residential, Table 3-1 | REAL | Published, documented, the brief's reference | Built from two countries' data |
 | A4 | Class depth scales | 0.5 / 0.75 / 1.0 / 1.3 | ASSUMPTION | Relative fragility of construction | RCC scale dominates this portfolio's loss |
 | A5 | Damage caps | 95 / 90 / 85 / 80% | ASSUMPTION | Brief's 80–95% guidance | Do not bind at 1.5 m |
@@ -645,7 +796,8 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | A10 | Interpolation between points | linear in annual chance | ASSUMPTION | Same rule for AAL and YLT | Small effect between points |
 | A11 | Year-loss table | 10,000 years, 200 bootstraps, 5–95% band, fixed seed | ASSUMPTION | Matches the reference dashboard; reproducible | Band reflects sampling, not model error |
 | A12 | Damage uncertainty | σ = 0.4, ρ = 0.5, 2,000 trials | ASSUMPTION | Judgement; no claims to fit | Range width scales with σ and ρ |
-| A13 | Policy terms | off; 0% deductible, 100% limit | ASSUMPTION | Brief asks for gross loss; terms optional | Lowers insured loss when on |
+| A13 | Deductible and limit | on; 1% deductible, no limit below insured value | ASSUMPTION | Objective asks for insured loss; illustrative terms | Gross AAL KES 114.8 m vs 125.9 m ground-up |
+| A13b | Reinsurance programme | 30% quota share; per-event XL 3% xs 1% of insured value | ASSUMPTION | Objective asks for reinsured loss; illustrative, not a real treaty | Reinsurer AAL KES 44.9 m; insurer keeps KES 69.9 m |
 | A14 | Hotspot grouping radius | 2 km | ASSUMPTION | Few properties within 1 km of each hotspot | Changes accumulation groups only |
 | A15 | Grid cell | 1 km | ASSUMPTION | Simple, transparent accumulation unit | Changes accumulation groups only |
 | A16 | Evidence radius | 1 km, linear fade | ASSUMPTION | Neighbourhood-scale drainage effects | Width of AI uplift |
@@ -653,6 +805,7 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | A18 | Evidence used | drainage & surface runoff, confidence ≥ 0.5, approved | ASSUMPTION | Mechanisms the proxy cannot see | What changes hazard |
 | A19 | AI-filled sizes | starter class medians | ASSUMPTION | Only reference available | Values for under-described buildings |
 | A20 | Coverage | raster extent only | — (rule) | Never assume zero hazard | Points outside are rejected |
+| A22 | Infrastructure-deficit index (evaluation only) | roofed share 15–45%, density 25–125 /ha, 250 m window, equal weights; uplift w = 0.4, tier factors 0.2–1.0 | ASSUMPTION (index: PROXY) | Fixed before checking hotspots; urban-runoff literature | Not applied to losses; would flag 21 of 24 hotspots |
 | A21 | Flood-exposed share of multi-storey value | (basements + 1 storey) ÷ (storeys + basements), only when storeys are known | ASSUMPTION | JRC factors apply to flooded storeys; value spread evenly | Landmark Plaza: 15% of value exposed |
 
 ---
@@ -661,6 +814,8 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 
 **Model**
 - The hazard is a terrain-and-river proxy, not a flood model; it is blind to drainage and flags 12 of 24 named hotspots.
+- The optional infrastructure-deficit index raises that to 21 of 24 by reading crowding and roofed ground from OpenStreetMap; it does
+  not see drains, under-reads unmapped areas, ignores paved ground, and misses low-density areas that flood from blocked drains.
 - The five tiers are threshold cuts of one surface, so the "events" are nested footprints, not independent physical floods.
 - Return periods are assumed, not derived from rainfall statistics; the EP curve compares assumed scenarios rather than forecasting.
 - The vulnerability curve is a regional curve adapted by judgement, not validated against Kenyan claims.
@@ -720,10 +875,14 @@ were exercised live against Gemini.
 
 ```bash
 make install          # dependencies (uv): dev, geo, ui, ai extras
-make test             # 346 tests
+make test             # 449 tests
 make db && make test-postgres   # platform tests on a real PostgreSQL
 make outputs          # rebuild outputs/ (Day 1 tables, EP, YLT, ranges, sensitivity)
 make eval-ingestion   # re-score AI ingestion (needs GEMINI_API_KEY)
+make imd-index        # rebuild outputs/imd_index.tif from OpenStreetMap (downloads the 335 MB Geofabrik Kenya extract once)
+make eval-imd         # infrastructure-deficit index vs the 24 hotspots, map share and portfolio → outputs/imd_evaluation.md
+make places           # OSM place-name gazetteer for flood reports → outputs/nairobi_places.json
+make eval-drainage    # local drainage-passage classifier on held-out passages → outputs/drainage_eval.md
 make app              # migrate, then sign-in/API server (:8000) + interface (:8501)
 uv run flood-cat create-org "Company" owner@company.com --domains company.com   # first organisation and owner invitation
 ```

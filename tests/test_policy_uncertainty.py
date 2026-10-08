@@ -17,13 +17,15 @@ def terms(config, deductible=0.01, limit=0.5):
     )
 
 
-def test_policy_terms_off_by_default(config):
-    report = analyse([row()], config)
-    assert (
-        "insured" not in report["runs"]["baseline"]
-        and "insured_loss_kes"
-        not in report["runs"]["baseline"]["property_losses"]["common"][0]
-    )
+def test_insured_loss_is_on_by_default_and_can_be_switched_off(config):
+    """Objective 1 asks for the insured loss, so every default run carries it beside the gross loss."""
+    on = analyse([row()], config)["runs"]["baseline"]
+    assert "insured" in on and "insured_loss_kes" in on["property_losses"]["common"][0]
+    gross = Decimal(on["ep_curve"][-1]["loss_kes"])
+    assert Decimal(on["insured"]["ep_curve"][-1]["loss_kes"]) <= gross
+    off = analyse([row()], terms(config, 0.0, 1.0).replace(
+        policy_terms={"enabled": False, "deductible_pct_of_tiv": 0.0, "limit_pct_of_tiv": 1.0}))["runs"]["baseline"]
+    assert "insured" not in off and "insured_loss_kes" not in off["property_losses"]["common"][0]
 
 
 def test_insured_loss_applies_deductible_and_limit(config):

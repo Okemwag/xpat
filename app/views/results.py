@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from floodcat.core.errors import ModelError
 from ui import state
-from ui.charts import class_bars, ylt_chart
+from ui.charts import BASIS_LABEL, class_bars, scenario_source, who_pays_chart, ylt_chart
 from ui.charts import hbars
 from ui.components import (
     badges,
@@ -38,18 +38,18 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
             )
             or "baseline"
         )
-    if "insured" in report["runs"][run]:
+    bases = ["gross"] + (["insured"] if "insured" in report["runs"][run] else []) + (
+        ["ceded", "net"] if "reinsurance" in report["runs"][run] else []
+    )
+    if len(bases) > 1:
         basis = (
             st.segmented_control(
                 "Loss basis",
-                ["gross", "insured"],
-                default="insured",
-                format_func={
-                    "gross": "Gross (ground-up)",
-                    "insured": "Insured (after policy terms)",
-                }.get,
+                bases,
+                default="insured" if "insured" in bases else "gross",
+                format_func=BASIS_LABEL.get,
             )
-            or "insured"
+            or bases[0]
         )
 try:
     with st.spinner("Simulating 10,000 years…"):
@@ -57,7 +57,7 @@ try:
 except ModelError as exc:
     st.error(str(exc))
     st.stop()
-sim = curves[run]["insured" if basis == "insured" else "gross"]
+sim = curves[run].get(basis) or curves[run]["gross"]
 low, high = sim["band_pct"]
 rarest = sim["rarest_modelled_return_period"]
 
@@ -99,7 +99,7 @@ with st.container(border=True):
         width="stretch",
     )
     explain(
-        f"{basis.title()} loss reached or exceeded by a year’s worst flood, 1-in-1 to 1-in-10,000 years; diamonds = the five hazard scenarios; "
+        f"{BASIS_LABEL[basis]} loss reached or exceeded by a year’s worst flood, 1-in-1 to 1-in-10,000 years; diamonds = the five hazard scenarios; "
         f"grey band = {low:g}th–{high:g}th percentile of re-sampled years.",
         f"“1-in-100” ≈ 1% chance in any year. Right of the dashed line (1-in-{rarest:g}) only damage uncertainty varies.",
         ["PROXY", "ASSUMPTION", *state.exposure_labels(report)],
@@ -129,11 +129,9 @@ with st.expander(
     "The five scenarios and their damage-uncertainty ranges",
     icon=":material/stacked_bar_chart:",
 ):
-    source = report["runs"][run] if basis == "gross" else report["runs"][run]["insured"]
+    source = scenario_source(report, run, basis)
     try:
-        damage = state.uncertainty(report)[run][
-            "insured" if basis == "insured" else "gross"
-        ]
+        damage = state.uncertainty(report)[run].get(basis)
     except ModelError:
         damage = None
     st.dataframe(
@@ -161,10 +159,102 @@ with st.expander(
     st.caption(
         "Tier names describe how extreme a map cell is, not how often it floods: “extreme” is the most frequent event, “common” the rarest."
     )
-if basis == "insured":
-    t = report["runs"][run]["insured"]["terms"]
+# Who pays ---------------------------------------------------------------------------------------------------
+r_run = report["runs"][run]
+if "insured" in r_run or "reinsurance" in r_run:
+    section("Who pays in each scenario", "Ground-up loss split into deductible, above the limit, quota share, catastrophe excess of loss and net loss")
+    left, right = st.columns([3, 2], gap="large")
+    with left.container(border=True, height="stretch"):
+        st.altair_chart(who_pays_chart(report, run), width="stretch")
+        explain(
+            "Each bar is the ground-up loss in one scenario. Owners bear the deductible and anything above the limit; the rest is "
+            "the gross loss, which the quota share and the catastrophe excess of loss reduce to the net loss.",
+            "As floods get rarer the catastrophe excess of loss takes over: above its threshold the net loss stops growing until "
+            "the layer's maximum is used up.",
+            ["ASSUMPTION", *state.exposure_labels(report)],
+            source="policy terms and reinsurance programme on the Assumptions page ·",
+        )
+    with right.container(border=True, height="stretch"):
+        rows = []
+        if "insured" in r_run:
+            t = r_run["insured"]["terms"]
+            rows.append(("Deductible · limit", f"{t['deductible_pct_of_tiv']:.1%} · {t['limit_pct_of_tiv']:.0%} of each property's value (or each row's own terms)"))
+        if "reinsurance" in r_run:
+            ri = r_run["reinsurance"]
+            stc = ri["structure"]
+            rows += [
+                ("Quota share", f"the reinsurer pays {stc['quota_share_cession']:.0%} of every {BASIS_LABEL[ri['basis']].lower()}"),
+                ("Catastrophe excess of loss", f"pays above {state.kes(stc['xol_retention_kes'])} per catastrophe, up to {state.kes(stc['xol_limit_kes'])}, on the insurer's share"),
+                ("Layer used up at", f"{state.kes(stc['xol_exhaustion_kes'])} {BASIS_LABEL[ri['basis']].lower()}"),
+            ]
+            kpis(
+                [
+                    ("Reinsurance recoveries AAL", state.kes(ri["ceded"]["aal"]["aal_kes"]), "Quota share + catastrophe excess of loss, per year"),
+                    ("Net loss AAL", state.kes(ri["net"]["aal"]["aal_kes"]), "What the insurer keeps, per year"),
+                ],
+                columns=2,
+            )
+        for k, v in rows:
+            st.markdown(f"**{k}:** {v}")
+        st.caption(
+            "Illustrative programme (ASSUMPTION), not a real treaty. No reinstatements, aggregate covers or second events in a year."
+        )
+    with st.expander("Split by scenario", icon=":material/table:"):
+        gross = {p["tier"]: p for p in r_run["ep_curve"]}
+        insured = {p["tier"]: p for p in r_run["insured"]["ep_curve"]} if "insured" in r_run else {}
+        split = {t["tier"]: t for t in r_run["reinsurance"]["by_tier"]} if "reinsurance" in r_run else {}
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Rarity": state.rp_label(p["return_period_years"]),
+                        "Ground-up loss": state.kes(p["loss_kes"]),
+                        **({"Deductible": state.kes(r_run["insured"]["deductible_kes"][t]),
+                            "Above the limit": state.kes(r_run["insured"]["above_limit_kes"][t]),
+                            "Gross loss": state.kes(insured[t]["loss_kes"])} if insured and "deductible_kes" in r_run["insured"]
+                           else {"Gross loss": state.kes(insured[t]["loss_kes"])} if insured else {}),
+                        **(
+                            {
+                                "Quota share": state.kes(split[t]["quota_share"]),
+                                "Catastrophe excess of loss": state.kes(split[t]["excess_of_loss"]),
+                                "Net loss": state.kes(split[t]["net"]),
+                            }
+                            if split
+                            else {}
+                        ),
+                    }
+                    for t, p in gross.items()
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+
+# Largest expected annual losses ------------------------------------------------------------------------------
+if r_run.get("property_aal"):
+    section("Largest expected annual losses", "Each property's own average annual loss; they add up to the portfolio's")
+    top = r_run["property_aal"][:10]
+    chart = hbars(
+        [
+            {
+                "Property": p["loc_id"],
+                "AAL (KES m)": round(float(p["aal_kes"]) / 1e6, 2),
+                "Class": state.class_label(p["housing_class"]),
+                "Insured value": state.kes(p["tiv_kes"]),
+                "_label": state.kes(p["aal_kes"]),
+            }
+            for p in top
+        ],
+        "Property",
+        "AAL (KES m)",
+        "Average annual loss (KES m)",
+        text="_label",
+    )
+    if chart:
+        st.altair_chart(chart, width="stretch")
     st.caption(
-        f"Policy terms: deductible {t['deductible_pct_of_tiv']:.1%}, limit {t['limit_pct_of_tiv']:.0%} of value per property (or each row's own terms). Reinsurance not modelled."
+        f"{len(r_run['property_aal'])} properties carry an expected annual loss; the rest are never flagged by the hazard map. "
+        "Same integration as the portfolio AAL (no loss at 1-in-2 or more often, rarest loss held beyond 1-in-250)."
     )
 
 section("By construction")

@@ -24,6 +24,17 @@ def terms(asset, config):
     return deductible, limit
 
 
+def split(ground_up, asset, config):
+    """Ground-up loss = deductible borne by the owner + amount above the limit + gross loss (what the insurer pays).
+
+    Returns (deductible_part, above_limit_part, gross_loss); the three add up to the ground-up loss.
+    """
+    paid = insured_loss(ground_up, asset, config)
+    _, limit = terms(asset, config)
+    above = max(Decimal(0), ground_up - limit) if paid > 0 else Decimal(0)
+    return ground_up - paid - above, above, paid
+
+
 def insured_loss(gross, asset, config):
     """A row with deductible_pct_of_loss uses max(pct × loss, deductible_kes) — "5% of loss, minimum KES 5m"."""
     deductible, limit = terms(asset, config)

@@ -78,6 +78,17 @@ def guest_allowed():
     return os.getenv("FLOODCAT_ALLOW_GUEST", "0") == "1"
 
 
+def use_browser_host():
+    """Links to the sign-in pages and back follow the address this browser used (unless URLs are configured)."""
+    from floodcat.platform.identity import use_request_host
+
+    try:
+        host = st.context.headers.get("host")
+    except Exception:  # no request context (tests, scripts)
+        host = None
+    use_request_host(host if isinstance(host, str) else None)
+
+
 def auth_link(path):
     from floodcat.platform.identity import auth_url
 
@@ -568,6 +579,31 @@ def people():
                 )
             )
         }
+
+
+# Infrastructure-deficit index ----------------------------------------------
+def imd_available():
+    """True when the IMD grid has been built (scripts/build_imd_index.py); the switch is disabled otherwise."""
+    try:
+        runtime().imd
+        return True
+    except ModelError:
+        return False
+
+
+@st.cache_data(show_spinner="Checking the index against the named flood areas…")
+def imd_check(settings_json):
+    """Hotspot hit rate and map share flagged, terrain only vs with the index, for these settings."""
+    import json
+    from floodcat.hazard.imd import Grid, area_comparison, hotspot_comparison
+
+    rt = runtime()
+    settings = rt.config.replace(imd_index=json.loads(settings_json)).imd_index
+    array, transform, _, height, width = rt.hazard.grids["common"]
+    return {
+        "hotspots": hotspot_comparison(rt.hotspots, rt.hazard, rt.imd, settings),
+        "map_area": area_comparison(array, Grid(transform.c, transform.f, transform.a, width, height), rt.imd, settings),
+    }
 
 
 def audit_ai(action, target_type, target_id, details):

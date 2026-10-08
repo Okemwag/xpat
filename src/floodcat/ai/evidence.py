@@ -7,7 +7,7 @@ from ..core.errors import ModelError
 from ..core.geo import distance_m, in_coverage
 from ..core.numeric import bounded
 
-LOCATION_METHODS = ("nominatim", "ai_estimate", "manual")
+LOCATION_METHODS = ("nominatim", "ai_estimate", "manual", "gazetteer")
 
 
 @dataclass(frozen=True)

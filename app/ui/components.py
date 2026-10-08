@@ -120,7 +120,7 @@ def headline_tiles(report, run="baseline"):
     st.caption(
         f"{state.rp_label(hundred)}: {state.pct(curve[hundred]['loss_pct_of_tiv'])} of value · "
         f"{state.rp_label(rarest)}: {state.pct(curve[rarest]['loss_pct_of_tiv'])} of value · "
-        "Return periods are ASSUMPTIONS mapped to the five hazard tiers; losses are gross (no policy terms)."
+        "Return periods are ASSUMPTIONS mapped to the five hazard tiers; figures here are ground-up losses (before deductible and limit)."
     )
 
 

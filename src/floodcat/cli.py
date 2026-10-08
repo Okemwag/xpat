@@ -81,6 +81,24 @@ def main():
         "init-db", help="Create the platform tables (development / SQLite)"
     )
     commands.add_parser("generate-secret-key", help="Print a new FLOODCAT_SECRET_KEY")
+    demo = commands.add_parser(
+        "seed-demo",
+        help="Create the demo organisation with one account per role (never in production)",
+    )
+    demo.add_argument(
+        "--password",
+        help="Shared password for the demo accounts (default: FLOODCAT_DEMO_PASSWORD, else a new one is generated)",
+    )
+    demo.add_argument(
+        "--reset-password",
+        action="store_true",
+        help="Also set this password on demo accounts that already exist",
+    )
+    demo.add_argument(
+        "--no-sample-run",
+        action="store_true",
+        help="Do not save the synthetic starter portfolio as a shared analysis",
+    )
     args = parser.parse_args()
     try:
         if args.command in (
@@ -91,6 +109,7 @@ def main():
             "init-db",
             "generate-secret-key",
             "alerts",
+            "seed-demo",
         ):
             return platform_command(args)
         if args.command == "serve":
@@ -231,6 +250,31 @@ def platform_command(args):
             print(
                 f"Organisation {args.name} created ({org_id}). Invitation e-mailed to {args.owner_email}."
             )
+        elif args.command == "seed-demo":
+            import os
+            from .platform import demo
+
+            password = args.password or os.getenv("FLOODCAT_DEMO_PASSWORD") or demo.new_password()
+            result = demo.seed(conn, password, reset_password=args.reset_password)
+            run_id = None
+            if not args.no_sample_run:
+                from .services.runtime import Runtime
+
+                run_id = demo.seed_sample_run(conn, Runtime())
+            shown = bool(result["created"] or result["reset"])
+            print(f"{demo.DEMO_ORG}: {'created' if result['created_org'] else 'already existed'}"
+                  + (" · sample analysis saved" if run_id else ""))
+            print(f"Sign in at {identity.auth_url()}/auth/login"
+                  + (" (or one click per role with FLOODCAT_DEMO_LOGINS=1)" if not demo.logins_enabled() else ""))
+            print()
+            print(f"{'Role':<24} {'E-mail':<34} Status")
+            for role, _ in demo.ACCOUNTS:
+                status = ("new" if role in result["created"] else "password reset" if role in result["reset"]
+                          else "existing (password unchanged)")
+                print(f"{demo.ROLE_LABELS[role]:<24} {demo.email_for(role):<34} {status}")
+            print()
+            print(f"Password for new or reset accounts: {password}" if shown
+                  else "No password changed. Use --reset-password to set a new one.")
         elif args.command == "retention":
             print(json.dumps(data.run_retention(conn)))
         elif args.command == "alerts":

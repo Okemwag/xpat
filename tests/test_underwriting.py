@@ -210,9 +210,10 @@ def test_recommendation_on_the_real_pipeline(starter_rows):
     r = analyse(starter_rows[:50])
     rec = recommend(r, 50_000_000, 20)
     assert rec["outcome"] in ("accept", "share", "decline")
-    assert float(rec["figures"]["aal_100_kes"]) == float(
-        r["runs"]["baseline"]["aal"]["aal_kes"]
-    )
+    base = r["runs"]["baseline"]
+    assert rec["basis"] == "insured"  # insured loss is on by default; the reinsurer prices what the policies pay
+    assert float(rec["figures"]["aal_100_kes"]) == float(base["insured"]["aal"]["aal_kes"])
+    assert float(recommend(r, 50_000_000, 20, basis="gross")["figures"]["aal_100_kes"]) == float(base["aal"]["aal_kes"])
 
 
 def test_share_limits_show_which_rule_binds():

@@ -9,8 +9,9 @@ COPY configs ./configs
 COPY app ./app
 COPY .streamlit ./.streamlit
 COPY outputs/ingestion_eval.json ./outputs/ingestion_eval.json
+COPY outputs/imd_index.tif outputs/imd_index.json outputs/nairobi_places.json ./outputs/
 COPY logo.png ./logo.png
-RUN uv sync --locked --no-dev --extra geo --extra ui --extra ai && useradd --create-home appuser && mkdir -p /app/runtime/store && chown -R appuser /app/runtime
+RUN uv sync --locked --no-dev --extra geo --extra ui --extra ai --extra embed && useradd --create-home appuser && mkdir -p /app/runtime/store && chown -R appuser /app/runtime
 USER appuser
 EXPOSE 8000 8501
 # Default: the sign-in/API server. The interface service overrides the command (see compose.yaml).

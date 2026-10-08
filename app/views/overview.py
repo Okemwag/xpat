@@ -4,6 +4,7 @@ from floodcat.core.errors import ModelError
 from ui import state
 from ui.briefing_view import briefing_panel
 from ui.charts import donut, hbars, ylt_chart
+from ui.financial_view import financial_terms_panel
 from ui.components import (
     badges,
     explain,
@@ -61,6 +62,10 @@ kpis(
 )
 
 review = st.session_state.get("submission_review")
+if review and review.get("label") == st.session_state.get("run_label") and review.get("analysis"):
+    from ui.document_view import document_analysis_panel
+
+    document_analysis_panel(review["analysis"], report=report, key="overview_doc")
 if review and review.get("label") == st.session_state.get("run_label"):
     warn = [
         c
@@ -120,6 +125,8 @@ with right.container(border=True):
         "Larger slice = more of the loss.",
         [*state.exposure_labels(report), "ASSUMPTION"],
     )
+
+financial_terms_panel(report, "overview_terms")
 
 c1, c2 = st.columns(2, gap="large")
 with c1.container(border=True, height="stretch"):

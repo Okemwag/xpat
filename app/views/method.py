@@ -66,7 +66,7 @@ st.caption(
 st.header("2 · Vulnerability")
 badges("REAL", "ASSUMPTION")
 st.write(
-    f"Score → depth: **depth = score × {cfg.max_depth_m:g} m** (ASSUMPTION; pluvial flooding in Nairobi is typically 0.3–1.5 m). "
+    f"Score → depth: **depth = score × {cfg.max_depth_m:g} m** (ASSUMPTION: our judgement of street and household flood depths, not a cited figure). "
     f"Depth → damage: {cfg.vulnerability_source}."
 )
 st.altair_chart(vulnerability_chart(cfg), width="stretch")
@@ -105,9 +105,11 @@ st.write(
     f"{state.rp_label(max(cfg.return_periods.values()))}."
 )
 st.markdown(
-    "**Insured vs reinsured.** Results are **gross** (ground-up). With policy terms on, Xpat also gives the **insured** loss after each "
-    "property's deductible and limit — including facultative terms read from a submission. **Reinsured** loss (net of treaties, "
-    "layers or quota shares) is not modelled: the brief puts reinsurance structuring out of scope."
+    "**Ground-up, gross and net loss.** Every run gives the **ground-up loss** (physical damage before insurance); the **gross "
+    "loss** after each property's **deductible** and **limit** (including terms read from a submission); and the **net loss** "
+    "after an illustrative reinsurance programme — a **quota share** of every gross loss, then a **catastrophe excess of loss** on "
+    "the insurer's share — on the five scenarios and on every simulated year. The programme is an assumption to replace with the "
+    "real treaty on the Assumptions page; reinstatements, aggregate covers and second events in a year are not modelled."
 )
 
 st.header("5 · AI")

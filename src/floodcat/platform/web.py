@@ -89,6 +89,7 @@ def page(
         links=links,
         tabs=tabs,
         csrf=csrf,
+        app_home=identity.app_url(),
     )
     response = HTMLResponse(html, status_code=status)
     response.set_cookie(
@@ -168,18 +169,6 @@ SIGNIN_AS = {
 }
 
 
-def _role_tabs(kind_of_page, active, next_url="/"):
-    """User / Administrator switch shown above the sign-in and registration forms."""
-    if kind_of_page == "login":
-        href = lambda r: f"/auth/login?as={r}&next={quote(next_url)}"
-    else:
-        href = lambda r: "/auth/register?kind=" + ("org" if r == "admin" else "join")
-    return [
-        {"href": href(r), "label": label, "on": r == active}
-        for r, label in (("user", "User"), ("admin", "Administrator"))
-    ]
-
-
 @router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request, next: str = "/"):
     role = request.query_params.get("as", "user")
@@ -193,7 +182,6 @@ def login_form(request: Request, next: str = "/"):
         action=f"/auth/login?as={role}&next={quote(next)}",
         submit="Sign in",
         links=_login_links(next),
-        tabs=_role_tabs("login", role, next),
     )
 
 
@@ -211,7 +199,6 @@ def login(
     fail = lambda msg: page(
         request,
         SIGNIN_AS[role][0],
-        tabs=_role_tabs("login", role, next),
         fields=[{**LOGIN_FIELDS[0], "value": email}, LOGIN_FIELDS[1]],
         action=f"/auth/login?as={role}&next={quote(next)}",
         submit="Sign in",
@@ -273,11 +260,19 @@ REGISTER_COMMON = [
     {"name": "display_name", "label": "Your name", "autocomplete": "name"},
     {"name": "email", "label": "Work e-mail", "type": "email", "autocomplete": "email"},
 ]
-REGISTER_TITLE = {"org": "Create an organisation", "join": "Request an account"}
+REGISTER_TITLE = {"org": "Create your account", "join": "Join your organisation"}
 REGISTER_LEAD = {
-    "org": "For the first person from a company: you will administer the organisation, invite colleagues and set their roles.",
-    "join": "Your organisation already uses Xpat. An administrator approves your request and chooses what you can do.",
+    "org": "You go straight to your dashboard. You can invite colleagues later.",
+    "join": "Enter your organisation's code. An administrator approves your request and chooses what you can do.",
 }
+
+
+def _register_links(kind):
+    return [{"href": "/auth/login", "label": "Already have an account? Sign in"}] + (
+        [{"href": "/auth/register?kind=join", "label": "Have an organisation code? Join it instead"}]
+        if kind == "org"
+        else [{"href": "/auth/register", "label": "Create your own account instead"}]
+    )
 
 
 def _register_fields(kind, values=None):
@@ -286,9 +281,10 @@ def _register_fields(kind, values=None):
         [
             {
                 "name": "org_name",
-                "label": "Organisation name",
+                "label": "Company (optional)",
+                "required": False,
                 "autocomplete": "organization",
-                "hint": "A new organisation is created and you become its administrator (owner).",
+                "hint": "Leave blank to start with your own workspace; rename it any time.",
             }
         ]
         if kind == "org"
@@ -311,7 +307,7 @@ def _register_fields(kind, values=None):
     keep = ("org_name", "display_name", "email", "org_code")
     return [
         {**f, "value": values.get(f["name"], "")} if f["name"] in keep else f
-        for f in org + REGISTER_COMMON + code + _reset_fields(False)
+        for f in REGISTER_COMMON + org + code + [{**_reset_fields(False)[0], "label": "Password"}]
     ]
 
 
@@ -327,28 +323,7 @@ def register_form(request: Request, kind: str = ""):
             links=[{"href": "/auth/login", "label": "Sign in"}],
             status=404,
         )
-    if kind not in REGISTER_TITLE:
-        return page(
-            request,
-            "Create an account",
-            lead="Which describes you?",
-            choices=[
-                {
-                    "href": "/auth/register?kind=join",
-                    "label": "I'm a user",
-                    "text": "My organisation already uses Xpat. I'll request an account and an administrator will approve it.",
-                },
-                {
-                    "href": "/auth/register?kind=org",
-                    "label": "I'm an administrator",
-                    "text": "I'm setting Xpat up for my organisation. I'll create it and invite my colleagues.",
-                },
-            ],
-            links=[
-                {"href": "/auth/login", "label": "Already have an account? Sign in"}
-            ],
-        )
-    other = "join" if kind == "org" else "org"
+    kind = kind if kind in REGISTER_TITLE else "org"
     return page(
         request,
         REGISTER_TITLE[kind],
@@ -356,14 +331,7 @@ def register_form(request: Request, kind: str = ""):
         fields=_register_fields(kind),
         action=f"/auth/register?kind={kind}",
         submit="Create account",
-        tabs=_role_tabs("register", "admin" if kind == "org" else "user"),
-        links=[
-            {
-                "href": f"/auth/register?kind={other}",
-                "label": REGISTER_TITLE[other] + " instead",
-            },
-            {"href": "/auth/login", "label": "Sign in"},
-        ],
+        links=_register_links(kind),
     )
 
 
@@ -391,9 +359,8 @@ def register(
     raw = None
     try:
         check_csrf(request, csrf)
-        if kind not in REGISTER_TITLE:
-            raise ModelError("invalid_kind", "Choose how you will use Xpat")
-        if password != confirm:
+        kind = kind if kind in REGISTER_TITLE else "org"
+        if confirm and password != confirm:
             raise ModelError("mismatch", "The passwords do not match")
         with platform().tx() as conn:
             try:
@@ -446,17 +413,15 @@ def register(
             fields=_register_fields(kind, values),
             action=f"/auth/register?kind={kind}",
             submit="Create account",
-            tabs=_role_tabs("register", "admin" if kind == "org" else "user")
-            if kind in REGISTER_TITLE
-            else None,
+            links=_register_links(kind),
             error=str(exc),
             status=400,
         )
-    if raw:  # new organisation (or the same person clicking twice): its administrator goes straight in
+    if raw:  # new account (or the same person clicking twice): straight to the dashboard
         target = (
-            "/auth/mfa?next=" + quote(identity.app_url() + "/?as=admin")
+            "/auth/mfa?next=" + quote(identity.app_url())
             if result.get("mfa")
-            else identity.app_url() + "/?as=admin"
+            else identity.app_url()
         )
         return with_session(redirect(target), raw, hours)
     return page(
@@ -947,6 +912,24 @@ def ensure_demo(conn):
             )
         )
     return org_id
+
+
+@router.get("/demo/{role}")
+def demo_login(role: str, request: Request):
+    """One-click sign-in as a seeded demo account (FLOODCAT_DEMO_LOGINS=1, never in production)."""
+    from . import demo
+
+    if not demo.logins_enabled():
+        return page(request, "Demo sign-in unavailable", error="One-click demo sign-in is turned off.", status=404)
+    info = req_info(request)
+    try:
+        with platform().tx() as conn:
+            identity.rate_limit(conn, f"demo-ip:{info['ip']}", 60, identity.timedelta(hours=1),
+                                "Too many demo sign-ins from your network")
+            raw = demo.demo_session(conn, role, request=info)
+    except ModelError as exc:
+        return page(request, "Demo sign-in", error=str(exc), status=400)
+    return with_session(redirect(identity.app_url()), raw, 8)
 
 
 @router.get("/guest")

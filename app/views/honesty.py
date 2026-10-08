@@ -3,7 +3,7 @@ import streamlit as st
 from floodcat.hazard.hotspots import hotspot_check
 from floodcat.reporting.provenance import provenance
 from ui import state
-from ui.charts import hotspot_check_map, columns_chart
+from ui.charts import hotspot_check_map, columns_chart, imd_hotspot_bars
 from ui.components import LABELS, explain, kpis, page_header, section
 
 page_header(
@@ -96,6 +96,83 @@ with right.container(border=True, height="stretch"):
         "These areas flood mainly because of drainage, which a terrain-and-river proxy cannot represent. The AI evidence stage targets exactly this gap.",
         icon=":material/visibility_off:",
     )
+
+# Infrastructure-deficit index ---------------------------------------------------------------------------
+if state.imd_available():
+    import json
+
+    section(
+        "Does the infrastructure-deficit index find the missed areas?",
+        "Same 24 places, same rule. Thresholds were fixed before this check.",
+    )
+    res = state.imd_check(json.dumps(cfg.imd_index, sort_keys=True, default=list))
+    hot, area = res["hotspots"], res["map_area"]
+    kpis(
+        [
+            (
+                "Named areas found",
+                f"{hot['flagged_with_index']} of {hot['hotspot_count']}",
+                f"Terrain alone: {hot['flagged_terrain_only']}",
+                f"+{hot['flagged_with_index'] - hot['flagged_terrain_only']}",
+            ),
+            (
+                "Map area flagged",
+                f"{area['share_flagged_with_index']:.0%}",
+                f"Terrain alone: {area['share_flagged_terrain_only']:.0%} — flagging everything would find every area",
+            ),
+            (
+                "Misses found vs chance",
+                f"{len(hot['newly_flagged'])} vs {area['built_up_share_index_above_zero'] * (hot['hotspot_count'] - hot['flagged_terrain_only']):.1f}",
+                f"Chance = index on at random over built-up land ({area['built_up_share_index_above_zero']:.0%} of it). "
+                f"{len(hot['marginal_new'])} of the finds are marginal (index < {hot['marginal_index']})",
+            ),
+            ("Still missed", len(hot["still_missed"]), " · ".join(hot["still_missed"]) or "none"),
+        ]
+    )
+    st.caption(
+        "This is a check, not a model input: building density reaches losses through the drainage model (Hazard checks), "
+        "so it is not counted twice. Twelve places are weak evidence: read this as a promising signal, not proof."
+    )
+    left, right = st.columns([3, 2], gap="large")
+    with left.container(border=True, height="stretch"):
+        pts = [
+            {
+                **p,
+                "flagged_any_tier": p["flagged_with_index"],
+                "newly_flagged": p["flagged_with_index"] and not p["terrain_flagged"],
+                "common": p["adjusted_common"],
+            }
+            for p in hot["points"]
+        ]
+        st.pydeck_chart(
+            hotspot_check_map(pts),
+            height=380,
+            alt="Map of the 24 named hotspots with the infrastructure-deficit index",
+        )
+        explain(
+            "The same 24 areas. Blue ✓ = found by terrain; orange + = found only once the index is added; hollow ✗ = still missed.",
+            "Orange areas are dense, mostly roofed neighbourhoods. Low-density areas that flood from blocked drains or backed-up rivers stay hollow: the index cannot see drains.",
+            ["REAL", "PROXY", "ASSUMPTION"],
+            source="OpenStreetMap building footprints (ODbL) · thresholds in configs/default.json ·",
+        )
+    with right.container(border=True, height="stretch"):
+        st.markdown("**Index at each named area**")
+        rows = [
+            {
+                "Area": p["name"],
+                "Index": p["imd_index"],
+                "Found by": "terrain"
+                if p["terrain_flagged"]
+                else ("index only" if p["flagged_with_index"] else "neither"),
+            }
+            for p in hot["points"]
+        ]
+        chart = imd_hotspot_bars(rows)
+        if chart:
+            st.altair_chart(chart, width="stretch", alt="Infrastructure-deficit index at each named hotspot")
+        st.caption(
+            "Index = how dense and roofed the ground is within 250 m, scaled 0–1. It measures runoff pressure, not drain condition."
+        )
 
 # Provenance ---------------------------------------------------------------------------------------------
 left, right = st.columns(2, gap="large")
@@ -216,13 +293,16 @@ with st.container(border=True):
         "Hazard values are relative susceptibility, not measured depths or annual probabilities.",
         "The damage curve is a published regional curve adapted by assumption; it is not validated against Kenyan claims.",
         "The years attached to the five tiers are assumptions, so the loss curve compares assumed scenarios rather than forecasting annual loss.",
-        "Losses are gross unless policy terms are applied; then insured loss is shown after per-property deductibles and limits. "
-        "Reinsurance (treaties, layers, net-of-reinsurance loss) is not modelled — out of scope by the brief.",
+        "The gross loss uses a default 1% deductible per property, and the net loss an illustrative reinsurance programme (30% quota "
+        "share, then a catastrophe excess of loss) — assumptions, not a real policy wording or treaty. No reinstatements, aggregate "
+        "covers or second events in a year.",
         "A zero score means the proxy did not flag a place, not that it cannot flood.",
         "Hotspot coordinates are approximate neighbourhood centres, not flooded buildings.",
         "The named-hotspot check uses only known flood areas, so it cannot measure false alarms.",
         "Underwriting recommendations apply your organisation’s rules to these indicative results; they are not a price, and a person decides.",
         "AI outputs are reviewed by people but can still be wrong; every AI-derived value is labelled.",
+        "The infrastructure-deficit index sees dense, roofed ground in OpenStreetMap, not drains or their upkeep; roads and paved yards "
+        "are not counted, and an unmapped neighbourhood reads as empty.",
     ]
     a, b = st.columns(2, gap="large")
     half = (len(items) + 1) // 2

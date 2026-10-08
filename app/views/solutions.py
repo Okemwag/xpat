@@ -43,7 +43,7 @@ AUDIENCES = [
         [
             "Upload any portfolio CSV, or describe it in words",
             "Validation report before anything is modelled",
-            "Gross and insured loss after per-property deductibles and limits",
+            "Ground-up, gross and net loss: deductibles, limits, quota share and catastrophe excess of loss",
             "Exportable summary, JSON report and property-level CSVs",
         ],
         "Portfolio · Reports & history",

@@ -72,16 +72,16 @@ def provenance(config, origin=None):
             "component": "loss",
             "label": "ASSUMPTION",
             "status": "calculated",
-            "note": "TIV × damage ratio (gross)",
+            "note": "TIV × damage ratio (ground-up loss)",
         },
         {
             "component": "policy_terms",
             "label": "ASSUMPTION",
             "status": "enabled" if config.policy_terms["enabled"] else "off",
             "note": (
-                f"Per-risk deductible {config.policy_terms['deductible_pct_of_tiv']:.1%} and limit {config.policy_terms['limit_pct_of_tiv']:.0%} of TIV; no layers or reinsurance"
+                f"Per-property deductible {config.policy_terms['deductible_pct_of_tiv']:.1%} and limit {config.policy_terms['limit_pct_of_tiv']:.0%} of TIV turn the ground-up loss into the gross loss"
                 if config.policy_terms["enabled"]
-                else "Off: losses are gross"
+                else "Off: losses are ground-up"
             ),
         },
         {

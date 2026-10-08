@@ -4,7 +4,9 @@ Implements AUTH-07…17, FLOW-01…10, SEC-06 of docs/ORGANISATION_CHECKLIST.md.
 event in the same transaction.
 """
 
+import contextvars
 import os
+import re
 from datetime import timedelta
 from sqlalchemy import and_, func, or_, select, update
 from ..core.errors import ModelError
@@ -58,14 +60,37 @@ REAUTH_WINDOW = timedelta(minutes=10)
 TOUCH_INTERVAL = timedelta(seconds=60)
 
 
+# The host name the browser used for the current request (set per request by the API middleware and per rerun by the
+# interface). With no FLOODCAT_APP_URL / FLOODCAT_AUTH_URL configured, links follow it, so the app works whether it is
+# opened as 127.0.0.1, localhost or the machine's network address. Configured URLs always win (production).
+_REQUEST_HOST = contextvars.ContextVar("request_host", default=None)
+_HOST = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$")
+
+
+def use_request_host(host):
+    """Remember the browser's host name (without port) for links built during this request; invalid values ignored."""
+    host = str(host or "").strip().lower()
+    host = host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+    _REQUEST_HOST.set(host if _HOST.match(host) else None)
+
+
+def _base(env, default_port):
+    url = os.getenv(env, "").strip()
+    if url:
+        return url.rstrip("/")
+    # 127.0.0.1, not "localhost", as the fallback: on many Windows machines localhost resolves to IPv6 (::1) first,
+    # while the local servers listen on IPv4, so browsers report "site cannot be reached".
+    host = _REQUEST_HOST.get() or "127.0.0.1"
+    host = "127.0.0.1" if host == "localhost" else host
+    return f"http://{host}:{default_port}"
+
+
 def app_url():
-    # 127.0.0.1, not "localhost": on many Windows machines localhost resolves to IPv6 (::1) first, while the local
-    # servers listen on IPv4, so browsers report "site cannot be reached".
-    return os.getenv("FLOODCAT_APP_URL", "http://127.0.0.1:8501").rstrip("/")
+    return _base("FLOODCAT_APP_URL", 8501)
 
 
 def auth_url():
-    return os.getenv("FLOODCAT_AUTH_URL", "http://127.0.0.1:8000").rstrip("/")
+    return _base("FLOODCAT_AUTH_URL", 8000)
 
 
 def _email(value):
@@ -95,7 +120,18 @@ def settings_for(conn, org_id):
 
 
 # Rate limiting (AUTH-09, SEC-05) --------------------------------------------------------------------------
+# Sign-in throttles (sign-up, failed logins, two-step codes, resets, guest/demo sign-in) apply in production only, or
+# when FLOODCAT_AUTH_THROTTLE=1. Quotas (ai-*, upload-*) and the API limit (api-ip) always apply.
+AUTH_THROTTLES = ("signup", "signup-ip", "login", "login-ip", "mfa", "reset", "reset-ip", "reauth", "guest-ip", "demo-ip")
+
+
+def auth_throttling():
+    return os.getenv("FLOODCAT_ENV") == "production" or os.getenv("FLOODCAT_AUTH_THROTTLE") == "1"
+
+
 def rate_count(conn, key, window, failures_only=True):
+    if key.split(":", 1)[0] in AUTH_THROTTLES and not auth_throttling():
+        return 0
     q = (
         select(func.count())
         .select_from(login_attempts)

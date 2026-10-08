@@ -22,6 +22,7 @@ st.set_page_config(
 )
 st.logo(str(ROOT / "logo.png"), size="large")
 
+state.use_browser_host()
 principal, reason = state.resolve()
 P = lambda path, title, icon, **kw: st.Page(path, title=title, icon=icon, **kw)
 

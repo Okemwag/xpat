@@ -115,6 +115,8 @@ make install           # uv sync with dev, geo, ui and ai extras
 make db                # optional: local PostgreSQL (set FLOODCAT_DATABASE_URL in .env); otherwise SQLite is used
 make app               # migrate, then sign-in/API server on :8000 and the interface on :8501
 make report            # outputs/xpat_submission_report.pdf (note with diagrams) and the vulnerability explainer
+make tunnel            # public https://*.trycloudflare.com address via Cloudflare quick tunnel (then restart make app);
+                       # make tunnel-stop to end it. Needs cloudflared; Caddy single binary in runtime/bin
 make seed              # demo organisation "Kenya Re (demo)": one account per role, shared password printed
                        # (FLOODCAT_DEMO_LOGINS=1 adds one-click sign-in per role; both refused in production)
 make test              # full test suite

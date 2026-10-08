@@ -646,3 +646,37 @@ def test_provider_selection(monkeypatch, env, expected):
     if expected is None:
         with pytest.raises(ModelError):
             llm.make_client()
+
+
+def test_quote_numbers_reads_shorthand_and_words():
+    from decimal import Decimal
+    from floodcat.ai.ingestion import quote_numbers
+
+    assert Decimal(3500000) in quote_numbers("4 stone houses (3.5m each)")
+    assert Decimal(150000) in quote_numbers("30 mabati structures (150k each)")
+    assert {Decimal(12), Decimal(200000)} <= quote_numbers("A dozen houses, roughly two hundred thousand each")
+    assert Decimal(10) in quote_numbers("Kumi nyumba za mabati")
+    assert Decimal(4) not in quote_numbers("A three-storey block")  # "a" is not a number
+
+
+def test_counts_and_values_that_contradict_their_quote_are_flagged():
+    """A small local model misread 30 as 15 and 3.5m as 350,000 with correct quotes; fixed rules must catch both."""
+    from floodcat.ai.ingestion import build_rows
+
+    class Places:
+        def lookup(self, name):
+            return {"lat": -1.29, "lon": 36.82, "method": "nominatim"}
+
+    text = "30 mabati structures in Kiambiu (150k each); 4 stone houses in Donholm (3.5m each); 1 office, 600 square metres at KES 70,000 per square metre"
+    groups = [
+        {"location_name": "Kiambiu", "housing_class": "informal_iron_sheet", "count": 15, "tiv_kes_each": 150000,
+         "source_quote": "30 mabati structures in Kiambiu (150k each)"},
+        {"location_name": "Donholm", "housing_class": "permanent_masonry", "count": 4, "tiv_kes_each": 350000,
+         "source_quote": "4 stone houses in Donholm (3.5m each)"},
+        {"location_name": "Upper Hill", "housing_class": "concrete_rcc", "count": 1, "tiv_kes_each": 42000000,
+         "source_quote": "1 office, 600 square metres at KES 70,000 per square metre"},
+    ]
+    out = build_rows(text, {"groups": groups}, Places(), {}, "fake", "T")["groups"]
+    assert any("check the count" in f for f in out[0]["flags"])
+    assert any("check the value" in f for f in out[1]["flags"])
+    assert not [f for f in out[2]["flags"] if "check the" in f]  # 600 × 70,000 = 42m is consistent

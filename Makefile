@@ -1,6 +1,6 @@
-.PHONY: install test test-postgres demo serve outputs app migrate db eval-ingestion imd-index eval-imd places eval-drainage retention alerts seed report
+.PHONY: install test test-postgres demo serve outputs app migrate db eval-ingestion imd-index eval-imd places eval-drainage retention alerts seed report tunnel tunnel-stop
 RUN = uv run --extra ui --extra ai --extra geo --extra embed
-ENV = set -a; [ -f .env ] && . ./.env; set +a;
+ENV = set -a; [ -f .env ] && . ./.env; [ -f runtime/tunnel.env ] && . runtime/tunnel.env; set +a;
 
 install:
 	uv sync --extra dev --extra geo --extra ui --extra ai --extra embed
@@ -40,6 +40,11 @@ report:
 	@$(ENV) uv run --extra geo --extra ai --extra embed python scripts/demo_ai_effect.py $(if $(LIVE),,--skip-llm)
 	uv run --extra geo --with reportlab --with matplotlib --with pillow python scripts/build_vulnerability_explainer.py
 	uv run --extra geo --with reportlab --with matplotlib --with pillow python scripts/build_submission_report.py
+# Public demo address through a Cloudflare quick tunnel (needs cloudflared; Caddy in runtime/bin). Restart make app after.
+tunnel:
+	@scripts/tunnel.sh
+tunnel-stop:
+	@scripts/tunnel.sh stop
 seed: migrate
 	@$(ENV) uv run --extra geo flood-cat seed-demo $(ARGS)
 retention:

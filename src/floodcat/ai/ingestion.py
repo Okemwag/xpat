@@ -92,6 +92,52 @@ def class_defaults(assets):
     return result
 
 
+_SCALE = {"k": 10**3, "thousand": 10**3, "m": 10**6, "mn": 10**6, "million": 10**6, "millions": 10**6,
+          "b": 10**9, "bn": 10**9, "billion": 10**9}
+_WORDS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+                                     "fifteen sixteen seventeen eighteen nineteen".split())}
+_WORDS.update({w: 10 * (i + 2) for i, w in enumerate("twenty thirty forty fifty sixty seventy eighty ninety".split())})
+_WORDS.update({"dozen": 12, "moja": 1, "mbili": 2, "tatu": 3, "nne": 4, "tano": 5, "sita": 6, "saba": 7,
+               "nane": 8, "tisa": 9, "kumi": 10})
+
+
+def quote_numbers(quote):
+    """Every number a quote states, with shorthand and words resolved: '3.5m' → 3,500,000, '150k' → 150,000,
+    'a dozen' → 12, 'two hundred thousand' → 200,000, 'kumi' → 10."""
+    text = str(quote or "").lower().replace("kes", " ").replace("ksh", " ")
+    found = set()
+    for m in re.finditer(r"(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mn|m|millions?|bn|b|billion)?\b", text):
+        value = Decimal(m.group(1).replace(",", ""))
+        found.add(value)
+        if m.group(2):
+            found.add(value * _SCALE[m.group(2)])
+    words = re.findall(r"[a-z]+", text)
+    total = current = None
+    for w in words + ["."]:
+        if w in _WORDS:
+            current = (current or 0) + _WORDS[w] if w != "dozen" else (current or 1) * 12
+        elif w == "hundred" and current is not None:
+            current *= 100
+        elif w in ("thousand", "million", "billion") and current is not None:
+            total = (total or 0) + current * _SCALE[w]
+            current = None
+        elif w == "and":
+            continue
+        else:
+            if current is not None or total is not None:
+                found.add(Decimal((total or 0) + (current or 0)))
+            total = current = None
+    return found
+
+
+def _matches(value, numbers, count=1, factors=()):
+    """True when `value` (or value × count) is within 1% of a stated amount, or of the product of two stated numbers
+    (e.g. 600 m² × KES 70,000 per m²)."""
+    v = Decimal(str(value))
+    candidates = set(numbers) | {a * b for a in factors for b in factors}
+    return any(c and abs(c - target) <= abs(c) * Decimal("0.01") for c in candidates for target in (v, v * count))
+
+
 def _squash(text):
     return " ".join(str(text).lower().split())
 
@@ -137,6 +183,9 @@ def build_rows(text, response, gazetteer, defaults, model_name, batch_id):
                 "ai_invalid",
                 f"Group {g_no} asks for {count} buildings; limit is {MAX_PER_GROUP}",
             )
+        stated = quote_numbers(quote) if quote_ok else set()
+        if quote_ok and count > 1 and Decimal(count) not in stated:  # one building is often described without a number
+            flags.append(f"{count} building(s) is not a number the quote states — check the count")
         total += count
         if total > MAX_ROWS:
             raise ModelError(
@@ -178,6 +227,9 @@ def build_rows(text, response, gazetteer, defaults, model_name, batch_id):
             origin["tiv_kes"] = "AI (group total ÷ count)"
         elif each is not None:
             origin["tiv_kes"] = "AI"
+        money = {n for n in stated if n >= 1000}
+        if each is not None and money and origin.get("tiv_kes", "").startswith("AI") and not _matches(each, money, count, stated):
+            flags.append(f"value KES {Decimal(str(each)):,.0f} each is not an amount the quote states — check the value")
         fill = defaults.get(housing_class, {})
         if area is not None:
             origin["floor_area_m2"] = "AI"

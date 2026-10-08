@@ -173,6 +173,8 @@ The proxy flags **12 of 24** named hotspots. The 12 misses (Kibera, Westlands,
 Lavington, …) flood because of drainage, which the proxy cannot see. Any
 hazard improvement must report its own hit rate against the same 24 places in
 the same plain terms.
+- The **drainage hint** (`hazard/hotspots.drainage_hints`, `drainage_hint` in config) flags properties near a named area that the
+  map scores low. It is a warning shown to people only: never let proximity to the hotspot list change a score or a loss.
 
 ### 3.6b Infrastructure & Maintenance Deficit index (`hazard/imd.py`)
 An **evaluation layer**, not a loss input: built (roofed) fraction and building density within `window_radius_m`, from

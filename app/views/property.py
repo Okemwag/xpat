@@ -73,6 +73,13 @@ choice = st.selectbox(
     ),
 )
 p = by_id[rarest][choice]
+_hint = next((h for h in (report.get("drainage_hints") or {}).get("properties", []) if h["loc_id"] == choice), None)
+if _hint:
+    from floodcat.hazard.hotspots import hint_text
+
+    st.warning(hint_text(_hint, cfg), icon=":material/water_drop:")
+    if st.button("Add drainage evidence", icon=":material/auto_awesome:", key="hint_evidence"):
+        st.switch_page("views/evidence.py")
 rank = [
     r["loc_id"]
     for r in sorted(by_id[rarest].values(), key=lambda r: -float(r["loss_kes"]))

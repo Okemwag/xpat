@@ -354,6 +354,19 @@ def build_document(
         add(Table("Every property's expected annual loss", aal_cols, aal_rows, labels=("ASSUMPTION",),
                   sheet="Property AAL", data_only=True))
 
+    # Near a named flood area but scored low (warning only)
+    hints = (report.get("drainage_hints") or {}).get("properties") or []
+    if hints:
+        add(("heading", "Properties to check for drainage flooding", 1, ("PROXY", "REAL")))
+        add(Table(
+            f"{len(hints)} propert{'y' if len(hints) == 1 else 'ies'} near a named flood area that the map scores low",
+            [("Property", "text"), ("Nearest named flood area", "text"), ("Distance (km)", "num"), ("Rarest-tier score", "num")],
+            [[h["loc_id"], h["nearest_hotspot"], round(h["distance_m"] / 1000, 2), round(h["rarest_score"], 3)] for h in hints],
+            note=report["drainage_hints"]["note"] + " The terrain map cannot see drainage flooding; approved drainage evidence "
+            "is the way to raise the hazard there.",
+            labels=("PROXY",), sheet="Drainage hints",
+        ))
+
     # What drives it
     add(("heading", "What drives the loss", 1, ("ASSUMPTION", *origin)))
     add(

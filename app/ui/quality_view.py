@@ -36,7 +36,7 @@ def _quality(rows, key):
             from floodcat.ai.quality import explain
             if state.ai_quota():
                 try:
-                    out = explain(groups, state.runtime().llm())
+                    out = explain(groups, state.llm(client_data=True))
                     state.audit_ai('ai.quality_explained', 'upload', _digest(rows), {'model': out['model'], 'groups': len(groups)})
                     st.session_state[f'{key}_qexplain'] = (_digest(groups), out); st.rerun()
                 except ModelError as exc:

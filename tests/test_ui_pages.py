@@ -132,7 +132,7 @@ def test_briefing_from_overview(store, monkeypatch):
             return {'headline': 'Loss of KES 1.70 bn at 1-in-100', 'sections': [{'heading': 'What the results say', 'paragraphs': ['KES 1.70 bn; also 4,321.']}],
                     'checks': ['Check the depth assumption.']}
     monkeypatch.setattr(state, 'ai_enabled', lambda kind='extraction': True)
-    monkeypatch.setattr(state.runtime(), 'llm', lambda: FakeLLM())
+    monkeypatch.setattr(state, 'llm', lambda client_data=False: FakeLLM())
     at.run()
     next(b for b in at.button if b.label == 'Draft briefing').click(); at.run()
     assert not at.exception
@@ -160,7 +160,7 @@ def test_underwriting_decision_flow(store, monkeypatch):
             return {'summary': 'Price is adequate; capacity is the limit.', 'drivers': ['The 1-in-250 loss.'], 'what_would_change_it': ['A smaller share.'],
                     'trust': 'Proxy hazard.', 'questions_for_broker': ['Confirm the locations.']}
     monkeypatch.setattr(state, 'ai_enabled', lambda kind='extraction': True)
-    monkeypatch.setattr(state.runtime(), 'llm', lambda: FakeLLM())
+    monkeypatch.setattr(state, 'llm', lambda client_data=False: FakeLLM())
     at.run()
     next(b for b in at.button if b.label == 'Explain this recommendation').click(); at.run()
     assert not at.exception and any('capacity is the limit' in m.value for m in at.markdown)
@@ -183,7 +183,7 @@ def test_ask_results_and_drainage_page(store, monkeypatch):
         def generate_json(self, system, prompt, schema):
             return {'answerable': True, 'answer': 'Average annual loss is in the facts; 9,876 is not.', 'fact_labels': ['Average annual loss'], 'chart': 'loss_curve'}
     monkeypatch.setattr(state, 'ai_enabled', lambda kind='extraction': True)
-    monkeypatch.setattr(state.runtime(), 'llm', lambda: FakeLLM())
+    monkeypatch.setattr(state, 'llm', lambda client_data=False: FakeLLM())
     at.switch_page('views/overview.py'); at.run()
     next(t for t in at.text_input if t.label == 'Your question').input('What is the average annual loss?')
     next(b for b in at.button if b.label == 'Ask').click(); at.run()

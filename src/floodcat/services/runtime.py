@@ -28,13 +28,16 @@ class Runtime:
         assets, _ = validate_rows(read_csv(self.sample_path))
         return class_defaults(assets)
 
-    def llm(self):
+    def llm(self, provider=None):
+        """A model client: the given provider (gemini | ollama), else the server default."""
         from ..ai.llm import make_client
-        return make_client()
+        return make_client(provider)
 
-    def gazetteer(self, with_ai_fallback=True):
+    def gazetteer(self, with_ai_fallback=True, llm=None):
+        """Place lookup. The AI fallback uses ``llm`` when given, so it follows the same model choice as the request."""
         from ..ai.geocode import Gazetteer
-        llm = None
+        if llm is not None:
+            return Gazetteer(self.store_dir/'geocode_cache.json', llm=llm, online=os.getenv('FLOODCAT_OFFLINE') != '1')
         if with_ai_fallback:
             try: llm = self.llm()
             except ModelError: llm = None

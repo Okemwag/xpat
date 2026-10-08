@@ -84,7 +84,7 @@ with extract_tab:
         if not state.ai_quota(): st.stop()
         try:
             with st.spinner(f'{state.ai_name()} is reading the report; locating places…'):
-                st.session_state['extraction'] = extract(text, source, rt.llm(), rt.gazetteer()) | {'independent': independent}
+                st.session_state['extraction'] = extract(text, source, (client := state.llm()), rt.gazetteer(llm=client)) | {'independent': independent}
         except ModelError as exc: st.error(str(exc), icon=':material/error:')
     ex = st.session_state.get('extraction')
     if ex:
@@ -127,7 +127,7 @@ with harvest_tab:
         from floodcat.ai.harvest import harvest
         try:
             with st.spinner('Searching the news and reading new articles…'):
-                result = harvest(cfg, rt.llm(), rt.gazetteer(), [h.name for h in rt.hotspots], known_sources=[e.source for e in _all],
+                result = harvest(cfg, (client := state.llm()), rt.gazetteer(llm=client), [h.name for h in rt.hotspots], known_sources=[e.source for e in _all],
                                  allow_call=state.ai_quota, queries=[q for q in queries.splitlines() if q.strip()][:6])
             state.audit_ai('ai.evidence_harvested', 'evidence', 'harvest', {'articles': len(result['articles']), 'candidates': len(result['candidates']),
                                                                              'stopped': result['stopped']})

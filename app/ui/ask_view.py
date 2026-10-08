@@ -23,7 +23,7 @@ def ask_panel(report, key='ask'):
         if state.ai_quota():
             try:
                 with st.spinner('Answering from the model results…'):
-                    answer = ask(question, state.briefing_facts(report) + method_facts(state.config()), state.runtime().llm())
+                    answer = ask(question, state.briefing_facts(report) + method_facts(state.config()), state.llm(client_data=state.run_has_client_data(report)))
                 state.audit_ai('ai.question_answered', 'run', report['analysis_id'],
                                {'model': answer['model'], 'prompt_version': answer['prompt_version'], 'answerable': answer['answerable'],
                                 'facts_used': len(answer['facts_used']), 'unsupported_figures': answer['unsupported_figures']})

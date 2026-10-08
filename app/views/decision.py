@@ -111,7 +111,7 @@ else:
                 if state.ai_quota():
                     try:
                         with st.spinner('Writing the explanation from the rule results…'):
-                            rationale = ai_explain(rec, state.runtime().llm(), report)
+                            rationale = ai_explain(rec, state.llm(client_data=state.run_has_client_data(report)), report)
                         with state.platform().tx() as conn:
                             audit.record(conn, 'ai.decision_explained', actor=p, target_type='run', target_id=report['analysis_id'],
                                          details={'model': rationale['model'], 'prompt_version': rationale['prompt_version'], 'outcome': rec['outcome'],

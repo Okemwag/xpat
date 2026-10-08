@@ -40,8 +40,18 @@ unchanged baseline, and as the hotspot hit rate before and after, under the same
 **Limits:** OSM maps drains unevenly. In informal areas a drain gap can mean nobody mapped the drain. A higher hit rate
 does not show accuracy: the uplift also raises places that do not flood.
 
-**Build the layers** (network, about 10 minutes): `uv run python scripts/build_drainage_layers.py`. This writes
-`runtime/drainage/osm_layers.json` (gitignored). Check the result with `uv run --extra geo flood-cat drainage-check`.
+**Build the layers.** Two ways; both write `runtime/drainage/osm_layers.json` (gitignored):
+
+- **Faster (recommended):** `uv run --with osmium python scripts/build_drainage_layers.py --geofabrik`. This downloads the
+  Geofabrik Kenya extract once (about 350 MB, resumable) and cuts the Nairobi box out locally; it takes minutes.
+- **Overpass API:** `uv run python scripts/build_drainage_layers.py`. The public servers are shared and often busy, so this
+  can take an hour or more. It retries, switches servers, splits dense tiles and resumes from saved tiles.
+
+Check the result with `uv run --extra geo flood-cat drainage-check`. On the October 2026 extract, OSM held 282 drain lines,
+198 culverts and 612,210 buildings in the box. The prior weights flag 21 of 24 named hotspots, against 12 for the map
+alone, and raise hazard at about 18% of random points across the city. Building density does most of the work, and drains
+are too sparsely mapped to separate places. Treat this as a prior to be replaced by learned weights, not as a validated
+improvement.
 
 ## 2. Evidence harvester
 
@@ -128,8 +138,24 @@ money, properties or client data** are used. The AI writes English and Kiswahili
 each language are checked separately. A note stays a **draft** until a named Kiswahili reader confirms it, and a note with
 unchecked figures cannot be confirmed.
 
+## Choosing the AI model (Gemini or a local Llama model)
+
+`ai/llm.choose` picks the model for each request:
+
+1. **The organisation's limits.** The allowed models (`ai_providers`) and the default are set on
+   **Organisation settings → AI models**. This is a security setting, so changing it needs a recent password check.
+2. **Client data stays on the server, if required.** When `ai_local_for_client_data` is on, requests that carry client data
+   use only the local model: documents, schedules, descriptions, schedule explanations, and the briefing, Ask and memos on
+   runs with real exposure. If no local model is configured, the request is refused; it never falls back to the cloud.
+3. **The member's preference.** Each member picks a model on **Profile & security → AI model**
+   (`orgs.set_ai_preference`, audited). Without a preference, the organisation default applies, then the server default
+   (`FLOODCAT_AI_PROVIDER`), then the first allowed model.
+
+Public material (news articles, published flood reports, public notes) follows the member's choice. Place-name lookups use
+the same model as the request they belong to. Every AI audit event records which provider answered.
+
 ## Tests
 
 `tests/test_ai_enhancements.py` covers all eight with a fake LLM, a fake fetcher, in-memory layers and small temporary
-GeoTIFFs. No test touches the network. `tests/test_ui_pages.py` renders the new pages for every role and runs Ask and the
+GeoTIFFs. No test touches the network. `tests/test_ai_model_choice.py` covers the model-choice rules. `tests/test_ui_pages.py` renders the new pages for every role and runs Ask and the
 drainage re-run through the interface.

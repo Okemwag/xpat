@@ -15,7 +15,10 @@ from .rbac import ASSIGNABLE, PERMISSIONS, Principal, require, validate_roles
 DEFAULT_SETTINGS = {'mfa_policy': 'admins', 'session_idle_minutes': 30, 'session_max_hours': 12, 'allowed_domains': [],
                     'ai_mode': 'full', 'retention_runs_days': 730, 'retention_audit_days': 2555, 'default_assumption_set_id': None,
                     'authority_limit_loss_kes': None, 'authority_limit_tiv_kes': None, 'default_visibility': 'team',
-                    'enforce_separation_of_duties': True}
+                    'enforce_separation_of_duties': True,
+                    # AI model choice (ai/llm.choose): allowed providers, organisation default, client data kept on this server,
+                    # and each member's own preference {user_id: provider} (set only through orgs.set_ai_preference).
+                    'ai_providers': ['gemini', 'ollama'], 'ai_default_provider': None, 'ai_local_for_client_data': False, 'ai_preferences': {}}
 ADMIN_ROLES = {'owner', 'admin'}
 INVITE_TTL = timedelta(hours=72)
 RESET_TTL = timedelta(minutes=30)

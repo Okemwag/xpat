@@ -186,9 +186,9 @@ with describe:
         from floodcat.ai.ingestion import ingest
         if not state.ai_quota(): st.stop()
         try:
-            with st.spinner(f'{state.ai_name()} is reading the description; locating places…'):
+            with st.spinner(f'{state.ai_name(client_data=True)} is reading the description; locating places…'):
                 rt = state.runtime()
-                draft = ingest(text, rt.llm(), rt.gazetteer(), rt.class_defaults, batch_id='AI'+secrets.token_hex(2).upper())
+                draft = ingest(text, (client := state.llm(client_data=True)), rt.gazetteer(llm=client), rt.class_defaults, batch_id='AI'+secrets.token_hex(2).upper())
             st.session_state['ai_draft'] = draft; st.session_state.pop('review_error', None)
         except ModelError as exc:
             st.error(str(exc), icon=':material/error:')

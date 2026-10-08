@@ -89,7 +89,7 @@ def doc_page(store_dir, doc_bytes, name):
             return {**result, 'filename': document['filename'], 'kind': document['kind'], 'pages': document['pages'], 'chars': document['chars'],
                     'name_mismatch': document['name_mismatch']}
         submission.extract_submission = fake_extract
-        state.runtime().llm = lambda: None
+        state.llm = lambda client_data=False: None
         state.runtime().gazetteer = lambda *a, **k: None
         exec(compile(open(f'{app_dir}/views/portfolio.py').read(), 'portfolio.py', 'exec'), {'__name__': '__main__'})
     from ui_helpers import make_session

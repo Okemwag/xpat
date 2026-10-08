@@ -18,7 +18,7 @@ def memo_panel(rec, report, key):
         if state.ai_quota():
             try:
                 with st.spinner('Drafting from the recommendation and model facts…'):
-                    memo = draft(rec, state.runtime().llm(), kind, report, note)
+                    memo = draft(rec, state.llm(client_data=state.run_has_client_data(report)), kind, report, note)
                 state.audit_ai('ai.memo_drafted', 'run', report['analysis_id'],
                                {'model': memo['model'], 'prompt_version': memo['prompt_version'], 'kind': kind, 'outcome': rec['outcome'],
                                 'unsupported_figures': memo['unsupported_figures']})

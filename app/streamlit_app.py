@@ -76,6 +76,7 @@ with st.sidebar:
         pass
     if state.result(): st.caption(f"Current run: {st.session_state.get('run_label', '—')}")
     st.caption('AI: ' + ({'off': 'off for your organisation', 'extraction': 'document and description reading', 'full': 'all features'}[state.ai_mode()]
-                         + f' · {state.ai_name()}' if state.ai_available() else 'not configured on this server'))
+                         + f' · {state.ai_name()}' if state.ai_available() else 'not configured on this server')
+               + (' · client data stays on this server' if state.org().get('settings', {}).get('ai_local_for_client_data') else ''))
     st.caption('Results are indicative: proxy hazard, assumed return periods and uncalibrated damage curves — not a price.')
 nav.run()

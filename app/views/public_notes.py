@@ -38,7 +38,7 @@ if place:
         if state.ai_quota():
             try:
                 with st.spinner('Writing in English and Kiswahili from the hazard facts…'):
-                    note = draft(place, h.lat, h.lon, rt.hazard, cfg, rt.llm(), check[place])
+                    note = draft(place, h.lat, h.lon, rt.hazard, cfg, state.llm(), check[place])
                 state.audit_ai('ai.public_note_drafted', 'area', place, {'model': note['model'], 'prompt_version': note['prompt_version'],
                                                                         'unsupported_figures': note['unsupported_figures']})
                 st.session_state['public_note'] = note

@@ -138,9 +138,10 @@ def test_excel_never_writes_uploaded_text_as_a_formula():
 def test_appendix_tables_are_excel_only(analysis):
     doc = build_document(analysis, label="Test")
     appendix = [b for b in doc.blocks if isinstance(b, Table) and b.data_only]
-    assert len(appendix) == len(TIERS) and all(
-        t.sheet.startswith("Props") for t in appendix
-    )
+    # One sheet of property losses per tier, plus every property's expected annual loss.
+    assert len(appendix) == len(TIERS) + 1
+    assert sum(t.sheet.startswith("Props") for t in appendix) == len(TIERS)
+    assert sum(t.sheet == "Property AAL" for t in appendix) == 1
 
 
 def test_ai_run_adds_comparison(starter_rows):
@@ -164,6 +165,6 @@ def test_ai_run_adds_comparison(starter_rows):
     report = analyse(starter_rows[:40], evidence=[ev], ai_adjustment=True)
     doc = build_document(report, label="AI")
     assert any(isinstance(b, Table) and b.sheet == "AI evidence" for b in doc.blocks)
-    assert sum(isinstance(b, Table) and b.data_only for b in doc.blocks) == 2 * len(
+    assert sum(isinstance(b, Table) and b.data_only for b in doc.blocks) == 1 + 2 * len(
         TIERS
     )

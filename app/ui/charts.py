@@ -346,6 +346,24 @@ def portfolio_map(rows, hotspots=(), evidence=(), color_by="loss"):
 BAND_GREY = "#9ca3af"
 
 
+BASIS_LABEL = {
+    "gross": "Gross (ground-up)",
+    "insured": "Insured (after policy terms)",
+    "ceded": "Reinsurer's share",
+    "net": "Insurer keeps (net)",
+}
+
+
+def scenario_source(report, run, basis):
+    """The block holding the five scenario points for a loss basis: gross, insured, ceded or net."""
+    r = report["runs"][run]
+    if basis == "insured":
+        return r["insured"]
+    if basis in ("ceded", "net"):
+        return r["reinsurance"][basis]
+    return r
+
+
 def ylt_chart(curves, report, compare_ai=False, basis="gross"):
     """EP curve from the simulated year-loss table: log return-period axis to 10,000 years, grey bootstrap band,
     and the five scenario points the simulation is built from."""
@@ -354,7 +372,7 @@ def ylt_chart(curves, report, compare_ai=False, basis="gross"):
         series.append(("enhanced", "With AI drainage evidence", AI))
     lines, bands, points = [], [], []
     for run, name, _ in series:
-        sim = curves[run]["insured" if basis == "insured" else "gross"]
+        sim = curves[run].get(basis) or curves[run]["gross"]
         low, high = sim["band_pct"]
         for p in sim["curve"]:
             rp = p["return_period_years"]
@@ -376,9 +394,7 @@ def ylt_chart(curves, report, compare_ai=False, basis="gross"):
                     "Series": name,
                 }
             )
-        source = (
-            report["runs"][run] if basis == "gross" else report["runs"][run]["insured"]
-        )
+        source = scenario_source(report, run, basis)
         for p in source["ep_curve"]:
             points.append(
                 {
@@ -534,18 +550,26 @@ def damage_vs_score_chart(cfg, reference=None):
 
 def hotspot_check_map(points):
     """Named hotspots: filled = flagged by the proxy, hollow = missed. Labels carry the status, not colour alone."""
-    data = [
-        {
-            "lat": p["lat"],
-            "lon": p["lon"],
-            "name": f"{p['name']} {'✓' if p['flagged_any_tier'] else '✗'}",
-            "tooltip": f"<b>{html.escape(p['name'])}</b><br/>{'Flagged' if p['flagged_any_tier'] else 'Missed'} by the proxy<br/>common-tier score {p['common']:.3f}",
-            "fill": [42, 120, 214, 230]
-            if p["flagged_any_tier"]
-            else [255, 255, 255, 0],
-        }
-        for p in points
-    ]
+    def status(p):
+        if p.get("newly_flagged"):
+            return "+", "Flagged only with the infrastructure-deficit index", [235, 104, 52, 230]
+        if p["flagged_any_tier"]:
+            return "✓", "Flagged by the proxy", [42, 120, 214, 230]
+        return "✗", "Missed by the proxy", [255, 255, 255, 0]
+
+    data = []
+    for p in points:
+        mark, words, fill = status(p)
+        extra = f"<br/>index {p['imd_index']:.2f}" if "imd_index" in p else ""
+        data.append(
+            {
+                "lat": p["lat"],
+                "lon": p["lon"],
+                "name": f"{p['name']} {mark}",
+                "tooltip": f"<b>{html.escape(p['name'])}</b><br/>{words}<br/>common-tier score {p['common']:.3f}{extra}",
+                "fill": fill,
+            }
+        )
     layers = [
         pdk.Layer(
             "ScatterplotLayer",
@@ -767,3 +791,96 @@ def scenario_lines(rows, base_name, height=320):
         )
     )
     return lines.properties(height=height)
+
+
+def imd_hotspot_bars(rows, height=None):
+    """Index at each named hotspot, longest first; colour (and the tooltip) says what found the area."""
+    data = pd.DataFrame(rows)
+    if data.empty:
+        return None
+    order = ["terrain", "index only", "neither"]
+    return (
+        alt.Chart(data)
+        .mark_bar(cornerRadiusEnd=3)
+        .encode(
+            y=alt.Y("Area:N", sort="-x", title=None),
+            x=alt.X("Index:Q", title="Index (0–1)", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(gridOpacity=0.4)),
+            color=alt.Color(
+                "Found by:N",
+                scale=alt.Scale(domain=order, range=["#2a78d6", "#eb6834", "#b8b8b8"]),
+                legend=alt.Legend(orient="bottom", title=None),
+            ),
+            tooltip=["Area", alt.Tooltip("Index:Q", format=".2f"), "Found by"],
+        )
+        .properties(height=height or 18 * len(data))
+    )
+
+
+def place_factor_map(places):
+    """Places with a drainage-deficit factor from reports: radius and colour depth grow with the factor."""
+    data = [
+        {
+            "lat": p["lat"],
+            "lon": p["lon"],
+            "r": 250 + 900 * p["factor"],
+            "fill": [235, 104, 52, int(60 + 180 * p["factor"])],
+            "name": p["place"],
+            "tooltip": f"<b>{html.escape(p['place'])}</b><br/>Drainage-deficit factor {p['factor']:.2f}<br/>"
+            f"{p['report_count']} independent report(s)",
+        }
+        for p in places
+    ]
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=data,
+        get_position="[lon, lat]",
+        get_radius="r",
+        radius_min_pixels=4,
+        get_fill_color="fill",
+        stroked=True,
+        get_line_color=[180, 70, 30, 255],
+        line_width_min_pixels=1,
+        pickable=True,
+    )
+    return pdk.Deck(
+        layers=[layer],
+        initial_view_state=pdk.ViewState(latitude=-1.29, longitude=36.83, zoom=10.3),
+        tooltip={"html": "{tooltip}"},
+        map_style=None,
+    )
+
+
+def who_pays_chart(report, run="baseline", height=280):
+    """Stacked bars per scenario: what the policyholder bears (deductibles and limits), what the reinsurer pays, and
+    what the insurer keeps. The three add up to the gross loss."""
+    r = report["runs"][run]
+    gross = {p["tier"]: float(p["loss_kes"]) for p in r["ep_curve"]}
+    insured = {p["tier"]: float(p["loss_kes"]) for p in r["insured"]["ep_curve"]} if "insured" in r else gross
+    ri = {t["tier"]: t for t in r["reinsurance"]["by_tier"]} if "reinsurance" in r else None
+    rows = []
+    for p in r["ep_curve"]:
+        t, label = p["tier"], f"1-in-{p['return_period_years']:g}"
+        parts = [("Policyholder (deductibles, limits)", gross[t] - insured[t])]
+        if ri:
+            parts += [("Reinsurer", float(ri[t]["ceded"])), ("Insurer keeps", float(ri[t]["net"]))]
+        else:
+            parts += [("Insurer keeps", insured[t])]
+        for order, (who, v) in enumerate(parts):
+            rows.append({"Return period": label, "Who": who, "Loss (KES bn)": v / 1e9, "Amount": state.kes(v),
+                         "order": order, "Gross": state.kes(gross[t])})
+    data = pd.DataFrame(rows)
+    domain = ["Policyholder (deductibles, limits)", "Reinsurer", "Insurer keeps"]
+    return (
+        alt.Chart(data)
+        .mark_bar(size=34)
+        .encode(
+            x=alt.X("Return period:N", sort=[f"1-in-{p['return_period_years']:g}" for p in r["ep_curve"]], title=None,
+                    axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("Loss (KES bn):Q", stack="zero", axis=alt.Axis(gridOpacity=0.4)),
+            color=alt.Color("Who:N", scale=alt.Scale(domain=domain, range=["#b8b8b8", SERIES[1], BASE]),
+                            legend=alt.Legend(orient="bottom", title=None)),
+            order=alt.Order("order:Q"),
+            tooltip=["Return period", "Who", "Amount", alt.Tooltip("Gross", title="Gross loss")],
+        )
+        .properties(height=height)
+    )

@@ -62,7 +62,7 @@ runtime/                    Generated reports and the local store (gitignored)
 scripts/                    Build scripts that produce outputs/
 src/floodcat/
   core/          config, constants, errors, geo, numeric helpers
-  hazard/        raster lookup (in-memory), providers, hotspots, score interpretation
+  hazard/        raster lookup (in-memory), providers, hotspots, score interpretation, imd (infrastructure-deficit index)
   vulnerability/ damage (depth-damage) functions
   exposure/      loaders, models, schema validation (the contract for CSV and AI rows)
   financial/     loss, EP curve + AAL, accumulation, policy terms, uncertainty (damage MC), ylt (10,000-year table)
@@ -146,9 +146,15 @@ sum to portfolio loss → EP curve across return periods.
 - Report: loss per return period, average annual loss (AAL, with the
   integration assumptions stated), loss by housing class, top locations,
   loss as % of total insured value, accumulation by area.
-- Base result is **gross insured loss**. Simple per-risk policy terms
-  (`policy_terms`: deductible / limit as % of TIV, or per-row `deductible_kes` /
-  `limit_kes`) are in config, default off; they add an insured curve and AAL.
+- Objective 1 asks for the **insured/reinsured** loss, so every default run reports three bases:
+  - **Gross** (ground-up) loss.
+  - **Insured** loss after per-risk policy terms (`policy_terms`: deductible / limit as % of TIV, or per-row
+    `deductible_kes` / `limit_kes`). **On by default** (1% deductible, ASSUMPTION).
+  - **Reinsured** loss (`financial/reinsurance.py`, `reinsurance` in config, on by default, ASSUMPTION): a quota share,
+    then a per-event excess-of-loss layer on the insurer's retained share, giving reinsurer (ceded) and insurer-keeps
+    (net) curves and AALs, on the scenario points and on every simulated year. It is an illustrative programme, not a
+    real treaty; say so wherever it is shown.
+  - Each property's own AAL (`property_aal`); these must add up to the portfolio AAL (tested).
 - Multi-storey buildings: when `floors_above_ground` is known, only basements plus
   the lowest `storey_exposure.flooded_storeys_above_ground` storeys are flood-exposed
   (`financial/loss.exposed_fraction`, ASSUMPTION, value spread evenly by storey).
@@ -156,14 +162,26 @@ sum to portfolio loss → EP curve across return periods.
 - Uncertainty ranges (`financial/uncertainty.py`, `uncertainty` in config) are
   Monte Carlo on the damage ratio only, with a portfolio-wide correlation.
   Label them ASSUMPTION; never call them confidence intervals.
-- **Out of scope:** reinsurance treaty structuring, layers, net-of-reinsurance
-  loss, multi-peril aggregation, real policy/claims data. Do not build these.
+- **Out of scope:** treaty pricing and structuring advice, reinstatements, aggregate covers, per-risk
+  layers, multiple events per year, multi-peril aggregation, real policy/claims data. Do not build these.
 
 ### 3.6 Known limitation to be honest about
 The proxy flags **12 of 24** named hotspots. The 12 misses (Kibera, Westlands,
 Lavington, …) flood because of drainage, which the proxy cannot see. Any
 hazard improvement must report its own hit rate against the same 24 places in
 the same plain terms.
+
+### 3.6b Infrastructure & Maintenance Deficit index (`hazard/imd.py`)
+A deterministic PROXY hazard layer aimed at drainage-driven (pluvial) misses: built (roofed) fraction and building
+density within `window_radius_m`, from OpenStreetMap footprints (`make imd-index` → `outputs/imd_index.tif`), scaled
+between config thresholds and applied as `s' = 1 − (1 − s)(1 − w·f_tier·I)` before any AI evidence. Off by default
+(`imd_index.enabled`); assumption sets saved before it existed load with it off (`core/config.upgrade`).
+- The thresholds were fixed **before** checking the 24 hotspots. Do not tune them, the weight or the window on the
+  hotspot result — that makes the only check circular. A test pins the pre-registered values.
+- Report it with `make eval-imd`: hit rate before/after **and** the share of the map flagged before/after (an index
+  that flags everything finds every hotspot). It measures runoff pressure, not drains or maintenance; it omits roads
+  and paved yards; OSM completeness varies by neighbourhood. Say so wherever it is shown.
+- OSM data is ODbL: keep the attribution with the grid and wherever it is shown. Fetch geometry only (no tags).
 
 ---
 
@@ -274,6 +292,14 @@ Two AI features, served by Gemini (`ai/gemini.py`, model from `GEMINI_MODEL`) or
    evidence with verbatim quotes → human approval by a named reviewer →
    uplift `s' = 1 − (1 − s)(1 − w·f_tier·signal)` near approved drainage /
    surface-runoff evidence. Off by default (`ai_adjustment=False`).
+2b. **Drainage-deficit factor from flood reports** (`ai/reports.py`, `ai/embeddings.py`, `ai/places.py`,
+   `ai/drainage.py`, Flood evidence → Flood reports): ReliefWeb or uploaded reports → redact → sentence chunks →
+   local embeddings (fastembed BGE-small, `embed` extra) → drainage vs contrast similarity → places from the offline
+   OSM gazetteer (`make places`; not the hotspot list) or, in `ollama` / `gemini` mode, an LLM reading only the drainage
+   chunks → per-place factor = noisy-OR over independent, de-duplicated reports → "Send to review" creates an ordinary
+   evidence item (confidence = factor) that a named reviewer must approve. Modes allowed per organisation
+   (`report_modes`). Thresholds were set on the dev split of `evaluation/drainage_passages.json`; score the held-out
+   split with `make eval-drainage` and never tune on it. Chunk text is stored encrypted; the original file is not kept.
 
 Rules:
 - Gemini output is untrusted data. Re-validate everything deterministically;
@@ -358,5 +384,5 @@ The product is multi-tenant and used by teams (see `docs/ORGANISATION_CHECKLIST.
 - Don't present synthetic or assumed values as real, or real data as synthetic.
 - Don't commit real client documents, extractions or runs.
 - Don't modify files in `data/`.
-- Don't build reinsurance layers/treaties or multi-peril features.
+- Don't build treaty pricing, reinstatements, aggregate covers or multi-peril features (§3.5).
 - Don't commit secrets; use `.env` (template in `.env.example`).

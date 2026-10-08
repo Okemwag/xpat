@@ -60,6 +60,10 @@ with st.expander(
     "How this works and what it can and cannot prove", icon=":material/help:"
 ):
     st.markdown(f"""
+0. **Flood reports** — upload many reports or fetch them from ReliefWeb. They are split into passages and embedded on this
+   server; passages that read like drainage failure (not river overflow) name places from an OpenStreetMap list, or a chosen
+   language model names them. Each place gets a **drainage-deficit factor** that grows with the number of independent reports.
+   "Send to review" turns a place into an evidence item (confidence = factor), which then follows steps 2–4.
 1. **Extract** — paste a flood report. The AI model proposes places, dates, mechanism and a verbatim quote. Quotes not found in the
    report are dropped; places are located with OpenStreetMap (an AI estimate is used only as a flagged fallback).
 2. **Review** — a reviewer checks each item, fixes the location if needed, and states whether the source is **independent of the
@@ -98,9 +102,10 @@ kpis(
 )
 badges("AI", "REAL", "ASSUMPTION")
 
-extract_tab, library_tab, impact_tab, manual_tab = st.tabs(
+reports_tab, extract_tab, library_tab, impact_tab, manual_tab = st.tabs(
     [
-        ":material/auto_awesome: Extract from a report",
+        ":material/article: Flood reports",
+        ":material/auto_awesome: Extract from one report",
         ":material/library_books: Evidence library",
         ":material/compare_arrows: Impact on losses",
         ":material/edit_location: Add manually",
@@ -139,6 +144,11 @@ def add_candidates(candidates, independent):
             st.warning(f"{c['location_name']}: {exc}")
     return added
 
+
+with reports_tab:
+    from ui.flood_reports_view import flood_reports_tab
+
+    flood_reports_tab(store)
 
 with extract_tab:
     if not state.ai_enabled("evidence"):

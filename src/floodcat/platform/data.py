@@ -17,6 +17,8 @@ from .db import (
     memberships,
     notifications,
     organisations,
+    report_chunks,
+    report_documents,
     runs,
     submissions,
     now,
@@ -526,6 +528,134 @@ def delete_evidence(conn, principal, evidence_id, request=None):
     )
 
 
+# Flood reports for the drainage-deficit factor ----------------------------------------------------------
+SOURCE_KINDS = ("reliefweb", "upload")
+
+
+def _vec(blob):
+    import numpy as np
+
+    return np.frombuffer(blob, dtype=np.float32)
+
+
+def add_report(conn, principal, doc, request=None):
+    """Store one processed report (ai/drainage.process_text output + metadata). Text is already redacted; chunk text is
+    encrypted at rest; the original file is never kept. Returns the document id."""
+    require(principal, "evidence.add")
+    if doc["source_kind"] not in SOURCE_KINDS:
+        raise ModelError("invalid_report", "Unknown report source")
+    title = str(doc.get("title") or "").strip()
+    if not title:
+        raise ModelError("invalid_report", "A report needs a title so its evidence can be traced")
+    if conn.execute(
+        select(report_documents.c.id).where(
+            report_documents.c.org_id == principal.org_id,
+            report_documents.c.content_hash == doc["content_hash"],
+        )
+    ).scalar():
+        raise ModelError("duplicate_report", f"“{title[:80]}” is already in the report library")
+    doc_id = uid()
+    chunks = doc["chunks"]
+    drainage = sum(1 for c in chunks if c["strength"] > 0)
+    conn.execute(
+        report_documents.insert().values(
+            id=doc_id,
+            org_id=principal.org_id,
+            title=title[:500],
+            source_kind=doc["source_kind"],
+            url=(doc.get("url") or None),
+            published=(doc.get("published") or None),
+            content_hash=doc["content_hash"],
+            independent=bool(doc["independent"]),
+            embedding_model=doc["embedding_model"],
+            vector=doc["vector"].astype("float32").tobytes(),
+            chunk_count=len(chunks),
+            drainage_chunks=drainage,
+            mode=doc["mode"],
+            model=doc.get("model"),
+            assessments=doc["assessments"],
+            created_by=principal.user_id,
+            created_at=now(),
+        )
+    )
+    for i, c in enumerate(chunks):
+        conn.execute(
+            report_chunks.insert().values(
+                id=uid(),
+                org_id=principal.org_id,
+                document_id=doc_id,
+                ord=i,
+                text_enc=security.encrypt(c["text"]),
+                vector=c["vector"].astype("float32").tobytes(),
+                drainage_similarity=str(c["drainage_similarity"]),
+                contrast_similarity=str(c["contrast_similarity"]),
+                strength=str(c["strength"]),
+            )
+        )
+    audit.record(
+        conn,
+        "report.added",
+        actor=principal,
+        target_type="report",
+        target_id=doc_id,
+        details={"source_kind": doc["source_kind"], "chunks": len(chunks), "drainage_chunks": drainage,
+                 "places": len(doc["assessments"]), "mode": doc["mode"]},
+        request=request,
+    )
+    return doc_id
+
+
+def list_reports(conn, principal):
+    require(principal, "evidence.add")
+    rows = conn.execute(
+        select(report_documents)
+        .where(report_documents.c.org_id == principal.org_id)
+        .order_by(report_documents.c.created_at)
+    ).mappings()
+    return [{**{k: v for k, v in r.items() if k != "vector"}, "vector": _vec(r["vector"])} for r in rows]
+
+
+def report_chunks_for(conn, principal, document_id=None):
+    """Decrypted chunks with vectors, for semantic search and re-assessment (organisation-scoped)."""
+    require(principal, "evidence.add")
+    q = select(report_chunks).where(report_chunks.c.org_id == principal.org_id)
+    if document_id:
+        q = q.where(report_chunks.c.document_id == document_id)
+    rows = conn.execute(q.order_by(report_chunks.c.document_id, report_chunks.c.ord)).mappings()
+    return [{"document_id": r["document_id"], "ord": r["ord"], "text": security.decrypt(r["text_enc"]),
+             "vector": _vec(r["vector"]), "drainage_similarity": float(r["drainage_similarity"]),
+             "contrast_similarity": float(r["contrast_similarity"]), "strength": float(r["strength"])} for r in rows]
+
+
+def update_report_assessments(conn, principal, document_id, assessments, mode, model=None, request=None):
+    require(principal, "evidence.add")
+    res = conn.execute(
+        report_documents.update()
+        .where(report_documents.c.org_id == principal.org_id, report_documents.c.id == document_id)
+        .values(assessments=assessments, mode=mode, model=model)
+    )
+    if not res.rowcount:
+        raise ModelError("not_found", "Report not found")
+    audit.record(conn, "report.reassessed", actor=principal, target_type="report", target_id=document_id,
+                 details={"mode": mode, "places": len(assessments)}, request=request)
+
+
+def delete_report(conn, principal, document_id, request=None):
+    require(principal, "evidence.add")
+    row = conn.execute(
+        select(report_documents.c.created_by).where(
+            report_documents.c.org_id == principal.org_id, report_documents.c.id == document_id
+        )
+    ).first()
+    if row is None:
+        raise ModelError("not_found", "Report not found")
+    if row[0] != principal.user_id and not principal.can("evidence.approve"):
+        raise ModelError("forbidden", "Only the person who added it or a reviewer can delete a report")
+    conn.execute(report_chunks.delete().where(report_chunks.c.org_id == principal.org_id, report_chunks.c.document_id == document_id))
+    conn.execute(report_documents.delete().where(report_documents.c.org_id == principal.org_id, report_documents.c.id == document_id))
+    audit.record(conn, "report.deleted", actor=principal, target_type="report", target_id=document_id, request=request)
+
+
 # Assumption sets / house view (GOV-01…03) ----------------------------------------------------------------
 def _validate_config(config):
     from ..core.config import ModelConfig
@@ -747,9 +877,10 @@ def house_config(conn, org_id):
             assumption_sets.c.org_id == org_id, assumption_sets.c.is_default.is_(True)
         )
     ).scalar()
+    from ..core.config import load_config, upgrade
+
     if row:
-        return dict(row)
-    from ..core.config import load_config
+        return upgrade(row)
 
     return load_config().to_dict()
 

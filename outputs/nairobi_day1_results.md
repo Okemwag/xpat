@@ -1,6 +1,6 @@
 # Nairobi flood model — Day 1 results
 
-Generated 2026-10-07 by `scripts/build_day1_outputs.py`. Config `nairobi-prototype-v0.5` (fingerprint `9e3ef0bca1cc`).
+Generated 2026-10-08 by `scripts/build_day1_outputs.py`. Config `nairobi-prototype-v0.6` (fingerprint `efb2e952c9ef`).
 
 > **Every number here is illustrative.** The 600 properties are SYNTHETIC, the hazard is a PROXY, and the return periods,
 > score-to-depth conversion and class adjustments are ASSUMPTIONS. Nothing is calibrated to Kenyan claims.
@@ -13,7 +13,7 @@ Generated 2026-10-07 by `scripts/build_day1_outputs.py`. Config `nairobi-prototy
 | `data/nairobi_pluvial_proxy_*.tif` (5) | PROXY hazard | read directly |
 | `data/nairobi_hotspots_geocoded.csv` | REAL names, approximate points | `b597d843f80a800d…` |
 
-## Headline (gross loss, no policy terms)
+## Headline (gross loss)
 
 | Measure | Value | Plain English |
 |---|---|---|
@@ -34,6 +34,19 @@ Generated 2026-10-07 by `scripts/build_day1_outputs.py`. Config `nairobi-prototy
 
 Tier names describe how extreme a cell is, not how often it floods: `extreme` keeps the top 5% of cells (narrowest
 footprint, most frequent event); `common` keeps the top 40% (widest footprint, rarest event).
+
+## Gross, insured and reinsured loss (ASSUMPTION terms)
+
+Insured = after a 1% deductible per property. Reinsured = illustrative programme: 30% quota share, then KES 1,909,052,250 xs KES 636,350,750 per event on the insurer's share. Not a real treaty; no reinstatements, aggregate covers or second events in a year.
+
+| Return period | Gross | Insured | Reinsurer pays | Insurer keeps |
+|---|---|---|---|---|
+| 1-in-10 | KES 263,818,827 | KES 247,498,655 | KES 74,249,596 | KES 173,249,058 |
+| 1-in-25 | KES 447,223,202 | KES 398,478,466 | KES 119,543,540 | KES 278,934,926 |
+| 1-in-50 | KES 1,011,960,060 | KES 894,043,425 | KES 268,213,028 | KES 625,830,398 |
+| 1-in-100 | KES 1,699,587,953 | KES 1,508,561,619 | KES 872,210,869 | KES 636,350,750 |
+| 1-in-250 | KES 2,649,188,965 | KES 2,351,866,404 | KES 1,715,515,654 | KES 636,350,750 |
+| AAL | KES 125,887,686 | KES 114,806,038 | KES 44,868,641 | KES 69,937,398 |
 
 ## EP curve from 10,000 simulated years
 
@@ -174,7 +187,8 @@ Vulnerability matrix at max depth 1.5 m (damage ratio):
 ## Limitations
 
 - Scenario EP points and AAL use assumed return periods, not a calibrated annual loss distribution.
-- Losses are gross of policy terms; no deductible, limit or reinsurance is applied.
+- Insured loss applies a simple per-property deductible and limit.
+- Reinsured loss uses an illustrative programme (quota share, then a per-event excess-of-loss layer), not a real treaty; no reinstatements, aggregate covers or multiple events per year.
 - Depth = score × max_depth_m is an assumption; the score is relative susceptibility, not measured depth.
 - The JRC Africa residential curve rests on South African and Mozambican functions only; class scales and caps are assumptions.
 - A zero score means the proxy did not flag the location, not that it cannot flood (drainage-driven flooding is invisible to it).

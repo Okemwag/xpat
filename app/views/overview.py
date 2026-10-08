@@ -3,7 +3,7 @@ import streamlit as st
 from floodcat.core.errors import ModelError
 from ui import state
 from ui.briefing_view import briefing_panel
-from ui.charts import donut, hbars, ylt_chart
+from ui.charts import donut, hbars, who_pays_chart, ylt_chart
 from ui.components import (
     badges,
     explain,
@@ -121,6 +121,16 @@ with right.container(border=True):
         [*state.exposure_labels(report), "ASSUMPTION"],
     )
 
+if "insured" in run or "reinsurance" in run:
+    with st.container(border=True):
+        section("Who pays", "Policyholders, reinsurer and insurer, per scenario")
+        st.altair_chart(who_pays_chart(report, height=210), width="stretch")
+        explain(
+            "Each bar is the gross loss in one scenario, split into what policyholders bear, what the reinsurer pays and what the insurer keeps.",
+            "Above the layer's start the insurer's share stops growing until the layer is used up.",
+            ["ASSUMPTION", *state.exposure_labels(report)],
+        )
+
 c1, c2 = st.columns(2, gap="large")
 with c1.container(border=True, height="stretch"):
     section(
@@ -191,3 +201,21 @@ with b.container(border=True, height="stretch"):
         )
     if st.button("Flood evidence", icon=":material/auto_awesome:"):
         st.switch_page("views/evidence.py")
+    section("Infrastructure deficit index")
+    badges("PROXY", "ASSUMPTION")
+    imd = report.get("imd_adjustment") or {"enabled": False}
+    if imd["enabled"]:
+        kpis(
+            [
+                ("Properties raised", imd["changed_properties"]),
+                ("Change in AAL", state.kes(imd["aal_delta_kes"])),
+            ],
+            columns=2,
+        )
+    else:
+        st.metric(
+            "Index",
+            "Off",
+            help="Raises hazard where dense, roofed ground overwhelms drains. Switch it on under Assumptions.",
+            border=True,
+        )

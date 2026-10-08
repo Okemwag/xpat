@@ -1,0 +1,3803 @@
+{
+ "source": "OpenStreetMap place=* nodes and ways; © OpenStreetMap contributors, ODbL 1.0",
+ "extract": "kenya-261006.osm.pbf",
+ "generated": "2026-10-08T13:42:14+00:00",
+ "script": "scripts/build_places.py",
+ "provenance": "REAL (names) · approximate centres",
+ "places": [
+  {
+   "name": "Academy",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.357597,
+   "lon": 36.66277,
+   "osm": "way/348531485"
+  },
+  {
+   "name": "Athi River",
+   "alt_names": [
+    "Mavoko"
+   ],
+   "place": "town",
+   "lat": -1.448115,
+   "lon": 36.971587,
+   "osm": "node/45005798"
+  },
+  {
+   "name": "Athi River",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.449718,
+   "lon": 36.970752,
+   "osm": "way/677845201"
+  },
+  {
+   "name": "Babadogo",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.246163,
+   "lon": 36.88265,
+   "osm": "node/6346946572"
+  },
+  {
+   "name": "Bahati",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.292585,
+   "lon": 36.855676,
+   "osm": "node/10236080848"
+  },
+  {
+   "name": "Banana",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.173683,
+   "lon": 36.757546,
+   "osm": "node/5561711226"
+  },
+  {
+   "name": "Benhard",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.28021,
+   "lon": 36.764079,
+   "osm": "node/11138691012"
+  },
+  {
+   "name": "Buruburu",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.286187,
+   "lon": 36.877434,
+   "osm": "node/10271071031"
+  },
+  {
+   "name": "Daisy Court",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.213493,
+   "lon": 36.841158,
+   "osm": "node/5327927421"
+  },
+  {
+   "name": "Dandora",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.244908,
+   "lon": 36.90608,
+   "osm": "node/11399884319"
+  },
+  {
+   "name": "Doonholm",
+   "alt_names": [
+    "Donholm"
+   ],
+   "place": "suburb",
+   "lat": -1.299225,
+   "lon": 36.888689,
+   "osm": "node/482840488"
+  },
+  {
+   "name": "Eastleigh",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.27434,
+   "lon": 36.848958,
+   "osm": "node/1271148451"
+  },
+  {
+   "name": "Edenville",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.180835,
+   "lon": 36.827594,
+   "osm": "node/5383781966"
+  },
+  {
+   "name": "Fourways Junction",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.212853,
+   "lon": 36.840521,
+   "osm": "node/2363476889"
+  },
+  {
+   "name": "Garden Estate",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.221936,
+   "lon": 36.863302,
+   "osm": "node/289908114"
+  },
+  {
+   "name": "Gataka",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.368227,
+   "lon": 36.716371,
+   "osm": "node/14085181631"
+  },
+  {
+   "name": "Gatina",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.166328,
+   "lon": 36.855542,
+   "osm": "way/551946698"
+  },
+  {
+   "name": "Gigiri",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.232503,
+   "lon": 36.807295,
+   "osm": "node/272706882"
+  },
+  {
+   "name": "Githogoro",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.215497,
+   "lon": 36.823136,
+   "osm": "way/238861538"
+  },
+  {
+   "name": "Githurai",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.202837,
+   "lon": 36.916859,
+   "osm": "node/6346946570"
+  },
+  {
+   "name": "Githurai",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.201882,
+   "lon": 36.916359,
+   "osm": "way/677844262"
+  },
+  {
+   "name": "Highridge",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.255611,
+   "lon": 36.806553,
+   "osm": "node/11139194275"
+  },
+  {
+   "name": "Hurlingham",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.291406,
+   "lon": 36.795313,
+   "osm": "node/1333657670"
+  },
+  {
+   "name": "Imara Daima",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.323177,
+   "lon": 36.87956,
+   "osm": "node/10271095500"
+  },
+  {
+   "name": "Industrial Area",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.304535,
+   "lon": 36.844186,
+   "osm": "node/11786766111"
+  },
+  {
+   "name": "Jua Kali",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.304385,
+   "lon": 36.91734,
+   "osm": "node/12886264384"
+  },
+  {
+   "name": "Kabiria",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.291248,
+   "lon": 36.725674,
+   "osm": "node/2470048893"
+  },
+  {
+   "name": "Kabuku",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.150413,
+   "lon": 36.668095,
+   "osm": "node/6116638315"
+  },
+  {
+   "name": "Kahawa Wendani",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.196358,
+   "lon": 36.925772,
+   "osm": "node/6249532189"
+  },
+  {
+   "name": "Kahawa West",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.186305,
+   "lon": 36.906815,
+   "osm": "node/2393090122"
+  },
+  {
+   "name": "Kangemi",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.268007,
+   "lon": 36.752297,
+   "osm": "node/5580872745"
+  },
+  {
+   "name": "Kanunga",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.163636,
+   "lon": 36.777015,
+   "osm": "node/5581703090"
+  },
+  {
+   "name": "Karen",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.328375,
+   "lon": 36.704968,
+   "osm": "node/30031183"
+  },
+  {
+   "name": "Karen C",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.332401,
+   "lon": 36.735234,
+   "osm": "node/11414628950"
+  },
+  {
+   "name": "Karen Hardy",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.363892,
+   "lon": 36.736479,
+   "osm": "node/11414628951"
+  },
+  {
+   "name": "Kariobangi",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.259094,
+   "lon": 36.881914,
+   "osm": "node/11665246126"
+  },
+  {
+   "name": "Kasarani",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.22041,
+   "lon": 36.892661,
+   "osm": "node/289910864"
+  },
+  {
+   "name": "Kasarini",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.20444,
+   "lon": 36.830019,
+   "osm": "node/5383781969"
+  },
+  {
+   "name": "Katani",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.353102,
+   "lon": 36.966548,
+   "osm": "node/11407583743"
+  },
+  {
+   "name": "Kawangware",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.278463,
+   "lon": 36.751643,
+   "osm": "node/1744672553"
+  },
+  {
+   "name": "Kayole",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.266747,
+   "lon": 36.919362,
+   "osm": "node/544377110"
+  },
+  {
+   "name": "Kiambaa",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.162447,
+   "lon": 36.756133,
+   "osm": "node/5581703089"
+  },
+  {
+   "name": "Kiambu",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.166392,
+   "lon": 36.825279,
+   "osm": "node/1124781912"
+  },
+  {
+   "name": "Kianjogu",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.188316,
+   "lon": 36.735411,
+   "osm": "node/5540791559"
+  },
+  {
+   "name": "Kianugu Zone",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.358482,
+   "lon": 36.684635,
+   "osm": "way/348539822"
+  },
+  {
+   "name": "Kibera",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.311333,
+   "lon": 36.789,
+   "osm": "node/11007276790"
+  },
+  {
+   "name": "Kibubuti",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.15653,
+   "lon": 36.760081,
+   "osm": "node/5422021849"
+  },
+  {
+   "name": "Kikuyu",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.243813,
+   "lon": 36.66469,
+   "osm": "node/6350067090"
+  },
+  {
+   "name": "Kileleshwa",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.276734,
+   "lon": 36.787901,
+   "osm": "node/30405983"
+  },
+  {
+   "name": "Kilimani",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.296015,
+   "lon": 36.781779,
+   "osm": "node/13566448227"
+  },
+  {
+   "name": "Kirigiti",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.171762,
+   "lon": 36.842349,
+   "osm": "node/5362635875"
+  },
+  {
+   "name": "Kiserian",
+   "alt_names": [
+    "Kiseryan"
+   ],
+   "place": "town",
+   "lat": -1.430489,
+   "lon": 36.686919,
+   "osm": "node/44989849"
+  },
+  {
+   "name": "Kiserian",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.432231,
+   "lon": 36.685353,
+   "osm": "way/679215937"
+  },
+  {
+   "name": "Kitisuru",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.240379,
+   "lon": 36.77103,
+   "osm": "node/10815798768"
+  },
+  {
+   "name": "Kugeria",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.190409,
+   "lon": 36.843174,
+   "osm": "node/5383781967"
+  },
+  {
+   "name": "Kyuna",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.251273,
+   "lon": 36.780112,
+   "osm": "node/11139194276"
+  },
+  {
+   "name": "Langata",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.332894,
+   "lon": 36.781666,
+   "osm": "node/6065491374"
+  },
+  {
+   "name": "Lavington",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.274068,
+   "lon": 36.776227,
+   "osm": "node/5422065886"
+  },
+  {
+   "name": "Lilac court",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.212458,
+   "lon": 36.839574,
+   "osm": "node/4343436099"
+  },
+  {
+   "name": "Limuru",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.115865,
+   "lon": 36.63931,
+   "osm": "node/1523675169"
+  },
+  {
+   "name": "Limuru",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.119792,
+   "lon": 36.633743,
+   "osm": "node/7723607887"
+  },
+  {
+   "name": "Limuru",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.119219,
+   "lon": 36.64735,
+   "osm": "way/498395812"
+  },
+  {
+   "name": "Loresho",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.256821,
+   "lon": 36.752113,
+   "osm": "node/5580877220"
+  },
+  {
+   "name": "Makadara",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.295219,
+   "lon": 36.871861,
+   "osm": "node/10236095025"
+  },
+  {
+   "name": "Makongeni",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.297993,
+   "lon": 36.85001,
+   "osm": "node/5496066118"
+  },
+  {
+   "name": "Marurui",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.206221,
+   "lon": 36.87088,
+   "osm": "node/289908859"
+  },
+  {
+   "name": "Membley",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.159854,
+   "lon": 36.93427,
+   "osm": "node/4344463196"
+  },
+  {
+   "name": "Mihango",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.275135,
+   "lon": 36.951077,
+   "osm": "node/11786729829"
+  },
+  {
+   "name": "Mirema",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.208857,
+   "lon": 36.88756,
+   "osm": "node/11413149039"
+  },
+  {
+   "name": "Mlolongo",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.394651,
+   "lon": 36.943359,
+   "osm": "node/3953399343"
+  },
+  {
+   "name": "Mlolongo",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.395378,
+   "lon": 36.945731,
+   "osm": "way/324758442"
+  },
+  {
+   "name": "Muchatha",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.191391,
+   "lon": 36.775685,
+   "osm": "node/5581701615"
+  },
+  {
+   "name": "Muthaiga",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.253091,
+   "lon": 36.830104,
+   "osm": "node/6422783585"
+  },
+  {
+   "name": "Mwiki",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.232757,
+   "lon": 36.933268,
+   "osm": "node/544377113"
+  },
+  {
+   "name": "Nairobi West",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.308702,
+   "lon": 36.823098,
+   "osm": "node/544377108"
+  },
+  {
+   "name": "Ndenderu",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.193926,
+   "lon": 36.744957,
+   "osm": "node/5524664378"
+  },
+  {
+   "name": "Nduata",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.153851,
+   "lon": 36.752259,
+   "osm": "node/5422021848"
+  },
+  {
+   "name": "Ndumberi",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.152163,
+   "lon": 36.805548,
+   "osm": "node/2106720437"
+  },
+  {
+   "name": "New Njiru Town",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.250235,
+   "lon": 36.939997,
+   "osm": "node/709781365"
+  },
+  {
+   "name": "Ngara",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.273523,
+   "lon": 36.828621,
+   "osm": "node/5475093930"
+  },
+  {
+   "name": "Ngegu",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.176848,
+   "lon": 36.820066,
+   "osm": "node/5422021844"
+  },
+  {
+   "name": "Ngong",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.3666,
+   "lon": 36.65,
+   "osm": "node/44924787"
+  },
+  {
+   "name": "Ngong",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.362883,
+   "lon": 36.653258,
+   "osm": "node/12886276420"
+  },
+  {
+   "name": "Ngong",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.363552,
+   "lon": 36.659452,
+   "osm": "node/12886276421"
+  },
+  {
+   "name": "Nyari",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.230071,
+   "lon": 36.788261,
+   "osm": "node/289905737"
+  },
+  {
+   "name": "Nyathuna",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.184465,
+   "lon": 36.678616,
+   "osm": "node/14050690136"
+  },
+  {
+   "name": "Ongata Rongai",
+   "alt_names": [
+    "Rongai"
+   ],
+   "place": "town",
+   "lat": -1.395968,
+   "lon": 36.752011,
+   "osm": "node/44931662"
+  },
+  {
+   "name": "Ongata Rongai",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.395948,
+   "lon": 36.747941,
+   "osm": "way/100345251"
+  },
+  {
+   "name": "Pangani",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.264899,
+   "lon": 36.837271,
+   "osm": "node/5475196480"
+  },
+  {
+   "name": "Parklands",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.263062,
+   "lon": 36.810629,
+   "osm": "node/30402770"
+  },
+  {
+   "name": "Parklands Shopping Centre",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.265217,
+   "lon": 36.811261,
+   "osm": "way/445927258"
+  },
+  {
+   "name": "Pipeline",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.32006,
+   "lon": 36.893583,
+   "osm": "node/10271095496"
+  },
+  {
+   "name": "Pridelands",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.380196,
+   "lon": 36.9629,
+   "osm": "node/11407583744"
+  },
+  {
+   "name": "Pumwani",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.281798,
+   "lon": 36.845353,
+   "osm": "node/5475175856"
+  },
+  {
+   "name": "Raini",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.159346,
+   "lon": 36.744033,
+   "osm": "node/5422021847"
+  },
+  {
+   "name": "Redhill",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.168824,
+   "lon": 36.706744,
+   "osm": "node/5493220503"
+  },
+  {
+   "name": "Ridgeways",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.224819,
+   "lon": 36.843321,
+   "osm": "node/289908039"
+  },
+  {
+   "name": "Riruta",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.288087,
+   "lon": 36.736136,
+   "osm": "node/11407318879"
+  },
+  {
+   "name": "Rosslyn",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.217809,
+   "lon": 36.793865,
+   "osm": "node/289905600"
+  },
+  {
+   "name": "Roysambu",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.21884,
+   "lon": 36.886739,
+   "osm": "node/4194272131"
+  },
+  {
+   "name": "Ruai",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.268997,
+   "lon": 36.991548,
+   "osm": "node/529361284"
+  },
+  {
+   "name": "Ruaka",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.205646,
+   "lon": 36.784457,
+   "osm": "node/44917807"
+  },
+  {
+   "name": "Ruaka",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.206934,
+   "lon": 36.781134,
+   "osm": "way/683043587"
+  },
+  {
+   "name": "Ruaraka",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.242994,
+   "lon": 36.875619,
+   "osm": "node/289911540"
+  },
+  {
+   "name": "Ruiru",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.147271,
+   "lon": 36.960449,
+   "osm": "node/1847281563"
+  },
+  {
+   "name": "Runda",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.218212,
+   "lon": 36.808989,
+   "osm": "node/272712144"
+  },
+  {
+   "name": "Rwenu",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.19081,
+   "lon": 36.740543,
+   "osm": "node/5540791558"
+  },
+  {
+   "name": "Shade zone",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.350197,
+   "lon": 36.663052,
+   "osm": "way/348531483"
+  },
+  {
+   "name": "Sigona",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.221908,
+   "lon": 36.656413,
+   "osm": "node/13975481680"
+  },
+  {
+   "name": "South B",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.314172,
+   "lon": 36.837671,
+   "osm": "node/10271121690"
+  },
+  {
+   "name": "South C",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.318837,
+   "lon": 36.827822,
+   "osm": "node/30031480"
+  },
+  {
+   "name": "Soweto",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.284475,
+   "lon": 36.913442,
+   "osm": "node/482840484"
+  },
+  {
+   "name": "Spring Valley",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.253339,
+   "lon": 36.792937,
+   "osm": "node/6422785128"
+  },
+  {
+   "name": "Sub zone",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.352794,
+   "lon": 36.664656,
+   "osm": "way/348531484"
+  },
+  {
+   "name": "Syokimau",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.377719,
+   "lon": 36.928529,
+   "osm": "node/3953399342"
+  },
+  {
+   "name": "Tassia",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.307049,
+   "lon": 36.898603,
+   "osm": "node/10236114247"
+  },
+  {
+   "name": "Tatu City",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.150814,
+   "lon": 36.901062,
+   "osm": "node/4949979181"
+  },
+  {
+   "name": "Thindigua",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.203724,
+   "lon": 36.839011,
+   "osm": "node/5383781968"
+  },
+  {
+   "name": "Thogoto",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.2666,
+   "lon": 36.6666,
+   "osm": "node/44914638"
+  },
+  {
+   "name": "Thome",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.220995,
+   "lon": 36.874895,
+   "osm": "node/5472951332"
+  },
+  {
+   "name": "Tigoni",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.12969,
+   "lon": 36.684584,
+   "osm": "node/5581708040"
+  },
+  {
+   "name": "Tuala",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.394096,
+   "lon": 36.793427,
+   "osm": "node/11414655711"
+  },
+  {
+   "name": "Turitu",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.170772,
+   "lon": 36.803113,
+   "osm": "node/5422021851"
+  },
+  {
+   "name": "Umoja",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.283437,
+   "lon": 36.892841,
+   "osm": "node/11407583720"
+  },
+  {
+   "name": "Upper Hill",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.294116,
+   "lon": 36.812906,
+   "osm": "node/5380579643"
+  },
+  {
+   "name": "Utawala",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.284381,
+   "lon": 36.968071,
+   "osm": "node/11786729828"
+  },
+  {
+   "name": "Uthiru",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.260682,
+   "lon": 36.711213,
+   "osm": "node/11913250811"
+  },
+  {
+   "name": "Wangige",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.219934,
+   "lon": 36.71302,
+   "osm": "node/5219991324"
+  },
+  {
+   "name": "Westlands",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.264756,
+   "lon": 36.801842,
+   "osm": "node/30121815"
+  },
+  {
+   "name": "Zimmerman",
+   "alt_names": [],
+   "place": "suburb",
+   "lat": -1.210669,
+   "lon": 36.896308,
+   "osm": "node/4194272132"
+  },
+  {
+   "name": "karuri",
+   "alt_names": [],
+   "place": "town",
+   "lat": -1.175354,
+   "lon": 36.755348,
+   "osm": "node/12886303122"
+  },
+  {
+   "name": "Adam's Arcade",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.301575,
+   "lon": 36.780446,
+   "osm": "node/11459492933"
+  },
+  {
+   "name": "Ayany",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.308767,
+   "lon": 36.775126,
+   "osm": "node/293321177"
+  },
+  {
+   "name": "Bogani",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.352975,
+   "lon": 36.728927,
+   "osm": "node/13658944033"
+  },
+  {
+   "name": "Bomas",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.33858,
+   "lon": 36.766182,
+   "osm": "node/11407583724"
+  },
+  {
+   "name": "Busara",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.27665,
+   "lon": 36.896792,
+   "osm": "node/12855028006"
+  },
+  {
+   "name": "Chiromo",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.270831,
+   "lon": 36.806385,
+   "osm": "node/10572559374"
+  },
+  {
+   "name": "Dagoretti Corner",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.299086,
+   "lon": 36.758752,
+   "osm": "node/11407318880"
+  },
+  {
+   "name": "Dandora Area I",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.257801,
+   "lon": 36.888608,
+   "osm": "node/11399873433"
+  },
+  {
+   "name": "Dandora Area II",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.253487,
+   "lon": 36.899112,
+   "osm": "node/11399873432"
+  },
+  {
+   "name": "Dandora Area III",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.247504,
+   "lon": 36.905656,
+   "osm": "node/11399873431"
+  },
+  {
+   "name": "Dandora Area IV",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.241558,
+   "lon": 36.904897,
+   "osm": "node/11399873435"
+  },
+  {
+   "name": "Dandora phase 5",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.241893,
+   "lon": 36.912617,
+   "osm": "node/11399873434"
+  },
+  {
+   "name": "Eastleigh Section 1",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.268263,
+   "lon": 36.846074,
+   "osm": "node/11665246124"
+  },
+  {
+   "name": "Eastleigh Section 3",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.284715,
+   "lon": 36.855869,
+   "osm": "node/11665246125"
+  },
+  {
+   "name": "Embakasi village",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.315524,
+   "lon": 36.909739,
+   "osm": "node/10233413226"
+  },
+  {
+   "name": "Fedha",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.31567,
+   "lon": 36.898495,
+   "osm": "node/10236139807"
+  },
+  {
+   "name": "Gentiana",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.297439,
+   "lon": 36.724733,
+   "osm": "node/11665215232"
+  },
+  {
+   "name": "Greenfields Estate",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.293674,
+   "lon": 36.892143,
+   "osm": "node/10266425675"
+  },
+  {
+   "name": "Groganville",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.265714,
+   "lon": 36.794383,
+   "osm": "node/11253812685"
+  },
+  {
+   "name": "Grogon",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.279232,
+   "lon": 36.823983,
+   "osm": "node/11405285473"
+  },
+  {
+   "name": "Hamza",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.293322,
+   "lon": 36.874701,
+   "osm": "node/10236080849"
+  },
+  {
+   "name": "Huruma",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.258725,
+   "lon": 36.871504,
+   "osm": "node/10771290581"
+  },
+  {
+   "name": "Jacaranda",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.286682,
+   "lon": 36.906477,
+   "osm": "node/11407583719"
+  },
+  {
+   "name": "Jamhuri",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.305372,
+   "lon": 36.77043,
+   "osm": "node/11414628952"
+  },
+  {
+   "name": "Jericho",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.287395,
+   "lon": 36.870482,
+   "osm": "node/10233413320"
+  },
+  {
+   "name": "K1/Kobil",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.268352,
+   "lon": 36.812267,
+   "osm": "node/12075947850"
+  },
+  {
+   "name": "Kaigu",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.203258,
+   "lon": 36.764653,
+   "osm": "node/11407005720"
+  },
+  {
+   "name": "Kaloleni",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.29567,
+   "lon": 36.845309,
+   "osm": "node/11139194264"
+  },
+  {
+   "name": "Kariokor",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.278877,
+   "lon": 36.836088,
+   "osm": "node/5475170856"
+  },
+  {
+   "name": "Karuna Close",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.258412,
+   "lon": 36.801458,
+   "osm": "node/12075947811"
+  },
+  {
+   "name": "Kiamaiko",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.256439,
+   "lon": 36.876082,
+   "osm": "node/11431675440"
+  },
+  {
+   "name": "Kidfarmaco",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.253983,
+   "lon": 36.669306,
+   "osm": "node/11438799456"
+  },
+  {
+   "name": "Koja",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.281127,
+   "lon": 36.822757,
+   "osm": "node/12075947863"
+  },
+  {
+   "name": "Komarock",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.272656,
+   "lon": 36.907737,
+   "osm": "node/14030295430"
+  },
+  {
+   "name": "Kosovo",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.263207,
+   "lon": 36.854067,
+   "osm": "node/11431704775"
+  },
+  {
+   "name": "Kware",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.309746,
+   "lon": 36.887121,
+   "osm": "node/10271091316"
+  },
+  {
+   "name": "Laini Saba",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.31174,
+   "lon": 36.794873,
+   "osm": "node/11414599165"
+  },
+  {
+   "name": "Landimawe",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.295986,
+   "lon": 36.832008,
+   "osm": "node/11787658252"
+  },
+  {
+   "name": "Luna Park/Mpaka Road",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.263322,
+   "lon": 36.806548,
+   "osm": "node/12075947845"
+  },
+  {
+   "name": "Mabatini",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.260215,
+   "lon": 36.86383,
+   "osm": "node/11431704774"
+  },
+  {
+   "name": "Makina",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.305719,
+   "lon": 36.788702,
+   "osm": "node/12886303117"
+  },
+  {
+   "name": "Maringo",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.295,
+   "lon": 36.866039,
+   "osm": "node/10236080847"
+  },
+  {
+   "name": "Mathare North",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.253511,
+   "lon": 36.867794,
+   "osm": "node/11665266133"
+  },
+  {
+   "name": "Mbotela",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.297923,
+   "lon": 36.862607,
+   "osm": "node/5496079235"
+  },
+  {
+   "name": "Mukuru Kayaba Village",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.312404,
+   "lon": 36.846229,
+   "osm": "node/10271094712"
+  },
+  {
+   "name": "Mutindwa",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.28518,
+   "lon": 36.884464,
+   "osm": "node/11407583722"
+  },
+  {
+   "name": "Ndumbuini",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.254594,
+   "lon": 36.72296,
+   "osm": "node/12794401358"
+  },
+  {
+   "name": "Ngara East",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.273645,
+   "lon": 36.830612,
+   "osm": "node/11669054091"
+  },
+  {
+   "name": "Ngara West",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.27019,
+   "lon": 36.82482,
+   "osm": "node/11669054092"
+  },
+  {
+   "name": "Obama Estate",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.252776,
+   "lon": 36.921862,
+   "osm": "node/12855028005"
+  },
+  {
+   "name": "Onyonka",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.32574,
+   "lon": 36.787961,
+   "osm": "node/11665390796"
+  },
+  {
+   "name": "Otiende",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.323322,
+   "lon": 36.779158,
+   "osm": "node/11407640428"
+  },
+  {
+   "name": "Pheroze",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.262366,
+   "lon": 36.905403,
+   "osm": "node/10240843373"
+  },
+  {
+   "name": "Rubia",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.327682,
+   "lon": 36.782784,
+   "osm": "node/11414599167"
+  },
+  {
+   "name": "Saika",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.25938,
+   "lon": 36.909638,
+   "osm": "node/10240843374"
+  },
+  {
+   "name": "Sarang'ombe",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.313904,
+   "lon": 36.77771,
+   "osm": "node/11407640429"
+  },
+  {
+   "name": "Silanga",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.317927,
+   "lon": 36.795552,
+   "osm": "node/11414599164"
+  },
+  {
+   "name": "Southlands",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.320973,
+   "lon": 36.787655,
+   "osm": "node/11414582438"
+  },
+  {
+   "name": "Tena",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.291211,
+   "lon": 36.887724,
+   "osm": "node/10819696307"
+  },
+  {
+   "name": "Thompson",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.292832,
+   "lon": 36.768744,
+   "osm": "node/11155030938"
+  },
+  {
+   "name": "Uhuru Estate",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.283577,
+   "lon": 36.869919,
+   "osm": "node/10236080850"
+  },
+  {
+   "name": "Uhuru gardens Estate",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.325568,
+   "lon": 36.791343,
+   "osm": "node/13556009622"
+  },
+  {
+   "name": "Umoja",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.331806,
+   "lon": 36.674457,
+   "osm": "node/14085181632"
+  },
+  {
+   "name": "Umoja I",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.277867,
+   "lon": 36.888089,
+   "osm": "node/482840485"
+  },
+  {
+   "name": "Umoja II",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.281873,
+   "lon": 36.89934,
+   "osm": "node/482840487"
+  },
+  {
+   "name": "Umoja Innercore",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.282301,
+   "lon": 36.891365,
+   "osm": "node/482840486"
+  },
+  {
+   "name": "Upper Chokaa",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.250862,
+   "lon": 36.951764,
+   "osm": "node/7224963558"
+  },
+  {
+   "name": "Utawala Githunguri",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.278857,
+   "lon": 36.99528,
+   "osm": "node/11786729830"
+  },
+  {
+   "name": "Viwandani",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.303152,
+   "lon": 36.870879,
+   "osm": "node/11407583745"
+  },
+  {
+   "name": "Woodley",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.305346,
+   "lon": 36.779323,
+   "osm": "node/12886303112"
+  },
+  {
+   "name": "Yamogo",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.18967,
+   "lon": 36.768499,
+   "osm": "node/44910320"
+  },
+  {
+   "name": "Ziwani",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.279104,
+   "lon": 36.838283,
+   "osm": "node/11139194274"
+  },
+  {
+   "name": "koinonia",
+   "alt_names": [],
+   "place": "quarter",
+   "lat": -1.306088,
+   "lon": 36.785589,
+   "osm": "node/12886303115"
+  },
+  {
+   "name": "3A",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.265813,
+   "lon": 36.855619,
+   "osm": "node/11801871683"
+  },
+  {
+   "name": "72 Estates",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.209196,
+   "lon": 36.822469,
+   "osm": "node/11757527768"
+  },
+  {
+   "name": "AA Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.323806,
+   "lon": 36.888064,
+   "osm": "node/13886874269"
+  },
+  {
+   "name": "Accra Court",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.252957,
+   "lon": 36.94721,
+   "osm": "way/516154993"
+  },
+  {
+   "name": "Allsops",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.247572,
+   "lon": 36.869851,
+   "osm": "node/11399873440"
+  },
+  {
+   "name": "Ankara",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313993,
+   "lon": 36.790571,
+   "osm": "node/12886303113"
+  },
+  {
+   "name": "Asmara Court",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.252486,
+   "lon": 36.947009,
+   "osm": "way/516154994"
+  },
+  {
+   "name": "Bahati",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.290167,
+   "lon": 36.858052,
+   "osm": "node/12886664064"
+  },
+  {
+   "name": "Bama",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.291383,
+   "lon": 36.844397,
+   "osm": "node/12886664048"
+  },
+  {
+   "name": "Baraka Court",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.253335,
+   "lon": 36.947072,
+   "osm": "way/516154992"
+  },
+  {
+   "name": "Barua",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.193434,
+   "lon": 36.839939,
+   "osm": "node/9006981319"
+  },
+  {
+   "name": "Bondeni",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.284527,
+   "lon": 36.841463,
+   "osm": "node/11655901428"
+  },
+  {
+   "name": "Brookside",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.258919,
+   "lon": 36.793129,
+   "osm": "node/13589713118"
+  },
+  {
+   "name": "Bukhungu",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.308901,
+   "lon": 36.789665,
+   "osm": "way/540150497"
+  },
+  {
+   "name": "Buru Buru Phase 2",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.283018,
+   "lon": 36.880118,
+   "osm": "node/10236080852"
+  },
+  {
+   "name": "Buru Buru Phase 5",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.292861,
+   "lon": 36.880803,
+   "osm": "node/1744681096"
+  },
+  {
+   "name": "Buruburu Phase I",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.281485,
+   "lon": 36.874764,
+   "osm": "node/1332084878"
+  },
+  {
+   "name": "Buruburu phase 3",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.287738,
+   "lon": 36.878333,
+   "osm": "node/11407583723"
+  },
+  {
+   "name": "California",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.281721,
+   "lon": 36.84888,
+   "osm": "node/11438769856"
+  },
+  {
+   "name": "Chieko",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.237847,
+   "lon": 36.919055,
+   "osm": "node/12586186417"
+  },
+  {
+   "name": "City Cotton setllement",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.316767,
+   "lon": 36.820149,
+   "osm": "way/327763989"
+  },
+  {
+   "name": "City Park Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.258973,
+   "lon": 36.828337,
+   "osm": "node/11757567274"
+  },
+  {
+   "name": "Ciuguini",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.2887,
+   "lon": 36.744143,
+   "osm": "node/11757839520"
+  },
+  {
+   "name": "Clay City",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.212756,
+   "lon": 36.909985,
+   "osm": "node/11413149038"
+  },
+  {
+   "name": "DC",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.307123,
+   "lon": 36.788338,
+   "osm": "way/540145087"
+  },
+  {
+   "name": "Daima springs",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.32335,
+   "lon": 36.875093,
+   "osm": "node/13886874268"
+  },
+  {
+   "name": "Dam 2",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.321483,
+   "lon": 36.796743,
+   "osm": "node/12886281795"
+  },
+  {
+   "name": "Dam 2",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.321561,
+   "lon": 36.79697,
+   "osm": "node/12886281796"
+  },
+  {
+   "name": "Dam View",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.321194,
+   "lon": 36.797703,
+   "osm": "node/12886281793"
+  },
+  {
+   "name": "Deep Sea Slum",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.25316,
+   "lon": 36.814112,
+   "osm": "way/273211913"
+  },
+  {
+   "name": "Devki",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.149398,
+   "lon": 36.955507,
+   "osm": "node/12886303148"
+  },
+  {
+   "name": "Dove Hill",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.241194,
+   "lon": 36.754064,
+   "osm": "node/12075947844"
+  },
+  {
+   "name": "Embulbul",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.33611,
+   "lon": 36.676101,
+   "osm": "node/1075720924"
+  },
+  {
+   "name": "Enaki",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.223117,
+   "lon": 36.787016,
+   "osm": "way/1160231762"
+  },
+  {
+   "name": "Evergreen",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.222779,
+   "lon": 36.83315,
+   "osm": "node/11757567277"
+  },
+  {
+   "name": "Forty Jesus",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.309607,
+   "lon": 36.77816,
+   "osm": "node/12886303110"
+  },
+  {
+   "name": "Fourways",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.212814,
+   "lon": 36.840132,
+   "osm": "way/240066376"
+  },
+  {
+   "name": "Fouth Street",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.271503,
+   "lon": 36.850213,
+   "osm": "node/12886264375"
+  },
+  {
+   "name": "Gachie",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.21676,
+   "lon": 36.766169,
+   "osm": "node/45004663"
+  },
+  {
+   "name": "Gachui",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.282425,
+   "lon": 36.695944,
+   "osm": "node/11665215230"
+  },
+  {
+   "name": "Gathondeki",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.27387,
+   "lon": 36.731511,
+   "osm": "node/11665215231"
+  },
+  {
+   "name": "Gatina",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.275106,
+   "lon": 36.759852,
+   "osm": "node/11757780435"
+  },
+  {
+   "name": "Gatoto",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.314563,
+   "lon": 36.865243,
+   "osm": "node/12886276413"
+  },
+  {
+   "name": "Gatwekera",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.315579,
+   "lon": 36.784091,
+   "osm": "way/48161262"
+  },
+  {
+   "name": "Gicharani",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.270665,
+   "lon": 36.64234,
+   "osm": "node/45000168"
+  },
+  {
+   "name": "Gichecheni",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.26666,
+   "lon": 36.697631,
+   "osm": "node/11665215234"
+  },
+  {
+   "name": "Gichoto",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.2833,
+   "lon": 36.65,
+   "osm": "node/45000119"
+  },
+  {
+   "name": "Gichungo",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.273504,
+   "lon": 36.693612,
+   "osm": "node/11665215235"
+  },
+  {
+   "name": "Gikambura",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.2833,
+   "lon": 36.6333,
+   "osm": "node/45000094"
+  },
+  {
+   "name": "Gikomba",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.286733,
+   "lon": 36.841528,
+   "osm": "node/11405285475"
+  },
+  {
+   "name": "Gitamaiyu",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.166598,
+   "lon": 36.865797,
+   "osm": "way/551952202"
+  },
+  {
+   "name": "Gitaru",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.232678,
+   "lon": 36.66931,
+   "osm": "node/4379235094"
+  },
+  {
+   "name": "Gituambaa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.283067,
+   "lon": 36.863388,
+   "osm": "node/11655971919"
+  },
+  {
+   "name": "Golf Course Phase II",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.309673,
+   "lon": 36.797692,
+   "osm": "node/11407863130"
+  },
+  {
+   "name": "Gorofani",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.286025,
+   "lon": 36.842738,
+   "osm": "node/11655971920"
+  },
+  {
+   "name": "Harambee",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.28097,
+   "lon": 36.872248,
+   "osm": "node/10236080851"
+  },
+  {
+   "name": "High Rise",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.315498,
+   "lon": 36.803206,
+   "osm": "node/12886281786"
+  },
+  {
+   "name": "Highridge 2nd Parklands",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.262247,
+   "lon": 36.816992,
+   "osm": "node/11730925667"
+  },
+  {
+   "name": "Hill View",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.243476,
+   "lon": 36.776914,
+   "osm": "node/11757613893"
+  },
+  {
+   "name": "Hillview",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.247062,
+   "lon": 36.775878,
+   "osm": "node/12075947843"
+  },
+  {
+   "name": "Honey Suckle apartments Ph. 2",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.318664,
+   "lon": 36.889953,
+   "osm": "node/10271095498"
+  },
+  {
+   "name": "Honey Suckle apartments ph.1",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.319726,
+   "lon": 36.890723,
+   "osm": "node/10271095497"
+  },
+  {
+   "name": "Horse Shoe",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.228188,
+   "lon": 36.838089,
+   "osm": "node/11757613894"
+  },
+  {
+   "name": "Hunters",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.225318,
+   "lon": 36.923964,
+   "osm": "node/11399873436"
+  },
+  {
+   "name": "Ikinu",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.100422,
+   "lon": 36.797024,
+   "osm": "node/2106720435"
+  },
+  {
+   "name": "Indian Bazaar",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.171795,
+   "lon": 36.824751,
+   "osm": "node/5472733373"
+  },
+  {
+   "name": "Jericho",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.24827,
+   "lon": 36.730128,
+   "osm": "node/11757613896"
+  },
+  {
+   "name": "Jerusalem",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.278002,
+   "lon": 36.869393,
+   "osm": "node/10796869337"
+  },
+  {
+   "name": "Joybells",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.281536,
+   "lon": 36.866288,
+   "osm": "node/11655971924"
+  },
+  {
+   "name": "KATANI",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.380298,
+   "lon": 36.973057,
+   "osm": "node/12886221873"
+  },
+  {
+   "name": "Kabiro",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.285551,
+   "lon": 36.751244,
+   "osm": "node/11757780444"
+  },
+  {
+   "name": "Kagondo",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.2666,
+   "lon": 36.69986,
+   "osm": "node/44999930"
+  },
+  {
+   "name": "Kajificheni",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.288298,
+   "lon": 36.842142,
+   "osm": "node/11655971925"
+  },
+  {
+   "name": "Kamangu",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.238731,
+   "lon": 36.600875,
+   "osm": "node/8988392824"
+  },
+  {
+   "name": "Kamatuto Kayole",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.25318,
+   "lon": 36.932738,
+   "osm": "node/12886546517"
+  },
+  {
+   "name": "Kambi Muru",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.312099,
+   "lon": 36.788727,
+   "osm": "way/48161264"
+  },
+  {
+   "name": "Kamiti Corner",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.158931,
+   "lon": 36.882971,
+   "osm": "node/5362635752"
+  },
+  {
+   "name": "Kampi Moru Darajani",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.31119,
+   "lon": 36.787839,
+   "osm": "node/12886303114"
+  },
+  {
+   "name": "Kamukunji",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.286724,
+   "lon": 36.839909,
+   "osm": "node/13001685500"
+  },
+  {
+   "name": "Kamwanya",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.288591,
+   "lon": 36.690455,
+   "osm": "node/11729913796"
+  },
+  {
+   "name": "Kangoya",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.170462,
+   "lon": 36.817834,
+   "osm": "node/5472733374"
+  },
+  {
+   "name": "Kanuku",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.289223,
+   "lon": 36.851692,
+   "osm": "node/12886264377"
+  },
+  {
+   "name": "Kanungaga",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.278946,
+   "lon": 36.747451,
+   "osm": "node/11757839535"
+  },
+  {
+   "name": "Kapenguria",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.238942,
+   "lon": 36.734491,
+   "osm": "node/12075947849"
+  },
+  {
+   "name": "Kaptagat",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.262027,
+   "lon": 36.752789,
+   "osm": "node/11730678530"
+  },
+  {
+   "name": "Karanja",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.31094,
+   "lon": 36.783721,
+   "osm": "way/48161453"
+  },
+  {
+   "name": "Karanja Stage",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.309822,
+   "lon": 36.780304,
+   "osm": "node/4967709406"
+  },
+  {
+   "name": "Karen C Kuwinda",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.338694,
+   "lon": 36.73993,
+   "osm": "node/12886281800"
+  },
+  {
+   "name": "Karia",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.100707,
+   "lon": 36.818798,
+   "osm": "node/2106720438"
+  },
+  {
+   "name": "Karinde",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.305347,
+   "lon": 36.671474,
+   "osm": "node/8988392826"
+  },
+  {
+   "name": "Kariobangi North",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.253146,
+   "lon": 36.881502,
+   "osm": "node/44996668"
+  },
+  {
+   "name": "Kariobangi South",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.266334,
+   "lon": 36.882066,
+   "osm": "node/10572587831"
+  },
+  {
+   "name": "Karura",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.193277,
+   "lon": 36.729473,
+   "osm": "way/552178035"
+  },
+  {
+   "name": "Karura Kanyungu",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.199213,
+   "lon": 36.729349,
+   "osm": "node/9281900535"
+  },
+  {
+   "name": "Kaumoni",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.253303,
+   "lon": 36.748557,
+   "osm": "node/11757642439"
+  },
+  {
+   "name": "Kayole Sokoni",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.266425,
+   "lon": 36.922684,
+   "osm": "node/12886546527"
+  },
+  {
+   "name": "Kayole Soweto",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.285055,
+   "lon": 36.912756,
+   "osm": "way/1154002299"
+  },
+  {
+   "name": "Kemri estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313776,
+   "lon": 36.806009,
+   "osm": "way/267025760"
+  },
+  {
+   "name": "Kenya Pipeline Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.24449,
+   "lon": 36.853112,
+   "osm": "node/11431700940"
+  },
+  {
+   "name": "Kiambaa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.199426,
+   "lon": 36.651292,
+   "osm": "node/10860389196"
+  },
+  {
+   "name": "Kiamutisya",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.26417,
+   "lon": 36.844839,
+   "osm": "node/11801871680"
+  },
+  {
+   "name": "Kianda",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.265683,
+   "lon": 36.761877,
+   "osm": "node/13716095318"
+  },
+  {
+   "name": "Kianda",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.311037,
+   "lon": 36.773719,
+   "osm": "way/48161259"
+  },
+  {
+   "name": "Kiandaa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.266658,
+   "lon": 36.933577,
+   "osm": "node/12886264379"
+  },
+  {
+   "name": "Kibera Soweto East Zone C",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.314594,
+   "lon": 36.79828,
+   "osm": "way/540374577"
+  },
+  {
+   "name": "Kibera Soweto East Zone D",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313472,
+   "lon": 36.799315,
+   "osm": "way/540374578"
+  },
+  {
+   "name": "Kibera Soweto East Zone D",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313473,
+   "lon": 36.797998,
+   "osm": "way/540374579"
+  },
+  {
+   "name": "Kibera,DC",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.305422,
+   "lon": 36.788565,
+   "osm": "node/12886264395"
+  },
+  {
+   "name": "Kibiriraini",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.2833,
+   "lon": 36.6833,
+   "osm": "node/44990022"
+  },
+  {
+   "name": "Kichinjio",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.308633,
+   "lon": 36.790564,
+   "osm": "way/540149830"
+  },
+  {
+   "name": "Kihingo",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.155083,
+   "lon": 36.835878,
+   "osm": "node/5362635877"
+  },
+  {
+   "name": "Kihunguro",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.160492,
+   "lon": 36.95919,
+   "osm": "node/8988367480"
+  },
+  {
+   "name": "Kijiji",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.312659,
+   "lon": 36.796881,
+   "osm": "way/540363022"
+  },
+  {
+   "name": "Kimathi",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.286163,
+   "lon": 36.864218,
+   "osm": "node/13001685498"
+  },
+  {
+   "name": "Kimungu",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.309789,
+   "lon": 36.793119,
+   "osm": "way/540363020"
+  },
+  {
+   "name": "Kiragu Waichahi",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.28045,
+   "lon": 36.86684,
+   "osm": "node/11655971931"
+  },
+  {
+   "name": "Kisumu Ndogo",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.313526,
+   "lon": 36.786816,
+   "osm": "way/48161263"
+  },
+  {
+   "name": "Kiwanja",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.17252,
+   "lon": 36.926269,
+   "osm": "node/11253678189"
+  },
+  {
+   "name": "Korogocho",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.25175,
+   "lon": 36.890309,
+   "osm": "node/289911998"
+  },
+  {
+   "name": "Kwa Ndege",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.304668,
+   "lon": 36.902059,
+   "osm": "node/10236114249"
+  },
+  {
+   "name": "Kyamutisya village",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.263863,
+   "lon": 36.844603,
+   "osm": "node/11801871684"
+  },
+  {
+   "name": "Laini Saba",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.312898,
+   "lon": 36.796014,
+   "osm": "way/48161269"
+  },
+  {
+   "name": "Lake View",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.242171,
+   "lon": 36.769096,
+   "osm": "node/11757642441"
+  },
+  {
+   "name": "Le plc",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.294852,
+   "lon": 36.722888,
+   "osm": "node/11729934547"
+  },
+  {
+   "name": "Lenana",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.305442,
+   "lon": 36.736517,
+   "osm": "node/30092085"
+  },
+  {
+   "name": "Lindi",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.315301,
+   "lon": 36.792375,
+   "osm": "way/48161266"
+  },
+  {
+   "name": "Lower Kabete",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.240303,
+   "lon": 36.752352,
+   "osm": "node/11757642446"
+  },
+  {
+   "name": "Lower Kabete Posta",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.241031,
+   "lon": 36.747511,
+   "osm": "node/12075947860"
+  },
+  {
+   "name": "Lower Savannah",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.292565,
+   "lon": 36.902481,
+   "osm": "node/10233407268"
+  },
+  {
+   "name": "Lucky Summer",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.239559,
+   "lon": 36.897979,
+   "osm": "node/11217863361"
+  },
+  {
+   "name": "Lumumba",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.290883,
+   "lon": 36.872529,
+   "osm": "node/13001685497"
+  },
+  {
+   "name": "Lusigetti",
+   "alt_names": [
+    "Lusigetti"
+   ],
+   "place": "village",
+   "lat": -1.2666,
+   "lon": 36.6,
+   "osm": "node/44930438"
+  },
+  {
+   "name": "Mabatini",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.271367,
+   "lon": 36.873519,
+   "osm": "node/11655807939"
+  },
+  {
+   "name": "Mae Ridge",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.211551,
+   "lon": 36.818602,
+   "osm": "node/11757642447"
+  },
+  {
+   "name": "Mai A Ihii",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.259941,
+   "lon": 36.651908,
+   "osm": "node/9007720557"
+  },
+  {
+   "name": "Majengo",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.284127,
+   "lon": 36.844575,
+   "osm": "node/11438863482"
+  },
+  {
+   "name": "Makina",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.308399,
+   "lon": 36.787195,
+   "osm": "way/48161163"
+  },
+  {
+   "name": "Manga",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.228033,
+   "lon": 36.762461,
+   "osm": "node/11757642448"
+  },
+  {
+   "name": "Manyatta",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.294771,
+   "lon": 36.689599,
+   "osm": "node/11729934552"
+  },
+  {
+   "name": "Mariakani",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.309298,
+   "lon": 36.83621,
+   "osm": "node/12886379615"
+  },
+  {
+   "name": "Masaku",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.149263,
+   "lon": 36.95154,
+   "osm": "node/12886303145"
+  },
+  {
+   "name": "Mashimoni",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.261615,
+   "lon": 36.862103,
+   "osm": "node/11431675438"
+  },
+  {
+   "name": "Mashimoni",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.31164,
+   "lon": 36.791781,
+   "osm": "way/48161267"
+  },
+  {
+   "name": "Mashimoni Village",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.261975,
+   "lon": 36.862936,
+   "osm": "node/11801871687"
+  },
+  {
+   "name": "Mastermind",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.322411,
+   "lon": 36.884546,
+   "osm": "node/13886874271"
+  },
+  {
+   "name": "Matasia",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.4,
+   "lon": 36.6833,
+   "osm": "node/44929988"
+  },
+  {
+   "name": "Mathare",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.265011,
+   "lon": 36.84957,
+   "osm": "node/11155030940"
+  },
+  {
+   "name": "Matini",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.275141,
+   "lon": 36.715374,
+   "osm": "node/11729934554"
+  },
+  {
+   "name": "Mau Mau",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.270218,
+   "lon": 36.75056,
+   "osm": "node/11730678541"
+  },
+  {
+   "name": "Maziwa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.321005,
+   "lon": 36.885371,
+   "osm": "node/13886874270"
+  },
+  {
+   "name": "Mbagathi Greens Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.392287,
+   "lon": 36.764138,
+   "osm": "node/5370854096"
+  },
+  {
+   "name": "Milimani",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.289898,
+   "lon": 36.810792,
+   "osm": "node/11757857849"
+  },
+  {
+   "name": "Mimosa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.209647,
+   "lon": 36.802909,
+   "osm": "node/11757642449"
+  },
+  {
+   "name": "Mlango",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.265405,
+   "lon": 36.845416,
+   "osm": "node/11801871686"
+  },
+  {
+   "name": "Mlima",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.316106,
+   "lon": 36.855702,
+   "osm": "node/12886276416"
+  },
+  {
+   "name": "Mlolongo Face Two",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.388119,
+   "lon": 36.938995,
+   "osm": "node/12886221890"
+  },
+  {
+   "name": "Mlolongo Phase Two",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.38678,
+   "lon": 36.942141,
+   "osm": "node/12886221892"
+  },
+  {
+   "name": "Mlongo Face Two",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.385584,
+   "lon": 36.943142,
+   "osm": "node/12886221893"
+  },
+  {
+   "name": "Mowlem",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.266624,
+   "lon": 36.895555,
+   "osm": "node/11217863362"
+  },
+  {
+   "name": "Mradi",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.316967,
+   "lon": 36.910744,
+   "osm": "node/12886532079"
+  },
+  {
+   "name": "Muguga",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.256304,
+   "lon": 36.658213,
+   "osm": "node/8988367481"
+  },
+  {
+   "name": "Mugumo",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.167071,
+   "lon": 36.875364,
+   "osm": "node/5362635751"
+  },
+  {
+   "name": "Mugumoine",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.321375,
+   "lon": 36.777938,
+   "osm": "node/12886303108"
+  },
+  {
+   "name": "Muimara Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.324839,
+   "lon": 36.879446,
+   "osm": "node/13886874266"
+  },
+  {
+   "name": "Mukuru Kwa Njenga",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.319628,
+   "lon": 36.886533,
+   "osm": "node/10271095499"
+  },
+  {
+   "name": "Mukuru Kwa Ruben",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.316751,
+   "lon": 36.882599,
+   "osm": "node/10271125000"
+  },
+  {
+   "name": "Mungu Mweini",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.321151,
+   "lon": 36.798333,
+   "osm": "node/12886281792"
+  },
+  {
+   "name": "Muslim",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.279346,
+   "lon": 36.741587,
+   "osm": "node/11757857852"
+  },
+  {
+   "name": "Mutego",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.301129,
+   "lon": 36.72017,
+   "osm": "node/11729977989"
+  },
+  {
+   "name": "Mutuini",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.3,
+   "lon": 36.7,
+   "osm": "node/44925766"
+  },
+  {
+   "name": "Nairobi Handcraft",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.286679,
+   "lon": 36.845469,
+   "osm": "node/11656144135"
+  },
+  {
+   "name": "Ndurarua",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.288991,
+   "lon": 36.742178,
+   "osm": "node/11729977993"
+  },
+  {
+   "name": "Ndwaru",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.277508,
+   "lon": 36.726353,
+   "osm": "node/11729934551"
+  },
+  {
+   "name": "New Kitisuru",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.232097,
+   "lon": 36.752525,
+   "osm": "node/11757721006"
+  },
+  {
+   "name": "Ngara",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.279462,
+   "lon": 36.830918,
+   "osm": "node/12886374886"
+  },
+  {
+   "name": "Ngara Heights",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.278045,
+   "lon": 36.828422,
+   "osm": "node/12886374882"
+  },
+  {
+   "name": "Ngomongo",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.246015,
+   "lon": 36.892828,
+   "osm": "node/289911681"
+  },
+  {
+   "name": "Ngumba",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.232319,
+   "lon": 36.884296,
+   "osm": "node/289910177"
+  },
+  {
+   "name": "Ngumo Central Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.30904,
+   "lon": 36.799736,
+   "osm": "node/11407863132"
+  },
+  {
+   "name": "Ngumo West Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.308123,
+   "lon": 36.798164,
+   "osm": "node/11407863131"
+  },
+  {
+   "name": "Nigeria hotspot zone",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.265498,
+   "lon": 36.849693,
+   "osm": "node/2339024752"
+  },
+  {
+   "name": "Njiku",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.285784,
+   "lon": 36.690935,
+   "osm": "node/11729977995"
+  },
+  {
+   "name": "Njiru",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.251245,
+   "lon": 36.9537,
+   "osm": "node/12886264380"
+  },
+  {
+   "name": "Nolfok",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.29306,
+   "lon": 36.849513,
+   "osm": "node/11656144136"
+  },
+  {
+   "name": "Number 10",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.263205,
+   "lon": 36.86154,
+   "osm": "node/11801871685"
+  },
+  {
+   "name": "Nyongara",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.280368,
+   "lon": 36.699699,
+   "osm": "node/11729977997"
+  },
+  {
+   "name": "Ofafa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.294429,
+   "lon": 36.862869,
+   "osm": "node/13598380154"
+  },
+  {
+   "name": "Ofafa Jerusalem",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.285248,
+   "lon": 36.86562,
+   "osm": "node/13001685499"
+  },
+  {
+   "name": "Old Runda",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.211556,
+   "lon": 36.811002,
+   "osm": "node/11757721011"
+  },
+  {
+   "name": "Olympic",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.312582,
+   "lon": 36.778616,
+   "osm": "way/303407048"
+  },
+  {
+   "name": "Peponi",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.248125,
+   "lon": 36.800085,
+   "osm": "node/11757721012"
+  },
+  {
+   "name": "Phase 2",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313964,
+   "lon": 36.805419,
+   "osm": "way/543889425"
+  },
+  {
+   "name": "Pherozville",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.262376,
+   "lon": 36.905057,
+   "osm": "node/12886546540"
+  },
+  {
+   "name": "Pillers of Kibera",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313333,
+   "lon": 36.785882,
+   "osm": "node/712904223"
+  },
+  {
+   "name": "Raila",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.317707,
+   "lon": 36.777743,
+   "osm": "way/48161261"
+  },
+  {
+   "name": "Rexel Estate",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.275604,
+   "lon": 36.771191,
+   "osm": "way/555497907"
+  },
+  {
+   "name": "Riabai",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.164209,
+   "lon": 36.843905,
+   "osm": "node/5362635876"
+  },
+  {
+   "name": "Riara Meadows",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.296483,
+   "lon": 36.756939,
+   "osm": "way/1160740141"
+  },
+  {
+   "name": "Rioki",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.104121,
+   "lon": 36.845528,
+   "osm": "node/10889325452"
+  },
+  {
+   "name": "Rironi",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.158551,
+   "lon": 36.638343,
+   "osm": "node/10860416170"
+  },
+  {
+   "name": "River Side",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.281462,
+   "lon": 36.832695,
+   "osm": "node/12886374887"
+  },
+  {
+   "name": "Ruai",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.270407,
+   "lon": 36.995325,
+   "osm": "node/12886264382"
+  },
+  {
+   "name": "Runda Kigwaro",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.202986,
+   "lon": 36.799478,
+   "osm": "node/11757721015"
+  },
+  {
+   "name": "Runda Meadows",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.219664,
+   "lon": 36.823062,
+   "osm": "node/11757721016"
+  },
+  {
+   "name": "Rungiri",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.242847,
+   "lon": 36.677236,
+   "osm": "node/8988367482"
+  },
+  {
+   "name": "Ruthimitu",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.277755,
+   "lon": 36.702406,
+   "osm": "node/11729978005"
+  },
+  {
+   "name": "Ruthiru-ini",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.163966,
+   "lon": 36.833017,
+   "osm": "node/5362635878"
+  },
+  {
+   "name": "Sagana",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.278024,
+   "lon": 36.870231,
+   "osm": "node/11655935606"
+  },
+  {
+   "name": "Seventy Two Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.213939,
+   "lon": 36.828072,
+   "osm": "node/11757721018"
+  },
+  {
+   "name": "Shauri Moyo",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.290785,
+   "lon": 36.848579,
+   "osm": "node/9803223510"
+  },
+  {
+   "name": "Shimo La Tewa",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.311413,
+   "lon": 36.793587,
+   "osm": "way/540363017"
+  },
+  {
+   "name": "Silanga",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.317443,
+   "lon": 36.796552,
+   "osm": "way/48161268"
+  },
+  {
+   "name": "Siwaka Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.308562,
+   "lon": 36.810968,
+   "osm": "node/1576958594"
+  },
+  {
+   "name": "Soweto",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.314302,
+   "lon": 36.776568,
+   "osm": "node/12886303109"
+  },
+  {
+   "name": "Soweto East",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.314207,
+   "lon": 36.801981,
+   "osm": "way/48161270"
+  },
+  {
+   "name": "Soweto West",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.315216,
+   "lon": 36.776739,
+   "osm": "way/48161260"
+  },
+  {
+   "name": "St charles",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.298889,
+   "lon": 36.714206,
+   "osm": "node/11729994919"
+  },
+  {
+   "name": "St. Mark",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.260722,
+   "lon": 36.798534,
+   "osm": "node/11730925671"
+  },
+  {
+   "name": "Starehe",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.281468,
+   "lon": 36.840472,
+   "osm": "node/11244138179"
+  },
+  {
+   "name": "Sunton",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.234369,
+   "lon": 36.919989,
+   "osm": "node/11399873437"
+  },
+  {
+   "name": "Sunview Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.305206,
+   "lon": 36.80178,
+   "osm": "node/11407863129"
+  },
+  {
+   "name": "Swamp",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.282237,
+   "lon": 36.733759,
+   "osm": "node/11729994921"
+  },
+  {
+   "name": "Tawanga",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.259024,
+   "lon": 36.914924,
+   "osm": "node/13907666104"
+  },
+  {
+   "name": "Thathi-ini",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.17647,
+   "lon": 36.841416,
+   "osm": "node/5416219191"
+  },
+  {
+   "name": "Ting'ang'a",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.130892,
+   "lon": 36.81293,
+   "osm": "node/2106720436"
+  },
+  {
+   "name": "Tsavo",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.318745,
+   "lon": 36.899713,
+   "osm": "node/12886532094"
+  },
+  {
+   "name": "Vihiga",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.279753,
+   "lon": 36.869142,
+   "osm": "node/11655935604"
+  },
+  {
+   "name": "Villa Franca Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.325422,
+   "lon": 36.882739,
+   "osm": "node/10271124999"
+  },
+  {
+   "name": "Village 46",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.281898,
+   "lon": 36.742341,
+   "osm": "node/11757857862"
+  },
+  {
+   "name": "Waithaka",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.2833,
+   "lon": 36.7166,
+   "osm": "node/44910765"
+  },
+  {
+   "name": "Wanye",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.294822,
+   "lon": 36.755,
+   "osm": "node/12886264359"
+  },
+  {
+   "name": "Waruku",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.269252,
+   "lon": 36.760996,
+   "osm": "node/11757857847"
+  },
+  {
+   "name": "Whisper Estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.225814,
+   "lon": 36.812788,
+   "osm": "node/11757721020"
+  },
+  {
+   "name": "Woodley Annex - Lower",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.305646,
+   "lon": 36.776017,
+   "osm": "way/382142135"
+  },
+  {
+   "name": "Woodley Annex - Upper",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.305211,
+   "lon": 36.77566,
+   "osm": "way/382142134"
+  },
+  {
+   "name": "Zambezi",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.212778,
+   "lon": 36.660483,
+   "osm": "node/10860416169"
+  },
+  {
+   "name": "bangladesh village",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.387598,
+   "lon": 36.770677,
+   "osm": "node/2136997951"
+  },
+  {
+   "name": "kona mbaya,black spot",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.251037,
+   "lon": 36.888177,
+   "osm": "way/368464133"
+  },
+  {
+   "name": "muguga",
+   "alt_names": [],
+   "place": "village",
+   "lat": -1.179407,
+   "lon": 36.642455,
+   "osm": "node/13975481681"
+  },
+  {
+   "name": "ngei",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.255828,
+   "lon": 36.871136,
+   "osm": "node/11431675439"
+  },
+  {
+   "name": "olympic",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.313052,
+   "lon": 36.77926,
+   "osm": "node/12855067392"
+  },
+  {
+   "name": "sunrise park estate",
+   "alt_names": [],
+   "place": "neighbourhood",
+   "lat": -1.323908,
+   "lon": 36.877051,
+   "osm": "node/13886874267"
+  },
+  {
+   "name": "Along Ngong River",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.304825,
+   "lon": 36.893269,
+   "osm": "node/12886243429"
+  },
+  {
+   "name": "Barmasai",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.31529,
+   "lon": 36.871382,
+   "osm": "node/12886276408"
+  },
+  {
+   "name": "Chogoria",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.317503,
+   "lon": 36.871748,
+   "osm": "node/12886276411"
+  },
+  {
+   "name": "Congo",
+   "alt_names": [],
+   "place": "hamlet",
+   "lat": -1.28835,
+   "lon": 36.753527,
+   "osm": "node/11405285472"
+  },
+  {
+   "name": "Dc Stage",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.305889,
+   "lon": 36.787531,
+   "osm": "node/612008669"
+  },
+  {
+   "name": "Do's Ground",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.305951,
+   "lon": 36.78782,
+   "osm": "node/612008671"
+  },
+  {
+   "name": "Donholm",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.303887,
+   "lon": 36.88788,
+   "osm": "node/12886264391"
+  },
+  {
+   "name": "Drive In",
+   "alt_names": [],
+   "place": "hamlet",
+   "lat": -1.250461,
+   "lon": 36.869669,
+   "osm": "node/11399873439"
+  },
+  {
+   "name": "Githogoro",
+   "alt_names": [],
+   "place": "hamlet",
+   "lat": -1.215794,
+   "lon": 36.823873,
+   "osm": "node/654848223"
+  },
+  {
+   "name": "Githothua",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.151976,
+   "lon": 36.929942,
+   "osm": "node/12886303143"
+  },
+  {
+   "name": "Gracia Gardens",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.285578,
+   "lon": 36.786358,
+   "osm": "node/1764202913"
+  },
+  {
+   "name": "Greenspan Housing Estate",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.287344,
+   "lon": 36.901185,
+   "osm": "way/164583326"
+  },
+  {
+   "name": "Kibiko",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.347097,
+   "lon": 36.636014,
+   "osm": "node/3519353550"
+  },
+  {
+   "name": "Kijiji",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.323414,
+   "lon": 36.787664,
+   "osm": "node/538791257"
+  },
+  {
+   "name": "Kirichwa Holdings",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.280372,
+   "lon": 36.784686,
+   "osm": "node/1764248469"
+  },
+  {
+   "name": "Kwa Dada Mary",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.279762,
+   "lon": 36.751724,
+   "osm": "node/12886264355"
+  },
+  {
+   "name": "Kwa reli",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.240106,
+   "lon": 36.934426,
+   "osm": "node/12886264364"
+  },
+  {
+   "name": "Masaku",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.149827,
+   "lon": 36.951223,
+   "osm": "node/12886303146"
+  },
+  {
+   "name": "Menelik Medical Centre",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.296955,
+   "lon": 36.783806,
+   "osm": "way/792847276"
+  },
+  {
+   "name": "Mirema drive",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.20909,
+   "lon": 36.886377,
+   "osm": "node/12886264369"
+  },
+  {
+   "name": "Savanna alongside Ngong River",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.299965,
+   "lon": 36.89948,
+   "osm": "node/12886243426"
+  },
+  {
+   "name": "Tassia",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.301073,
+   "lon": 36.900228,
+   "osm": "node/12886243422"
+  },
+  {
+   "name": "Tassia",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.300924,
+   "lon": 36.898674,
+   "osm": "node/12886243423"
+  },
+  {
+   "name": "Tusker Village",
+   "alt_names": [],
+   "place": "hamlet",
+   "lat": -1.233731,
+   "lon": 36.880057,
+   "osm": "node/11243959855"
+  },
+  {
+   "name": "Valley Arcade Bus Stop",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.28994,
+   "lon": 36.770342,
+   "osm": "node/1763884021"
+  },
+  {
+   "name": "Varsityville Estate Gate",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.166742,
+   "lon": 36.961732,
+   "osm": "node/7988243456"
+  },
+  {
+   "name": "Vumilia slum",
+   "alt_names": [],
+   "place": "locality",
+   "lat": -1.304621,
+   "lon": 36.89259,
+   "osm": "node/12886243430"
+  }
+ ]
+}

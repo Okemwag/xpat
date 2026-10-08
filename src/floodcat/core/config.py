@@ -6,6 +6,7 @@ from pathlib import Path
 from .constants import TIERS, CLASSES, MECHANISMS
 from .errors import ModelError
 from .numeric import bounded, finite
+from ..hazard.imd import validate_settings as validate_imd
 
 # configs/default.json is the single source of truth; ModelConfig carries no default values.
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[3] / "configs" / "default.json"
@@ -30,6 +31,7 @@ class ModelConfig:
     top_n: int
     storey_exposure: dict
     policy_terms: dict
+    reinsurance: dict
     uncertainty: dict
     year_loss_table: dict
     uplift_weight: float
@@ -38,6 +40,8 @@ class ModelConfig:
     evidence_min_confidence: float
     grid_size_m: float
     evidence_radius_m: float
+    imd_index: dict
+    drainage_reports: dict
 
     def __post_init__(self):
         try:
@@ -77,6 +81,13 @@ class ModelConfig:
             object.__setattr__(
                 self, "evidence_mechanisms", tuple(self.evidence_mechanisms)
             )
+            object.__setattr__(self, "imd_index", validate_imd(self.imd_index))
+            from ..financial.reinsurance import validate_settings as validate_reinsurance
+
+            object.__setattr__(self, "reinsurance", validate_reinsurance(self.reinsurance))
+            from ..ai.drainage import validate_settings as validate_drainage
+
+            object.__setattr__(self, "drainage_reports", validate_drainage(self.drainage_reports))
             object.__setattr__(
                 self,
                 "storey_exposure",
@@ -328,6 +339,25 @@ class ModelConfig:
         return hashlib.sha256(
             json.dumps(self.to_dict(), sort_keys=True).encode()
         ).hexdigest()
+
+
+def upgrade(stored):
+    """Bring an assumption set saved before a field existed up to date, with that feature switched off.
+
+    Only fields added later are filled; anything else missing is still an error. A house view approved before the
+    infrastructure-deficit index existed therefore keeps its original results.
+    """
+    stored = dict(stored)
+    with open(DEFAULT_CONFIG_PATH) as stream:
+        shipped = json.load(stream)
+    if "imd_index" not in stored:
+        stored["imd_index"] = {**shipped["imd_index"], "enabled": False}
+    if "reinsurance" not in stored:
+        stored["reinsurance"] = {**shipped["reinsurance"], "enabled": False}
+    if "drainage_reports" not in stored:
+        # Report scoring only proposes evidence; nothing changes hazard until a reviewer approves it.
+        stored["drainage_reports"] = shipped["drainage_reports"]
+    return stored
 
 
 def load_config(path=None):

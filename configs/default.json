@@ -74,9 +74,16 @@
     "flooded_storeys_above_ground": 1
   },
   "policy_terms": {
-    "enabled": false,
-    "deductible_pct_of_tiv": 0.0,
+    "enabled": true,
+    "deductible_pct_of_tiv": 0.01,
     "limit_pct_of_tiv": 1.0
+  },
+  "reinsurance": {
+    "enabled": true,
+    "source": "Illustrative programme (Team A ASSUMPTION), not a real treaty: a 30% quota share, then a per-event excess-of-loss layer on the insurer's retained share, retention 1% and limit 3% of modelled insured value. Change it on the Assumptions page to match the treaty being priced.",
+    "quota_share_cession": 0.3,
+    "xol_retention_pct_of_tiv": 0.01,
+    "xol_limit_pct_of_tiv": 0.03
   },
   "uncertainty": {
     "trials": 2000,
@@ -111,5 +118,74 @@
   ],
   "evidence_min_confidence": 0.5,
   "grid_size_m": 1000.0,
-  "evidence_radius_m": 1000.0
+  "evidence_radius_m": 1000.0,
+  "imd_index": {
+    "enabled": false,
+    "source": "Infrastructure & Maintenance Deficit index: OpenStreetMap building footprints (ODbL) reduced by scripts/build_imd_index.py. Thresholds fixed before any check against the named hotspots: built fraction 0.15–0.45 (roofs are roughly half of urban impervious cover, so ≈30% to near-total sealing; Schueler 1994 impervious-cover model marks degraded drainage above ~25%); density 25–125 buildings/ha (planned low-rise to dense informal). Team A assumptions.",
+    "grid_path": "outputs/imd_index.tif",
+    "window_radius_m": 250.0,
+    "built_fraction_range": [
+      0.15,
+      0.45
+    ],
+    "density_per_ha_range": [
+      25.0,
+      125.0
+    ],
+    "component_weights": {
+      "built_fraction": 0.5,
+      "buildings_per_ha": 0.5
+    },
+    "weight": 0.4,
+    "tier_factors": {
+      "extreme": 0.2,
+      "severe": 0.4,
+      "moderate": 0.6,
+      "occasional": 0.8,
+      "common": 1.0
+    }
+  },
+  "drainage_reports": {
+    "source": "Drainage-deficit factor from flood reports (ai/drainage.py). Thresholds were set on the dev split of evaluation/drainage_passages.json (hand-written, SYNTHETIC) before the test split was scored; the descriptions below are Team A wording. Team A assumptions.",
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "chunk_max_words": 25,
+    "chunk_overlap_sentences": 0,
+    "place_lookback_chunks": 1,
+    "drainage_queries": [
+      "Blocked or clogged drains caused flooding",
+      "Drainage channels, culverts or sewers overflowed and could not carry the rainwater",
+      "Rainwater had nowhere to drain and ponded on roads and in homes",
+      "Poor or missing drainage left the area flooded after heavy rain",
+      "Runoff from roofs and paved surfaces flooded the streets"
+    ],
+    "contrast_queries": [
+      "A river burst its banks and flooded homes",
+      "The river or stream overflowed as water levels rose",
+      "Weather forecast of heavy rainfall",
+      "News unrelated to flooding"
+    ],
+    "min_similarity": 0.6,
+    "min_margin": 0.035,
+    "full_margin": 0.15,
+    "duplicate_similarity": 0.97,
+    "llm_top_k": 8,
+    "place_ambiguity_m": 3000.0,
+    "ignore_place_names": [
+      "Harambee",
+      "Tena",
+      "Barua",
+      "Nairobi"
+    ],
+    "not_before_words": [
+      "River",
+      "Road",
+      "Rd",
+      "Dam",
+      "Forest",
+      "Hills",
+      "Highway",
+      "Bypass",
+      "Avenue"
+    ]
+  }
 }

@@ -105,9 +105,11 @@ st.write(
     f"{state.rp_label(max(cfg.return_periods.values()))}."
 )
 st.markdown(
-    "**Insured vs reinsured.** Results are **gross** (ground-up). With policy terms on, Xpat also gives the **insured** loss after each "
-    "property's deductible and limit — including facultative terms read from a submission. **Reinsured** loss (net of treaties, "
-    "layers or quota shares) is not modelled: the brief puts reinsurance structuring out of scope."
+    "**Gross, insured and reinsured.** Every run gives the **gross** (ground-up) loss; the **insured** loss after each property's "
+    "deductible and limit (including terms read from a submission); and the **reinsured** split from an illustrative programme — a "
+    "quota share, then a per-event excess-of-loss layer on the insurer's share — as what the **reinsurer pays** and what the "
+    "**insurer keeps**, on the five scenarios and on every simulated year. The programme is an assumption to replace with the "
+    "real treaty on the Assumptions page; reinstatements, aggregate covers and second events in a year are not modelled."
 )
 
 st.header("5 · AI")

@@ -313,3 +313,31 @@ def test_underwriting_decision_flow(store, monkeypatch):
         "Word report",
         "Excel workbook",
     }
+
+
+def test_infrastructure_index_switch_flows_through_pages(store):
+    """Switching the index on under Assumptions re-runs the portfolio with it; result pages show it."""
+    from ui_helpers import make_session
+    from floodcat.services.runtime import ROOT
+    from floodcat.core.config import load_config
+
+    if not (ROOT / load_config().imd_index["grid_path"]).exists():
+        pytest.skip("IMD grid not built (make imd-index)")
+    token = make_session(store, roles=("head_uw",), org_name="Imd Re", email="head@imd.re")
+    at = app(token)
+    at.switch_page("views/portfolio.py")
+    at.run()
+    next(b for b in at.button if b.label == "Run the sample portfolio").click()
+    at.run()
+    assert at.session_state["result"]["imd_adjustment"] == {"enabled": False}
+    at.switch_page("views/assumptions.py")
+    at.run()
+    next(t for t in at.toggle if t.label == "Include the index").set_value(True)
+    next(b for b in at.button if b.label.startswith("Apply to my sandbox")).click()
+    at.run()
+    assert not at.exception, at.exception[0].value if at.exception else None
+    imd = at.session_state["result"]["imd_adjustment"]
+    assert imd["enabled"] and imd["changed_properties"] > 0
+    for page in ("overview", "map", "results", "honesty", "property"):
+        errors = visit(at, page)
+        assert errors == [], f"{page}: {errors[0][:400] if errors else errors}"

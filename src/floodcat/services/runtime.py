@@ -35,10 +35,43 @@ class Runtime:
         assets, _ = validate_rows(read_csv(self.sample_path))
         return class_defaults(assets)
 
-    def llm(self):
+    @cached_property
+    def imd(self):
+        """The infrastructure-deficit grid; loaded on first use so the app runs without it while the index is off."""
+        from ..hazard.imd import ImdGrid
+
+        return ImdGrid.load(ROOT / self.config.imd_index["grid_path"])
+
+    @cached_property
+    def embedder(self):
+        """Local embedding model (fastembed); downloaded once to runtime/models, offline afterwards."""
+        from ..ai.embeddings import LocalEmbedder
+
+        return LocalEmbedder(self.config.drainage_reports["embedding_model"])
+
+    @cached_property
+    def places(self):
+        """Offline OSM place-name gazetteer for finding places in flood reports."""
+        from ..ai.places import PlaceIndex
+
+        s = self.config.drainage_reports
+        return PlaceIndex.load(ROOT / "outputs" / "nairobi_places.json", s["ignore_place_names"],
+                               s["place_ambiguity_m"], s["not_before_words"])
+
+    def scorer(self, settings=None):
+        from ..ai.drainage import Scorer
+
+        settings = settings or self.config.drainage_reports
+        key = repr(sorted(settings.items()))
+        cache = self.__dict__.setdefault("_scorers", {})
+        if key not in cache:
+            cache[key] = Scorer(self.embedder, settings)
+        return cache[key]
+
+    def llm(self, provider=None):
         from ..ai.llm import make_client
 
-        return make_client()
+        return make_client(provider)
 
     def gazetteer(self, with_ai_fallback=True):
         from ..ai.geocode import Gazetteer
@@ -82,15 +115,17 @@ class Runtime:
             rows, declare_synthetic, source_label, assign_missing_ids, data_origin
         )
         # Callers pass the organisation's evidence explicitly (tenant-scoped); none means no adjustment input.
+        config = config or self.config
         result = analyse(
             rows,
-            config or self.config,
+            config,
             self.hazard,
             evidence=evidence or (),
             allow_partial=allow_partial,
             hotspots=self.hotspots,
             ai_adjustment=ai_adjustment,
             synthetic_only=self.synthetic_only,
+            imd=self.imd if config.imd_index["enabled"] else None,
         )
         result["declarations"] = notes
         return result

@@ -298,6 +298,59 @@ def build_document(
             )
         )
 
+    # Who pays: insured and reinsured loss
+    if "insured" in base or "reinsurance" in base:
+        add(("heading", "Who pays: insured and reinsured loss", 1, ("ASSUMPTION", *origin)))
+        insured = {p["tier"]: p["loss_kes"] for p in base["insured"]["ep_curve"]} if "insured" in base else {}
+        split = {t["tier"]: t for t in base["reinsurance"]["by_tier"]} if "reinsurance" in base else {}
+        columns = [("Return period", "rp"), ("Gross", "kes")]
+        columns += [("Insured", "kes")] if insured else []
+        columns += [("Quota share", "kes"), ("Excess of loss", "kes"), ("Reinsurer total", "kes"), ("Insurer keeps", "kes")] if split else []
+        rows = []
+        for p in base["ep_curve"]:
+            t = p["tier"]
+            row = [p["return_period_years"], p["loss_kes"]] + ([insured[t]] if insured else [])
+            if split:
+                row += [split[t]["quota_share"], split[t]["excess_of_loss"], split[t]["ceded"], split[t]["net"]]
+            rows.append(row)
+        note = []
+        if "insured" in base:
+            terms = base["insured"]["terms"]
+            note.append(f"Insured = after a deductible of {terms['deductible_pct_of_tiv']:.1%} and a limit of "
+                        f"{terms['limit_pct_of_tiv']:.0%} of each property's value (or the row's own terms).")
+        if "reinsurance" in base:
+            ri, stc = base["reinsurance"], base["reinsurance"]["structure"]
+            note.append(f"Reinsurance (illustrative, ASSUMPTION): {stc['quota_share_cession']:.0%} quota share of the {ri['basis']} loss, "
+                        f"then {kes(stc['xol_limit_kes'])} xs {kes(stc['xol_retention_kes'])} per event on the insurer's share "
+                        f"(used up at {kes(stc['xol_exhaustion_kes'])}). Reinsurer AAL {kes(ri['ceded']['aal']['aal_kes'])}; "
+                        f"insurer keeps AAL {kes(ri['net']['aal']['aal_kes'])}. No reinstatements, aggregate covers or second events in a year.")
+        add(Table("Gross, insured and reinsured loss per scenario", columns, rows, note=" ".join(note),
+                  labels=("ASSUMPTION",), sheet="Who pays"))
+        if ylt and "ceded" in ylt["baseline"]:
+            y = ylt["baseline"]
+            add(Table(
+                f"Simulated curves by who pays ({y['gross']['years']:,} years)",
+                [("Return period", "rp"), ("Gross", "kes")] + ([("Insured", "kes")] if "insured" in y else [])
+                + [("Reinsurer", "kes"), ("Insurer keeps", "kes")],
+                [[g["return_period_years"], g["loss_kes"]] + ([i["loss_kes"]] if "insured" in y else []) + [c["loss_kes"], n["loss_kes"]]
+                 for g, i, c, n in zip(y["gross"]["table"], y.get("insured", y["gross"])["table"], y["ceded"]["table"], y["net"]["table"])],
+                note="The same simulated years, split by the programme year by year (one worst flood per year).",
+                labels=("ASSUMPTION",), sheet="Who pays"))
+
+    # Largest expected annual losses
+    if base.get("property_aal"):
+        add(("heading", "Largest expected annual losses", 1, ("ASSUMPTION", *origin)))
+        aal_cols = [("Property", "text"), ("Construction", "text"), ("Insured value", "kes"), ("Average annual loss", "kes")]
+        has_ins = "insured_aal_kes" in base["property_aal"][0]
+        aal_cols += [("Insured AAL", "kes")] if has_ins else []
+        aal_rows = [[r["loc_id"], CLASS_LABEL.get(r["housing_class"], r["housing_class"]), r["tiv_kes"], r["aal_kes"]]
+                    + ([r["insured_aal_kes"]] if has_ins else []) for r in base["property_aal"]]
+        add(Table("Top 10 properties by expected annual loss", aal_cols, aal_rows[:10],
+                  note=f"{len(aal_rows)} properties carry an expected annual loss; they add up to the portfolio AAL.",
+                  labels=("ASSUMPTION",), sheet="Property AAL"))
+        add(Table("Every property's expected annual loss", aal_cols, aal_rows, labels=("ASSUMPTION",),
+                  sheet="Property AAL", data_only=True))
+
     # What drives it
     add(("heading", "What drives the loss", 1, ("ASSUMPTION", *origin)))
     add(

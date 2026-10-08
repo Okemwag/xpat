@@ -541,3 +541,28 @@ def people():
                 )
             )
         }
+
+
+# Infrastructure-deficit index ----------------------------------------------
+def imd_available():
+    """True when the IMD grid has been built (scripts/build_imd_index.py); the switch is disabled otherwise."""
+    try:
+        runtime().imd
+        return True
+    except ModelError:
+        return False
+
+
+@st.cache_data(show_spinner="Checking the index against the named flood areas…")
+def imd_check(settings_json):
+    """Hotspot hit rate and map share flagged, terrain only vs with the index, for these settings."""
+    import json
+    from floodcat.hazard.imd import Grid, area_comparison, hotspot_comparison
+
+    rt = runtime()
+    settings = rt.config.replace(imd_index=json.loads(settings_json)).imd_index
+    array, transform, _, height, width = rt.hazard.grids["common"]
+    return {
+        "hotspots": hotspot_comparison(rt.hotspots, rt.hazard, rt.imd, settings),
+        "map_area": area_comparison(array, Grid(transform.c, transform.f, transform.a, width, height), rt.imd, settings),
+    }

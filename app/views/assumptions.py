@@ -380,6 +380,28 @@ with change_tab:
             for i, t in enumerate(TIERS)
         }
         section(
+            "Infrastructure deficit index",
+            "Raises the hazard score where OpenStreetMap shows dense, mostly roofed ground — where rain runs off fast and "
+            "drains are most often overwhelmed. It cannot see drains themselves. Off by default.",
+        )
+        imd = current.imd_index
+        ready = state.imd_available()
+        a, b = st.columns(2)
+        imd_on = a.toggle(
+            "Include the index",
+            value=imd["enabled"] and ready,
+            disabled=not ready,
+            help=None if ready else "The index grid has not been built on this server (`make imd-index`).",
+        )
+        imd_weight = b.slider(
+            "Strength (score added to dry ground at index 1, rarest tier)",
+            0.0,
+            1.0,
+            float(imd["weight"]),
+            0.05,
+            help="At strength 0.4, fully dense ground with no terrain hazard gets a rarest-tier score of 0.4 (≈0.6 m at the default depth).",
+        )
+        section(
             "Vulnerability (per construction class)",
             "A lower depth scale means more damage at the same depth.",
         )
@@ -422,9 +444,9 @@ with change_tab:
             250.0,
         )
         section(
-            "Policy terms (optional)",
+            "Policy terms",
             "Per-property deductible and limit, giving an insured loss next to the gross loss. Rows with their own "
-            "`deductible_kes` / `limit_kes` columns override these percentages. No layers or reinsurance (out of scope).",
+            "`deductible_kes` / `limit_kes` columns override these percentages.",
         )
         pt = current.policy_terms
         terms_on = st.toggle("Apply policy terms", value=pt["enabled"])
@@ -439,6 +461,18 @@ with change_tab:
         limit = b.number_input(
             "Limit (% of insured value)", 1.0, 100.0, pt["limit_pct_of_tiv"] * 100, 5.0
         )
+        section(
+            "Reinsurance",
+            "An illustrative programme: a quota share, then a per-event excess-of-loss layer on the insurer's share. "
+            "Retention and limit are shares of the portfolio's insured value, so they scale to any upload.",
+        )
+        ri = current.reinsurance
+        ri_on = st.toggle("Apply reinsurance", value=ri["enabled"])
+        a, b, c = st.columns(3)
+        cession = a.number_input("Quota share ceded (%)", 0.0, 95.0, ri["quota_share_cession"] * 100, 5.0)
+        retention = b.number_input("Layer starts at (% of insured value)", 0.0, 50.0, ri["xol_retention_pct_of_tiv"] * 100, 0.25)
+        layer = c.number_input("Layer size (% of insured value)", 0.0, 100.0, ri["xol_limit_pct_of_tiv"] * 100, 0.5,
+                               help="0 = no excess-of-loss layer, quota share only.")
         section(
             "Uncertainty ranges",
             "Monte Carlo on the damage ratio only. σ is the spread of each property's damage around the curve; "
@@ -472,6 +506,14 @@ with change_tab:
             "class_adjustments": adj,
             "aal_zero_loss_return_period": zero,
             "hotspot_tag_radius_m": radius,
+            "imd_index": {**imd, "enabled": imd_on, "weight": imd_weight},
+            "reinsurance": {
+                **ri,
+                "enabled": ri_on,
+                "quota_share_cession": cession / 100,
+                "xol_retention_pct_of_tiv": retention / 100,
+                "xol_limit_pct_of_tiv": layer / 100,
+            },
             "policy_terms": {
                 "enabled": terms_on,
                 "deductible_pct_of_tiv": deductible / 100,

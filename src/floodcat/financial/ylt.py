@@ -94,7 +94,8 @@ def ep_from_ylt(losses, config, rng):
     }
 
 
-def simulate_ylt(run, assets_by_id, config, insured=False):
+def simulate_ylt(run, assets_by_id, config, insured=False, transform=None, basis=None):
+    """`transform` maps the simulated year losses (e.g. to the reinsurer's ceded share); same seed, same years."""
     import numpy as np
 
     cfg = config.year_loss_table
@@ -102,13 +103,15 @@ def simulate_ylt(run, assets_by_id, config, insured=False):
     losses = year_losses(
         simulate_losses(run, assets_by_id, config, insured), config, rng
     )
+    if transform is not None:
+        losses = transform(losses)
     result = ep_from_ylt(losses, config, rng)
     rarest = max(config.return_periods.values())
     result.update(
         years=cfg["years"],
         bootstrap=cfg["bootstrap"],
         band_pct=list(cfg["band_pct"]),
-        basis="insured" if insured else "gross",
+        basis=basis or ("insured" if insured else "gross"),
         zero_loss_years=int((losses == 0).sum()),
         rarest_modelled_return_period=rarest,
         status="assumed_uncalibrated",
@@ -125,9 +128,20 @@ def ylt_for_report(report, rows, config):
         if config.policy_terms["enabled"]
         else {}
     )
+    from .reinsurance import apply_array
+
+    tiv = Decimal(report["modelled_tiv_kes"])
     out = {}
     for name, run in report["runs"].items():
         out[name] = {"gross": simulate_ylt(run, assets_by_id, config)}
         if config.policy_terms["enabled"]:
             out[name]["insured"] = simulate_ylt(run, assets_by_id, config, insured=True)
+        if config.reinsurance["enabled"]:
+            # Each simulated year has one worst flood, so a per-event layer applies to the year's loss directly.
+            on_insured = config.policy_terms["enabled"]
+            for part, idx in (("ceded", 0), ("net", 1)):
+                out[name][part] = simulate_ylt(
+                    run, assets_by_id, config, insured=on_insured, basis=part,
+                    transform=lambda losses, i=idx: apply_array(losses, config.reinsurance, tiv)[i],
+                )
     return out

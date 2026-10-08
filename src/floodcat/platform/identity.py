@@ -31,6 +31,8 @@ DEFAULT_SETTINGS = {
     "session_max_hours": 12,
     "allowed_domains": [],
     "ai_mode": "full",
+    # Flood-report processing modes this organisation allows (ai/drainage.MODES); [] switches the feature off.
+    "report_modes": ["local", "ollama", "gemini"],
     "retention_runs_days": 730,
     "retention_audit_days": 2555,
     "default_assumption_set_id": None,

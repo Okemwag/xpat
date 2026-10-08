@@ -1,0 +1,75 @@
+{
+  "generated": "2026-10-08",
+  "model": "BAAI/bge-small-en-v1.5",
+  "thresholds": {
+    "min_similarity": 0.6,
+    "min_margin": 0.035,
+    "full_margin": 0.15
+  },
+  "splits": {
+    "dev": {
+      "split": "dev",
+      "passages": 28,
+      "drainage_passages": 12,
+      "true_positives": 9,
+      "false_positives": 1,
+      "false_negatives": 3,
+      "precision": 0.9,
+      "recall": 0.75,
+      "river_flagged": 0,
+      "errors": [
+        {
+          "label": "drainage",
+          "text": "Raw sewage mixed with rainwater flowed into homes after the overwhelmed sewer lines burst during the night.",
+          "drainage_similarity": 0.668,
+          "margin": -0.0563
+        },
+        {
+          "label": "drainage",
+          "text": "Construction debris dumped into the roadside ditch blocked the flow, and the estate flooded after an evening storm.",
+          "drainage_similarity": 0.6652,
+          "margin": -0.0081
+        },
+        {
+          "label": "drainage",
+          "text": "Flash flooding in the market was caused by poor drainage rather than the river, the area chief said.",
+          "drainage_similarity": 0.6658,
+          "margin": 0.0302
+        },
+        {
+          "label": "other",
+          "text": "Several areas of the city reported flooding, and the Red Cross said it was assessing needs.",
+          "drainage_similarity": 0.6642,
+          "margin": 0.0653
+        }
+      ],
+      "generated": "2026-10-08"
+    },
+    "test": {
+      "split": "test",
+      "passages": 28,
+      "drainage_passages": 12,
+      "true_positives": 10,
+      "false_positives": 0,
+      "false_negatives": 2,
+      "precision": 1.0,
+      "recall": 0.8333333333333334,
+      "river_flagged": 0,
+      "errors": [
+        {
+          "label": "drainage",
+          "text": "Blocked drains turned the bus stage into a lake, and passengers waded through waist-deep water to reach the matatus.",
+          "drainage_similarity": 0.5814,
+          "margin": 0.0528
+        },
+        {
+          "label": "drainage",
+          "text": "Every rainy season the estate floods because the outfall drain is choked with waste from the nearby market.",
+          "drainage_similarity": 0.6374,
+          "margin": -0.0099
+        }
+      ],
+      "generated": "2026-10-08"
+    }
+  }
+}

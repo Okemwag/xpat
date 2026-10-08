@@ -57,6 +57,17 @@ with st.form("settings"):
         )
         + "E-mails and phone numbers are removed first, and users consent each time."
     )
+    report_modes = st.multiselect(
+        "Flood reports may be read with",
+        ["local", "ollama", "gemini"],
+        default=s.get("report_modes", ["local", "ollama", "gemini"]),
+        format_func={
+            "local": "Local embeddings only (offline)",
+            "ollama": "Local embeddings + Ollama (offline)",
+            "gemini": "Local embeddings + Gemini (online)",
+        }.get,
+        help="Users choose among these on the Flood evidence page. Empty turns flood-report processing off.",
+    )
     section("Sharing and retention")
     vis = st.radio(
         "Default visibility of new analyses",
@@ -102,6 +113,7 @@ with st.form("settings"):
     if st.form_submit_button("Save settings", type="primary"):
         changes = {
             "ai_mode": ai,
+            "report_modes": report_modes,
             "default_visibility": vis,
             "retention_runs_days": int(runs_days),
             "retention_audit_days": int(audit_days),

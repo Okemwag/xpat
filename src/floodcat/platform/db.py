@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     String,
     Table,
@@ -350,6 +351,45 @@ decisions = Table(
     Column("share_pct", String(20), nullable=False),
     Column("overrode", Boolean, nullable=False),
     Column("reason", Text),
+)
+
+# Flood reports for the drainage-deficit factor: text is redacted at ingestion and stored encrypted; vectors are
+# float32 bytes from the local embedding model named in `embedding_model`.
+report_documents = Table(
+    "report_documents",
+    metadata,
+    _id(),
+    _org(),
+    Column("title", String(500), nullable=False),
+    Column("source_kind", String(20), nullable=False),
+    Column("url", String(1000)),
+    Column("published", String(10)),
+    Column("content_hash", String(64), nullable=False),
+    Column("independent", Boolean, nullable=False),
+    Column("embedding_model", String(120), nullable=False),
+    Column("vector", LargeBinary, nullable=False),
+    Column("chunk_count", Integer, nullable=False),
+    Column("drainage_chunks", Integer, nullable=False),
+    Column("mode", String(10), nullable=False),
+    Column("model", String(120)),
+    Column("assessments", JSON, nullable=False),
+    Column("created_by", String(32)),
+    _ts("created_at", False),
+    UniqueConstraint("org_id", "content_hash"),
+)
+
+report_chunks = Table(
+    "report_chunks",
+    metadata,
+    _id(),
+    _org(),
+    Column("document_id", String(32), ForeignKey("report_documents.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("ord", Integer, nullable=False),
+    Column("text_enc", Text, nullable=False),
+    Column("vector", LargeBinary, nullable=False),
+    Column("drainage_similarity", String(12), nullable=False),
+    Column("contrast_similarity", String(12), nullable=False),
+    Column("strength", String(12), nullable=False),
 )
 
 comments = Table(

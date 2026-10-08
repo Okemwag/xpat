@@ -32,6 +32,18 @@ def provenance(config, origin=None):
             "status": "derived_proxy",
             "note": "Real terrain + OSM rivers, not observed depths; blind to drainage",
         },
+        *(
+            [
+                {
+                    "component": "infrastructure_deficit_index",
+                    "label": "PROXY",
+                    "status": "derived_proxy",
+                    "note": "OpenStreetMap building footprints (density and roofed share); thresholds and weights are ASSUMPTION; drains not observed",
+                }
+            ]
+            if config.imd_index["enabled"]
+            else []
+        ),
         {
             "component": "hotspots",
             "label": "REAL",

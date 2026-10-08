@@ -74,6 +74,12 @@ def update_settings(conn, principal, changes, request=None):
             raise ModelError(
                 "invalid_setting", "AI mode must be off, extraction or full"
             )
+        if key == "report_modes":
+            from ..ai.drainage import MODES
+
+            value = [m for m in MODES if m in set(value or [])]
+            if set(changes[key] or []) - set(MODES):
+                raise ModelError("invalid_setting", "Report modes must be local, ollama or gemini")
         if key == "default_visibility" and value not in VISIBILITIES:
             raise ModelError("invalid_setting", "Unknown visibility")
         if key == "session_idle_minutes" and not 5 <= int(value) <= 480:
@@ -531,6 +537,7 @@ def export_org(conn, principal, request=None):
         decisions,
         evidence,
         extractions,
+        report_documents,
         submissions,
     )
 
@@ -564,6 +571,8 @@ def export_org(conn, principal, request=None):
         "runs": rows(runs, ("inputs_enc",)),
         "extractions": rows(extractions),
         "evidence": rows(evidence),
+        # Report metadata and place assessments; chunk text and vectors stay out of the export.
+        "flood_reports": rows(report_documents, ("vector",)),
         "assumption_sets": rows(assumption_sets),
         "submissions": rows(submissions),
         "decisions": rows(decisions),

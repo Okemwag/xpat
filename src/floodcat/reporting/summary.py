@@ -49,6 +49,28 @@ def markdown_summary(report, ranges=None, ylt=None):
             f"| 1-in-{p['return_period_years']:g} | {_kes(p['loss_kes'])} |"
             for p in run["insured"]["ep_curve"]
         ]
+    if "reinsurance" in run:
+        ri, stc = run["reinsurance"], run["reinsurance"]["structure"]
+        lines += [
+            "",
+            "## Reinsured loss (illustrative programme, ASSUMPTION)",
+            "",
+            f"- {stc['quota_share_cession']:.0%} quota share of the {ri['basis']} loss, then {_kes(stc['xol_limit_kes'])} xs "
+            f"{_kes(stc['xol_retention_kes'])} per event on the insurer's share (used up at {_kes(stc['xol_exhaustion_kes'])}).",
+            f"- Reinsurer average annual loss: {_kes(ri['ceded']['aal']['aal_kes'])}; insurer keeps: {_kes(ri['net']['aal']['aal_kes'])}.",
+            "- No reinstatements, aggregate covers or second events in a year.",
+            "",
+            "| Return period | Loss before reinsurance | Quota share | Excess of loss | Reinsurer total | Insurer keeps |",
+            "|---|---|---|---|---|---|",
+        ]
+        lines += [
+            f"| 1-in-{t['return_period_years']:g} | {_kes(t['loss_kes'])} | {_kes(t['quota_share'])} | {_kes(t['excess_of_loss'])} | "
+            f"{_kes(t['ceded'])} | {_kes(t['net'])} |"
+            for t in ri["by_tier"]
+        ]
+    if run.get("property_aal"):
+        lines += ["", "## Largest expected annual losses", "", "| Property | Construction | Average annual loss |", "|---|---|---|"]
+        lines += [f"| {r['loc_id']} | {r['housing_class']} | {_kes(r['aal_kes'])} |" for r in run["property_aal"][:10]]
     if ylt:
         y = ylt["baseline"]["gross"]
         low, high = y["band_pct"]

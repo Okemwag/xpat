@@ -193,8 +193,10 @@ with b.container(border=True, height="stretch"):
         st.switch_page("views/evidence.py")
 
 with st.container(border=True):
-    section("Ask the results")
+    section(
+        "Xpat assistant", "Questions about these results, the model or how to use Xpat"
+    )
     badges("AI")
-    from ui.ask_view import ask_panel
+    from ui.chat_view import chat_panel
 
-    ask_panel(report, key="ask_overview")
+    chat_panel("overview_assistant", report=report)

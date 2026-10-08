@@ -281,9 +281,15 @@ def test_underwriting_decision_flow(store, monkeypatch):
     at.run()
     assert not at.exception and any("Recommended share" == m.label for m in at.metric)
     page_text = " ".join(m.value for m in at.markdown)
-    assert "Our advice" in page_text and "Pricing and premium adequacy" in page_text and "Accumulation" in page_text
+    assert (
+        "Our advice" in page_text
+        and "Pricing and premium adequacy" in page_text
+        and "Accumulation" in page_text
+    )
     assert any(m.label == "Rate per mille" for m in at.metric)
-    assert any("synthetic data" in m.value for m in at.markdown)  # the advice warns not to quote on synthetic data
+    assert any(
+        "synthetic data" in m.value for m in at.markdown
+    )  # the advice warns not to quote on synthetic data
     from ui import state
 
     class FakeLLM:
@@ -347,7 +353,7 @@ def test_ask_results_and_drainage_page(store, monkeypatch):
 
     monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
     monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
-    at.switch_page("views/overview.py")
+    at.switch_page("views/results.py")
     at.run()
     next(t for t in at.text_input if t.label == "Your question").input(
         "What is the average annual loss?"
@@ -355,8 +361,28 @@ def test_ask_results_and_drainage_page(store, monkeypatch):
     next(b for b in at.button if b.label == "Ask").click()
     at.run()
     assert not at.exception, at.exception[0].value
-    assert "ask_overview_answer" in at.session_state
-    assert at.session_state["ask_overview_answer"][1]["unsupported_figures"] == ["9876"]
+    assert "ask_results_answer" in at.session_state
+    assert at.session_state["ask_results_answer"][1]["unsupported_figures"] == ["9876"]
+
+    # The assistant on Overview answers from the documentation and the loaded results.
+    class FakeAssistant:
+        model = "fake-gemini"
+
+        def generate_json(self, system, prompt, schema):
+            assert '"facts"' in prompt and "Average annual loss" not in system
+            return {
+                "answerable": True,
+                "answer": "Your average annual loss is in the results; 4,444 is not.",
+                "sources": [1],
+            }
+
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeAssistant())
+    at.switch_page("views/overview.py")
+    at.run()
+    at.chat_input[0].set_value("What is my average annual loss?").run()
+    assert not at.exception, at.exception[0].value
+    reply = at.session_state["overview_assistant_messages"][-1]
+    assert reply["role"] == "assistant" and reply["meta"]["unsupported"] == ["4444"]
     # Drainage page with small in-memory layers (the real ones are built by scripts/build_drainage_layers.py).
     from floodcat.hazard.drainage import DrainageLayers
 
@@ -434,3 +460,20 @@ def test_admin_approves_join_request_and_edits_own_roles(store):
             .where(users.c.email == "boss@adminre.test")
         ).scalar()
     assert sorted(roles) == ["head_uw", "owner"]
+
+
+def test_public_assistant_on_the_home_page(store, monkeypatch):
+    monkeypatch.setenv(
+        "FLOODCAT_ASSISTANT_PUBLIC_AI", "0"
+    )  # visitors get documentation answers; no AI call in tests
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.run()
+    assert not at.exception
+    assert (
+        any("Ask the Xpat assistant" in h.value for h in at.markdown) or at.chat_input
+    )
+    at.chat_input[0].set_value("How do I create an account?").run()
+    assert not at.exception, at.exception[0].value
+    reply = at.session_state["home_assistant_messages"][-1]
+    assert reply["role"] == "assistant" and "Creating an account" in reply["content"]
+    assert reply["meta"]["sources"][0]["heading"] == "Creating an account"

@@ -123,6 +123,17 @@ site.cards(
     ]
 )
 
+# Assistant
+site.section("Questions", "Ask the Xpat assistant")
+_, chat_col, _ = st.columns([1, 6, 1])
+with chat_col:
+    from ui.chat_view import chat_panel
+
+    chat_panel("home_assistant")
+    st.caption(
+        "Answers come from Xpat's own documentation, with sources. It cannot see any organisation's data."
+    )
+
 site.band("See your flood exposure", "Start with a pilot on your own portfolio.")
 st.space("small")
 _, mid, _ = st.columns([1, 2, 1])

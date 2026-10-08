@@ -270,7 +270,7 @@ def _numbers(text):
     out = set()
     for n in _NUM.findall(text):
         try:
-            out.add(str(Decimal(n.replace(",", "").rstrip(".")).normalize()))
+            out.add(format(Decimal(n.replace(",", "").rstrip(".")).normalize(), "f"))
         except Exception:
             pass
     return out

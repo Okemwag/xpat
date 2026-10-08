@@ -65,6 +65,19 @@ Approved evidence informs a **documented adjustment** to the baseline hazard ass
 
 Gemini also drafts plain-English explanations — an underwriting briefing of the results and the reasoning behind an underwriting recommendation. Both are written only from figures the model produced; every number is checked against them, and neither can change a result or a recommendation.
 
+Eight further AI features extend this for every user. They are documented in [docs/AI_ENHANCEMENTS.md](docs/AI_ENHANCEMENTS.md):
+
+- a **drainage-aware hazard model** that targets the places the terrain map misses
+- a **news harvester** that fills the evidence review queue
+- a **satellite (Sentinel-1) flood check** that tests any hazard map against observed water
+- **storey counts** from Open Buildings heights
+- a **schedule quality reviewer**
+- **Ask the results**, plain questions answered only from the run's figures
+- **referral and quote memos** for underwriters
+- **public risk notes** in English and Kiswahili for county teams
+
+Each one is labelled and checked the same way as the features above.
+
 **This enhancement is built but not validated.** The app reports the named-hotspot hit rate before and after, using only evidence independent of the county's hotspot list; any claim that it improves the model still requires independent evaluation. A higher estimate of loss alone is not proof of better risk assessment.
 
 ## What the current results mean

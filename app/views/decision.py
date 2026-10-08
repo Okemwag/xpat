@@ -30,7 +30,7 @@ with st.form('offer'):
     with st.container(horizontal=True, vertical_alignment='bottom'):
         premium = st.number_input('Offered premium for 100% (KES)', min_value=0.0, value=float(offer.get('premium', 0.0)), step=100_000.0, format='%.0f')
         share = st.number_input('Offered share (%)', min_value=0.0, max_value=100.0, value=float(offer.get('share', 10.0)), step=0.5)
-        run = st.segmented_control('Hazard', runs, default=offer.get('run', runs[0]), format_func={'baseline': 'Baseline map', 'enhanced': 'With AI evidence'}.get) if len(runs) > 1 else runs[0]
+        run = st.segmented_control('Hazard', runs, default=offer.get('run', runs[0]), format_func={'baseline': 'Baseline map', 'enhanced': 'With AI hazard adjustment'}.get) if len(runs) > 1 else runs[0]
         basis = (st.segmented_control('Loss basis', ['insured', 'gross'], default=offer.get('basis', 'insured'), format_func={'gross': 'Gross', 'insured': 'Insured'}.get)
                  if 'insured' in report['runs']['baseline'] else 'gross')
     submitted = st.form_submit_button('Get recommendation', type='primary', icon=':material/rule:')
@@ -135,6 +135,13 @@ else:
             with st.popover(f"{rationale['fact_count']} facts used", icon=':material/list:'):
                 for fact in rationale['facts']: st.markdown(f"- {fact['text']} · *{fact['provenance']}*")
             st.caption(f"AI-written by {rationale['model']} from the rule results. It cannot change the recommendation; you decide.")
+
+    with st.container(border=True):
+        head = st.container(horizontal=True, vertical_alignment='center')
+        head.markdown('#### Referral note or quote letter — drafted by AI')
+        badges('AI')
+        from ui.memo_view import memo_panel
+        memo_panel(rec, report, key)
 
     # The person's decision -----------------------------------------------------------------------------------
     if p.can('underwriting.decide'):

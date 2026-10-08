@@ -50,11 +50,33 @@ class Runtime:
     def synthetic_only(self):
         return os.getenv('FLOODCAT_SYNTHETIC_ONLY') == '1'
 
+    @property
+    def drainage_layers_path(self):
+        return Path(os.getenv('FLOODCAT_DRAINAGE_LAYERS') or ROOT/'runtime'/'drainage'/'osm_layers.json')
+
+    @cached_property
+    def drainage_layers(self):
+        """OSM drains, culverts and buildings (scripts/build_drainage_layers.py), or None when not built on this server."""
+        from ..hazard.drainage import DrainageLayers
+        return DrainageLayers.load(self.drainage_layers_path) if self.drainage_layers_path.exists() else None
+
+    def drainage_adjustment(self, evidence=(), config=None, extra_positives=(), layers=None):
+        """The drainage model, learned from the organisation's approved independent evidence when there is enough of it."""
+        from ..hazard.drainage import DrainageAdjustment, fit
+        layers = layers or self.drainage_layers
+        if layers is None:
+            raise ModelError('missing_layers', 'Drainage layers are not built on this server. Run: uv run python scripts/build_drainage_layers.py')
+        config = config or self.config
+        return DrainageAdjustment(layers, fit(layers, self.hazard, tuple(evidence or ()), config, extra_positives), config)
+
     def run(self, rows, *, config=None, declare_synthetic=False, data_origin=None, source_label=None, assign_missing_ids=False,
-            allow_partial=False, ai_adjustment=False, evidence=None):
+            allow_partial=False, ai_adjustment=False, evidence=None, drainage=False, drainage_evidence=None,
+            drainage_extra_positives=()):
         rows, notes = apply_declarations(rows, declare_synthetic, source_label, assign_missing_ids, data_origin)
+        config = config or self.config
         # Callers pass the organisation's evidence explicitly (tenant-scoped); none means no adjustment input.
-        result = analyse(rows, config or self.config, self.hazard, evidence=evidence or (), allow_partial=allow_partial,
-                         hotspots=self.hotspots, ai_adjustment=ai_adjustment, synthetic_only=self.synthetic_only)
+        adjustment = self.drainage_adjustment(drainage_evidence or evidence or (), config, drainage_extra_positives) if drainage else None
+        result = analyse(rows, config, self.hazard, evidence=evidence or (), allow_partial=allow_partial,
+                         hotspots=self.hotspots, ai_adjustment=ai_adjustment, synthetic_only=self.synthetic_only, drainage=adjustment)
         result['declarations'] = notes
         return result

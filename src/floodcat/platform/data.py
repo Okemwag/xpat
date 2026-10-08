@@ -53,7 +53,7 @@ def save_run(conn, principal, report, rows, label, settings=None, visibility=Non
     if visibility == 'team' and not team_id: visibility = 'private'
     if submission_id: _submission(conn, principal, submission_id)
     run_id = report['analysis_id']
-    clean_settings = {k: v for k, v in (settings or {}).items() if k != 'evidence'}
+    clean_settings = {k: v for k, v in (settings or {}).items() if k not in ('evidence', 'drainage_evidence', 'drainage_extra_positives')}
     conn.execute(runs.insert().values(id=run_id, org_id=principal.org_id, owner_id=principal.user_id, team_id=team_id, visibility=visibility,
                                       label=str(label)[:200], created_at=now(), submission_id=submission_id, summary=_summary(report),
                                       payload=json.loads(json.dumps(report, default=str)), inputs_enc=security.encrypt(json.dumps(rows, default=str)),
@@ -187,9 +187,9 @@ def delete_evidence(conn, principal, evidence_id, request=None):
 
 # Assumption sets / house view (GOV-01…03) ----------------------------------------------------------------
 def _validate_config(config):
-    from ..core.config import ModelConfig
+    from ..core.config import ModelConfig, merge_defaults
     try:
-        return ModelConfig(**config).to_dict()
+        return ModelConfig(**merge_defaults(dict(config))).to_dict()
     except TypeError:
         raise ModelError('invalid_config', 'Assumption set has unknown or missing fields') from None
 
@@ -256,8 +256,8 @@ def list_sets(conn, principal):
 def house_config(conn, org_id):
     """The organisation's approved default assumptions, else the shipped configs/default.json."""
     row = conn.execute(select(assumption_sets.c.config).where(assumption_sets.c.org_id == org_id, assumption_sets.c.is_default.is_(True))).scalar()
-    if row: return dict(row)
-    from ..core.config import load_config
+    from ..core.config import load_config, merge_defaults
+    if row: return merge_defaults(dict(row))
     return load_config().to_dict()
 
 def house_set(conn, org_id):

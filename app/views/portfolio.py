@@ -64,7 +64,9 @@ def preview(assets):
                 'Fragile classes lose a larger share of value in a flood; concrete loses less per metre but often holds most of the value.', ['ASSUMPTION'])
 
 def review_and_run(rows, label_default, source_kind, key, origin_hint=None):
-    """Shared review step: where the data comes from, validation summary, preview, explicit partial run."""
+    """Shared review step: data checks and storeys, where the data comes from, validation summary, preview, explicit partial run."""
+    from ui.quality_view import improve_rows
+    rows = improve_rows(rows, key)
     columns = set().union(*(r.keys() for r in rows))
     missing_label = not {'synthetic', 'source'} <= columns or any(r.get('synthetic') in (None, '') for r in rows)
     missing_ids = 'loc_id' not in columns or any(r.get('loc_id') in (None, '') for r in rows)

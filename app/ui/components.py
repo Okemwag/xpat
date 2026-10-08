@@ -48,7 +48,9 @@ def run_banner(report):
         for label in report.get('exposure_origin', {}).get('labels', ['SYNTHETIC']):
             st.badge(f'{label.lower()} data', color=LABELS[label][0])
         if report['partial']: st.badge(f"{len(report['excluded_from_hazard']) + report['rejected_count']} excluded", color='orange')
-        if report['ai_contribution']['enabled']: st.badge('AI evidence applied', color='blue', icon=':material/auto_awesome:')
+        ai = report['ai_contribution']
+        if ai['enabled'] and ai.get('evidence_enabled', True) and ai['applied_evidence_count']: st.badge('AI evidence applied', color='blue', icon=':material/auto_awesome:')
+        if ai.get('drainage'): st.badge('drainage model applied', color='blue', icon=':material/water_drop:')
         if st.session_state.get('config_overrides'): st.badge('custom assumptions', color='gray')
 
 def headline_tiles(report, run='baseline'):

@@ -4,7 +4,7 @@ from floodcat.core.errors import ModelError
 from ui import state
 from ui.charts import class_bars, ylt_chart
 from ui.charts import hbars
-from ui.components import explain, kpis, page_header, pipeline_strip, require_result, run_banner, section, tier_selector
+from ui.components import badges, explain, kpis, page_header, pipeline_strip, require_result, run_banner, section, tier_selector
 
 page_header('Loss curve')
 pipeline_strip('Loss curve')
@@ -69,3 +69,8 @@ rows = [{'Class': state.class_label(i['id']), 'Loss (KES m)': round(float(i['los
          'Properties': i['property_count'], '_label': f"{i['loss_share_pct']:.0f}% · {state.kes(i['loss_kes'])}"} for i in b['construction']]
 chart = hbars(rows, 'Class', 'Loss (KES m)', 'Loss (KES m)', text='_label', height_per=40)
 if chart: st.altair_chart(chart, width='stretch')
+
+with st.container(border=True):
+    section('Ask the results'); badges('AI')
+    from ui.ask_view import ask_panel
+    ask_panel(report, key='ask_results')

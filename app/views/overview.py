@@ -75,3 +75,8 @@ with b.container(border=True, height='stretch'):
     else:
         st.metric('Evidence applied', 'None', help='The hazard map misses drainage flooding; reviewed reports can correct it.', border=True)
     if st.button('Flood evidence', icon=':material/auto_awesome:'): st.switch_page('views/evidence.py')
+
+with st.container(border=True):
+    section('Ask the results'); badges('AI')
+    from ui.ask_view import ask_panel
+    ask_panel(report, key='ask_overview')

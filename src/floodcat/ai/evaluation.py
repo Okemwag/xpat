@@ -40,3 +40,12 @@ def spread(assets_scores, hotspots, config):
         if min(distance_m(asset.lat, asset.lon, h.lat, h.lon) for h in hotspots) <= config.hotspot_tag_radius_m: near += 1
         else: far += 1
     return {'changed_near_hotspot': near, 'changed_away_from_hotspots': far}
+
+def describe_adjustment(ai):
+    """Plain words for what produced the enhanced run: approved evidence, the drainage model, or both."""
+    parts = []
+    if ai.get('evidence_enabled', ai.get('enabled')) and ai.get('applied_evidence_count'):
+        parts.append(f"{ai['applied_evidence_count']} reviewer-approved drainage report(s)")
+    if ai.get('drainage'):
+        parts.append(f"the drainage model ({'learned' if ai['drainage']['mode'] == 'fitted' else 'prior'} weights)")
+    return ' and '.join(parts) or 'the AI hazard adjustment (no approved evidence applied)'

@@ -40,6 +40,8 @@ results = [P('views/results.py', 'Loss curve', ':material/show_chart:'), P('view
            P('views/property.py', 'Property explorer', ':material/home_work:')]
 model = [P('views/assumptions.py', 'Assumptions & governance', ':material/tune:')]
 if can('evidence.add') or can('evidence.approve'): model.append(P('views/evidence.py', 'AI flood evidence', ':material/auto_awesome:'))
+if can('runs.read'): model.append(P('views/hazard_checks.py', 'Hazard checks', ':material/water_drop:'))
+model.append(P('views/public_notes.py', 'Public risk notes', ':material/campaign:'))
 model += [P('views/honesty.py', 'Data & honesty', ':material/verified:'), P('views/method.py', 'How the model works', ':material/menu_book:')]
 account = ([P('views/history.py', 'Reports & history', ':material/history:')] if can('runs.read') else []) + [P('views/account.py', 'Profile & security', ':material/person:')]
 sections = {'Workspace': workspace, **({'Results': results} if can('runs.read') else {}), 'Model': model, 'Account': account}

@@ -25,5 +25,8 @@ def provenance(config,origin=None):
                  if config.policy_terms['enabled'] else 'Off: losses are gross')},
         {'component':'uncertainty_ranges','label':'ASSUMPTION','status':'assumed_uncalibrated',
          'note':f"Monte Carlo on damage ratio only: σ={config.uncertainty['damage_sigma']:g}, ρ={config.uncertainty['correlation']:g}, {config.uncertainty['trials']} trials"},
+        {'component':'drainage_model','label':'AI','status':'off_by_default',
+         'note':f"Drainage-failure probability from OSM drains, culverts and buildings; prior weights (ASSUMPTION) or learned from approved independent evidence; "
+                f"uplift only above p = {config.drainage_model['probability_threshold']:g}"},
         {'component':'AI_uplift','label':'AI','status':'assumed_mapping','note':'Off by default; learned hotspot probability mapped to severity, not measured intensity'},
     ]

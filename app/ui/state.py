@@ -335,3 +335,19 @@ def people():
     with platform().tx() as conn:
         return {r.id: r.display_name for r in conn.execute(select(users.c.id, users.c.display_name).join(memberships, memberships.c.user_id == users.c.id)
                                                            .where(memberships.c.org_id == p.org_id, memberships.c.status == 'active'))}
+
+def audit_ai(action, target_type, target_id, details):
+    """Audit one AI action (model, prompt version, counts — never the text sent or received)."""
+    from floodcat.platform import audit
+    with platform().tx() as conn:
+        audit.record(conn, action, actor=principal(), target_type=target_type, target_id=str(target_id)[:120], details=details, request=request_info())
+
+def drainage_ready():
+    return runtime().drainage_layers is not None
+
+def org_evidence():
+    """The organisation's evidence library (tenant-scoped)."""
+    from floodcat.platform import data
+    p = principal()
+    if p is None or not p.org_id: return []
+    with platform().tx() as conn: return [e for e, _ in data.list_evidence(conn, p.org_id)]

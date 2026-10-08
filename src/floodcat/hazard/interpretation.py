@@ -11,14 +11,15 @@ def validate_scores(scores):
         raise ModelError("nonmonotonic_hazard", "Scores must not decrease from extreme to common; do not reorder losses to hide this")
     return dict(zip(TIERS,values))
 
-def enhance(scores, signal, config):
-    """Raise scores toward 1 where approved drainage evidence applies (AI stage, ASSUMPTION mapping).
+def enhance(scores, signal, config, weight=None):
+    """Raise scores toward 1 where approved drainage evidence or the drainage model applies (AI stage, ASSUMPTION mapping).
 
     s' = 1 - (1 - s)(1 - w·f_tier·signal). Both factors shrink as tiers get rarer, so the
     adjusted scores keep the extreme→common order. The evidence signal is not a depth or a
     probability; the weight and tier factors that turn it into severity are config assumptions.
     """
     signal=bounded(signal,'evidence_signal')
+    weight=config.uplift_weight if weight is None else bounded(weight,'uplift_weight')
     if signal==0: return validate_scores(dict(scores))
     # max() guards against floating-point round-off pulling a score below its baseline.
-    return validate_scores({t: max(scores[t],1-(1-scores[t])*(1-config.uplift_weight*config.uplift_factors[t]*signal)) for t in TIERS})
+    return validate_scores({t: max(scores[t],1-(1-scores[t])*(1-weight*config.uplift_factors[t]*signal)) for t in TIERS})

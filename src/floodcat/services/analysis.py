@@ -20,14 +20,20 @@ from ..reporting.provenance import provenance, exposure_origin
 
 SUPPLIED_SCORE_TOLERANCE = 1e-6
 
-def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotspots=(),ai_adjustment=False,synthetic_only=False):
-    """Run the full chain for one portfolio. Pure: no files, network or database."""
+def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotspots=(),ai_adjustment=False,synthetic_only=False,drainage=None):
+    """Run the full chain for one portfolio. Pure: no files, network or database.
+
+    ai_adjustment applies approved evidence; drainage (a hazard.drainage.DrainageAdjustment) applies the drainage model.
+    Either produces the 'enhanced' run beside the unchanged 'baseline'.
+    """
     config=config or load_config();provider=provider or AttachedHazard()
     hotspots=tuple(hotspots);evidence=tuple(evidence)
     applied=usable(evidence,config) if ai_adjustment else []
+    adjusting=ai_adjustment or drainage is not None
     assets,issues=validate_rows(rows,synthetic_only)
     results={'baseline':{t:[] for t in TIERS}}
-    if ai_adjustment: results['enhanced']={t:[] for t in TIERS}
+    if adjusting: results['enhanced']={t:[] for t in TIERS}
+    drained=0
     excluded=[];hazard_ok=[];changes=[];signals={}
     for asset in assets:
         try:
@@ -39,15 +45,17 @@ def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotsp
                     issues.append({'row':None,'loc_id':asset.loc_id,'severity':'warning','code':'supplied_scores_differ',
                                    'message':f'Supplied hazard scores differ from the hazard maps by up to {diff:.3f}; map values used'})
             tag=nearest_hotspot(asset.lat,asset.lon,hotspots,config) if hotspots else None
-            if ai_adjustment:
-                signal=evidence_signal(asset.lat,asset.lon,applied,config)
+            if adjusting:
+                signal=evidence_signal(asset.lat,asset.lon,applied,config) if ai_adjustment else 0.
                 enriched=enhance(baseline,signal,config)
+                d_signal=drainage.signal(asset.lat,asset.lon,baseline) if drainage is not None else 0.
+                if d_signal>0: enriched=enhance(enriched,d_signal,config,weight=config.drainage_model['weight']); drained+=1
                 changed=any(abs(enriched[t]-baseline[t])>1e-12 for t in TIERS)
                 changes.append((asset,changed))
-                if changed: signals[asset.loc_id]={'evidence_signal':signal,'baseline':baseline,'adjusted':enriched}
+                if changed: signals[asset.loc_id]={'evidence_signal':signal,'drainage_signal':d_signal,'baseline':baseline,'adjusted':enriched}
             for tier in TIERS:
                 results['baseline'][tier].append(property_loss(asset,baseline[tier],config,tag))
-                if ai_adjustment: results['enhanced'][tier].append(property_loss(asset,enriched[tier],config,tag))
+                if adjusting: results['enhanced'][tier].append(property_loss(asset,enriched[tier],config,tag))
             hazard_ok.append(asset)
         except ModelError as exc:
             excluded.append(asset.loc_id)
@@ -66,14 +74,15 @@ def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotsp
             insured={t:total_loss(r,'insured_loss_kes') for t,r in scenarios.items()}
             runs[name]['insured']={'ep_curve':ep_curve(insured,config,covered_tiv),'aal':average_annual_loss(insured,config),
                                    'terms':dict(config.policy_terms),'note':'Per-risk deductible and limit only; no layers or reinsurance'}
-    contribution={'enabled':ai_adjustment,'applied_evidence_count':len(applied),
+    contribution={'enabled':adjusting,'evidence_enabled':ai_adjustment,'applied_evidence_count':len(applied),
+                  'drainage':({**drainage.summary(),'properties_uplifted':drained} if drainage is not None else None),
                   'approved_evidence_count':sum(e.approved for e in evidence),
                   'changed_properties':sum(c for _,c in changes),
-                  'spread':spread(changes,hotspots,config) if ai_adjustment and hotspots else None,
+                  'spread':spread(changes,hotspots,config) if adjusting and hotspots else None,
                   'property_changes':signals,
                   'approved_evidence_snapshot':[e.to_dict() for e in applied],
                   'note':'Increased loss does not by itself prove improved accuracy; see the hotspot comparison.'}
-    if ai_adjustment:
+    if adjusting:
         contribution['loss_delta_kes']={t:money_string(total_loss(results['enhanced'][t])-total_loss(results['baseline'][t])) for t in TIERS}
         contribution['aal_delta_kes']=money_string(Decimal(runs['enhanced']['aal']['aal_kes'])-Decimal(runs['baseline']['aal']['aal_kes']))
     input_fingerprint=hashlib.sha256(json.dumps(rows,sort_keys=True,default=str).encode()).hexdigest()

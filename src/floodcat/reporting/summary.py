@@ -44,8 +44,9 @@ def markdown_summary(report, ranges=None, ylt=None):
         lines += [f"- {a['id']}: {_kes(a['loss_kes'])} from {a['property_count']} properties" for a in run['breakdowns'][rarest]['hotspot_area'][:5]]
     ai = report['ai_contribution']
     if ai['enabled']:
-        lines += ['', '## AI drainage evidence', '',
-                  f"{ai['applied_evidence_count']} approved report(s) raised hazard at {ai['changed_properties']} properties; "
+        from ..ai.evaluation import describe_adjustment
+        lines += ['', '## AI hazard adjustment', '',
+                  f"{describe_adjustment(ai)} raised hazard at {ai['changed_properties']} properties; "
                   f"average annual loss changed by {_kes(ai['aal_delta_kes'])}. A higher loss is not by itself proof of a better model."]
     if report['partial']:
         lines += ['', f"**Partial run:** {report['rejected_count'] + len(report['excluded_from_hazard'])} record(s) excluded."]

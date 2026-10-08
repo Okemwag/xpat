@@ -1,0 +1,18 @@
+# One domain for everything, so the HttpOnly session cookie set by /auth is sent to the interface.
+# /auth and /v1 → sign-in/API server; everything else (including Streamlit's websocket) → interface.
+{$XPAT_DOMAIN:localhost} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	@api path /auth* /v1* /health
+	handle @api {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy ui:8501
+	}
+}

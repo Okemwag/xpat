@@ -6,7 +6,7 @@ from floodcat.core.constants import CLASSES
 from floodcat.core.errors import ModelError, ReviewRequired
 from floodcat.exposure.validation import apply_declarations, validate_rows
 from ui import state
-from ui.components import badges, issues_panel, page_header
+from ui.components import badges, issues_panel, page_header, pipeline_strip
 
 TEMPLATE = ('loc_id,lat,lon,housing_class,floor_area_m2,cost_per_m2_kes,tiv_kes,synthetic,source\n'
             'P-001,-1.2576,36.8962,semi_permanent,33,10000,3300000,True,my test portfolio\n'
@@ -17,7 +17,22 @@ EXAMPLES = [
     'Five semi-permanent shops along Outer Ring Road in Donholm, roughly 40 square metres each. Twelve masonry homes in Kibera worth 1.2m each.',
 ]
 
-page_header('Portfolio', 'Load the properties to model. Every source goes through the same validation before any loss is calculated.', ('SYNTHETIC',))
+page_header('Portfolio', 'Load the properties to model — a schedule, a broker document or a plain-English description. '
+            'Every source goes through the same validation before any loss is calculated.')
+pipeline_strip('Exposure')
+if state.read_only():
+    st.error('Your organisation is suspended (read-only). New analyses are disabled.', icon=':material/block:'); st.stop()
+if st.session_state.get('active_submission'):
+    from floodcat.platform import data as _data
+    try:
+        with state.platform().tx() as _c: _sub = _data.get_submission(_c, state.principal(), st.session_state['active_submission'])
+        _a, _b = st.columns([5, 1], vertical_alignment='center')
+        _a.info(f"Analyses you run now are linked to the submission **{_sub['name']}**.", icon=':material/work:')
+        if _b.button('Unlink'): st.session_state.pop('active_submission'); st.rerun()
+    except Exception:
+        st.session_state.pop('active_submission', None)
+
+ORIGIN_LABEL = {'real': 'Real exposure — a client portfolio or broker submission', 'synthetic': 'Synthetic or test data'}
 
 def run_and_go(rows, label, settings):
     with st.spinner('Running hazard → vulnerability → loss…'):
@@ -35,20 +50,32 @@ def preview_map(assets):
     if assets:
         st.map(pd.DataFrame({'lat': [a.lat for a in assets], 'lon': [a.lon for a in assets]}), size=40, color='#2a78d6', height=280)
 
-def review_and_run(rows, label_default, source_kind, key):
-    """Shared review step: declarations, validation summary, preview, explicit partial run."""
+def review_and_run(rows, label_default, source_kind, key, origin_hint=None):
+    """Shared review step: where the data comes from, validation summary, preview, explicit partial run."""
     columns = set().union(*(r.keys() for r in rows))
     missing_label = not {'synthetic', 'source'} <= columns or any(r.get('synthetic') in (None, '') for r in rows)
     missing_ids = 'loc_id' not in columns or any(r.get('loc_id') in (None, '') for r in rows)
+    origin, authorised = None, True
     with st.container(border=True):
         st.markdown('**Before running**')
-        declare = st.checkbox('I confirm this portfolio is synthetic or test data, not real client data', value=False, key=f'{key}_declare',
-                              disabled=not missing_label, help='Required when the file has no synthetic/source columns. Real portfolios are out of scope.')
+        if missing_label:
+            choices = ['synthetic'] if state.runtime().synthetic_only else ['real', 'synthetic']
+            default = choices.index(origin_hint) if origin_hint in choices else None
+            origin = st.radio('Where does this data come from?', choices, index=default, key=f'{key}_origin', format_func=ORIGIN_LABEL.get,
+                              help='Real data is labelled REAL throughout the results; synthetic data is labelled SYNTHETIC.')
+            if state.runtime().synthetic_only: st.caption('This deployment accepts synthetic data only.')
+            if origin == 'real':
+                authorised = st.checkbox('I am authorised to process this data. It is kept on this server, contact details are not stored, '
+                                         'and results are indicative — not a price or underwriting advice.', key=f'{key}_authorised')
         assign = st.checkbox('Give records without an ID a generated one (UPL-<row>)', value=False, key=f'{key}_ids', disabled=not missing_ids)
         label = st.text_input('Name this run', value=label_default, max_chars=80, key=f'{key}_label')
-    prepared, _ = apply_declarations(rows, declare, f'{source_kind}; declared synthetic by {state.user()["display_name"]}', assign)
+    source_label = f'{source_kind}; {origin or "as labelled"} data, confirmed by {state.user()["display_name"]}'
+    prepared, _ = apply_declarations(rows, False, source_label, assign, data_origin=origin)
+    if missing_label and origin is None:
+        st.info('Choose whether this is real or synthetic data to continue.', icon=':material/help:')
+        return
     try:
-        assets, issues = validate_rows(prepared)
+        assets, issues = validate_rows(prepared, state.runtime().synthetic_only)
     except ModelError as exc:
         st.error(str(exc), icon=':material/error:')
         return
@@ -64,45 +91,73 @@ def review_and_run(rows, label_default, source_kind, key):
             st.error('Some valid records could not be given a hazard value:', icon=':material/error:')
             issues_panel([i for i in review['issues'] if i['severity'] == 'error'])
         partial = st.checkbox(f'Run on the valid records only and report the rest as excluded', key=f'{key}_partial')
-    disabled = not assets or (bool(errors or review) and not partial)
+    disabled = not assets or not authorised or (bool(errors or review) and not partial)
     if st.button('Run analysis', type='primary', icon=':material/play_arrow:', disabled=disabled, key=f'{key}_run'):
         st.session_state.pop('review_error', None)
-        run_and_go(rows, label or label_default, {'declare_synthetic': declare, 'assign_missing_ids': assign, 'allow_partial': partial,
-                                                  'source_label': f'{source_kind}; declared synthetic by {state.user()["display_name"]}'})
+        run_and_go(rows, label or label_default, {'data_origin': origin, 'assign_missing_ids': assign, 'allow_partial': partial,
+                                                  'source_label': source_label})
 
-upload, describe, sample = st.tabs([':material/upload_file: Upload a CSV', ':material/edit_note: Describe in words (AI)', ':material/dataset: Sample portfolio'])
+upload, describe, sample = st.tabs([':material/upload_file: Upload a file', ':material/edit_note: Describe in words (AI)',
+                                    ':material/dataset: Sample portfolio'])
 
 with upload:
     left, right = st.columns([3, 2], gap='large')
     with right:
         with st.container(border=True):
-            st.markdown('**File format**')
-            st.markdown('Required: `loc_id`, `lat`, `lon`, `housing_class`, `tiv_kes`, `synthetic`, `source`.  \n'
-                        'Optional: `floor_area_m2`, `cost_per_m2_kes`, `hazard_score_<tier>` (checked against the maps).  \n'
-                        f"Classes: {', '.join(f'`{c}`' for c in CLASSES)} (common spellings like *concrete* or *mabati* are accepted and reported).  \n"
-                        'Values like `1,250,000`, `KES 2.5m` or `300k` are fine. Comma, semicolon or tab separated; up to 10,000 rows / 10 MB.')
-            st.download_button('Download template', TEMPLATE, 'xpat_portfolio_template.csv', 'text/csv', icon=':material/download:')
+            st.markdown('**What you can upload**')
+            st.markdown('- **A property schedule** — CSV or Excel (.xlsx). Read directly.\n'
+                        '- **A document** — a broker submission, placement memo, survey or schedule as PDF, Word (.docx) or text. '
+                        'Read by AI, with every value quoted from the document and checked before it is modelled.')
+            st.markdown('**Schedule columns** — required: `loc_id`, `lat`, `lon`, `housing_class`, `tiv_kes`; optional: `floor_area_m2`, '
+                        '`cost_per_m2_kes`, `floors_above_ground`, `basement_levels`, `deductible_kes`, `deductible_pct_of_loss`, `limit_kes`, '
+                        '`synthetic`, `source`. Common spellings (*Latitude*, *TIV*, *concrete*, *mabati*) and values like `KES 2.5m` are accepted. '
+                        'A schedule with unrecognised columns can be read by AI instead.')
+            st.download_button('Download schedule template', TEMPLATE, 'xpat_portfolio_template.csv', 'text/csv', icon=':material/download:')
     with left:
-        file = st.file_uploader('Portfolio CSV', type=['csv', 'txt'], help='Up to 10 MB')
+        file = st.file_uploader('Schedule or document', type=None, key='main_upload',
+                                help='CSV, Excel, PDF, Word or text — the type is detected from the file itself. Up to 15 MB.')
         if file is not None:
+            from floodcat.exposure.loaders import classify_upload, parse_xlsx
             data = file.getvalue()
             digest = hashlib.sha256(data).hexdigest()
-            if st.session_state.get('pending', {}).get('digest') != digest:
-                st.session_state.pop('review_error', None)
-                try:
-                    st.session_state['pending'] = {'digest': digest, 'name': file.name, 'rows': state.runtime().parse_upload(data)}
-                except ModelError as exc:
-                    st.session_state.pop('pending', None)
-                    st.error(f'Could not read {file.name}: {exc}', icon=':material/error:')
-            pending = st.session_state.get('pending')
-            if pending and pending['digest'] == digest:
-                st.caption(f"{pending['name']} · {len(pending['rows'])} rows · columns: {', '.join(sorted(set().union(*(r.keys() for r in pending['rows']))))}")
-                review_and_run(pending['rows'], pending['name'].rsplit('.', 1)[0], f"uploaded file {pending['name']}", 'upload')
+            if not state.screen_upload(data, digest): st.stop()
+            try:
+                kind = classify_upload(data, file.name)
+            except ModelError as exc:
+                st.error(f'Could not read {file.name}: {exc}', icon=':material/error:'); kind = None
+            if kind in ('table', 'xlsx'):
+                if st.session_state.get('pending', {}).get('digest') != digest:
+                    st.session_state.pop('review_error', None)
+                    try:
+                        rows = parse_xlsx(data) if kind == 'xlsx' else state.runtime().parse_upload(data)
+                        st.session_state['pending'] = {'digest': digest, 'name': file.name, 'rows': rows, 'kind': kind}
+                    except ModelError as exc:
+                        st.session_state.pop('pending', None)
+                        st.error(f'Could not read {file.name}: {exc}', icon=':material/error:')
+                pending = st.session_state.get('pending')
+                if pending and pending['digest'] == digest:
+                    columns = set().union(*(r.keys() for r in pending['rows']))
+                    st.caption(f"{pending['name']} · {'Excel' if pending['kind'] == 'xlsx' else 'CSV'} schedule · {len(pending['rows'])} rows · "
+                               f"columns: {', '.join(sorted(columns))}")
+                    from floodcat.exposure.loaders import CONTRACT
+                    if len(CONTRACT & columns) < 3:
+                        st.warning('These columns do not match the schedule format. Let AI read the schedule as a document instead:', icon=':material/help:')
+                        from ui.submission_view import submission_flow
+                        text = '\n'.join(', '.join(f'{k}: {v}' for k, v in r.items() if v) for r in pending['rows'])
+                        submission_flow(text.encode('utf-8'), file.name + '.txt', review_and_run)
+                    else:
+                        review_and_run(pending['rows'], pending['name'].rsplit('.', 1)[0], f"uploaded file {pending['name']}", 'upload')
+            elif kind == 'document':
+                from ui.submission_view import submission_flow
+                submission_flow(data, file.name, review_and_run)
 
 with describe:
     badges('AI', 'ASSUMPTION')
-    if not state.ai_available():
-        st.warning('AI is not configured on this server (set GEMINI_API_KEY). Use the CSV upload or the sample portfolio instead.', icon=':material/key_off:')
+    if not state.ai_enabled('extraction'):
+        st.warning('AI reading is unavailable here (not configured, or turned off by your organisation). Use a CSV or Excel schedule, or the sample portfolio, instead.', icon=':material/key_off:')
+    ev = state.ingestion_eval()
+    if ev: st.caption(f"Tested on {ev['summary']['cases']} held-out descriptions: {ev['summary']['cases_fully_correct']} fully correct "
+                      f"(see Data & honesty). You still review every record.")
     st.write('Describe buildings as you would to a colleague. Gemini turns your words into records; OpenStreetMap locates the places; '
              'anything you did not say is filled from a stated assumption and marked. You review every row before it is modelled.')
     ex = st.pills('Examples', ['Example 1', 'Example 2'], key='example_pick')
@@ -110,8 +165,9 @@ with describe:
     text = st.text_area('Portfolio description', value=default_text, height=140, max_chars=8000,
                         placeholder='e.g. 15 masonry homes in Kayole worth about 2 million each…')
     st.session_state['describe_text'] = text
-    if st.button('Turn into records', type='primary', icon=':material/auto_awesome:', disabled=not state.ai_available() or not text.strip()):
+    if st.button('Turn into records', type='primary', icon=':material/auto_awesome:', disabled=not state.ai_enabled('extraction') or not text.strip()):
         from floodcat.ai.ingestion import ingest
+        if not state.ai_quota(): st.stop()
         try:
             with st.spinner('Gemini is reading the description; locating places…'):
                 rt = state.runtime()
@@ -141,7 +197,6 @@ with describe:
                                                'ai_field_provenance': st.column_config.TextColumn('provenance', disabled=True)})
         rows = [{k: ('' if pd.isna(v) else str(v)) for k, v in r.items()} for r in edited.to_dict('records')]
         for r in rows:
-            r.setdefault('synthetic', 'True'); r['synthetic'] = r.get('synthetic') or 'True'
             r['source'] = r.get('source') or draft['rows'][0]['source']
         review_and_run(rows, 'Described portfolio', 'AI-ingested description', 'ai')
 

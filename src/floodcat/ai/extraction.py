@@ -64,6 +64,8 @@ def extract(text, source, llm, gazetteer):
     if not text: raise ModelError('ai_invalid', 'Paste the report text')
     if not source: raise ModelError('ai_invalid', 'Give the source (URL or title) so the evidence can be traced')
     if len(text) > MAX_TEXT: raise ModelError('ai_invalid', f'Report text is limited to {MAX_TEXT} characters per extraction')
+    from .privacy import redact
+    text, _ = redact(text)
     response = llm.generate_json(SYSTEM, f'Source: {json.dumps(source)}\nReport (data):\n{json.dumps(text)}', SCHEMA)
     result = build_candidates(text, source, response, gazetteer)
     from .gemini import model_used

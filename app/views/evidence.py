@@ -6,12 +6,30 @@ from floodcat.ai.evaluation import hotspot_comparison
 from floodcat.ai.evidence import Evidence, usable
 from floodcat.core.constants import MECHANISMS, TIERS
 from floodcat.core.errors import ModelError
+from floodcat.platform import data
 from ui import state
-from ui.charts import ep_chart
-from ui.components import badges, page_header
+from ui.charts import ylt_chart
+from ui.components import badges, explain, page_header
 
 page_header('AI flood evidence', 'The baseline map cannot see drainage failures. Turn flood reports into reviewed evidence and measure what it changes.', ('AI', 'REAL'))
-rt = state.runtime(); cfg = state.config(); store = rt.store
+rt = state.runtime(); cfg = state.config()
+
+class OrgEvidence:
+    """The organisation's evidence library (tenant-scoped, maker-checker, audited)."""
+    def add_evidence(self, item):
+        if state.guarded(data.add_evidence, item) is state.FAILED: raise ModelError('failed', 'Not added')
+    def list_evidence(self):
+        with state.platform().tx() as conn: return [e for e, _ in data.list_evidence(conn, state.principal().org_id)]
+    def creators(self):
+        with state.platform().tx() as conn: return {e.evidence_id: meta['created_by'] for e, meta in data.list_evidence(conn, state.principal().org_id)}
+    def approve_evidence(self, evidence_id, _reviewer=None):
+        return state.guarded(data.approve_evidence, evidence_id)
+    def update_evidence(self, evidence_id, **_):
+        return state.guarded(data.withdraw_evidence, evidence_id)
+    def delete_evidence(self, evidence_id):
+        return state.guarded(data.delete_evidence, evidence_id)
+
+store = OrgEvidence()
 MECH_LABEL = {'drainage': 'Drainage failure', 'surface_runoff': 'Surface runoff / ponding', 'river_overflow': 'River overflow',
               'other': 'Other', 'unknown': 'Unknown'}
 
@@ -44,14 +62,15 @@ def add_candidates(candidates, independent):
     return added
 
 with extract_tab:
-    if not state.ai_available():
-        st.warning('AI is not configured on this server (set GEMINI_API_KEY). You can still add evidence manually.', icon=':material/key_off:')
+    if not state.ai_enabled('evidence'):
+        st.warning('AI evidence extraction is unavailable here — not configured on this server, or turned off by your organisation. You can still add evidence manually.', icon=':material/key_off:')
     source = st.text_input('Source (URL or publication and date)', max_chars=500, placeholder='https://… or “Daily Nation, 25 April 2024”')
     text = st.text_area('Report text', height=200, max_chars=30000, placeholder='Paste the article or report passage here.')
     independent = st.checkbox('This source is independent of the county\'s list of 37 flood-prone areas', value=True,
                               help='Untick for articles that reproduce the government hotspot list. They can still change losses but are excluded from the hit-rate check.')
-    if st.button('Extract evidence', type='primary', icon=':material/auto_awesome:', disabled=not state.ai_available() or not text.strip() or not source.strip()):
+    if st.button('Extract evidence', type='primary', icon=':material/auto_awesome:', disabled=not state.ai_enabled('evidence') or not text.strip() or not source.strip()):
         from floodcat.ai.extraction import extract
+        if not state.ai_quota(): st.stop()
         try:
             with st.spinner('Gemini is reading the report; locating places…'):
                 st.session_state['extraction'] = extract(text, source, rt.llm(), rt.gazetteer()) | {'independent': independent}
@@ -125,11 +144,11 @@ with library_tab:
             actions = st.container(horizontal=True)
             if state.can_review():
                 if not e.approved and actions.button('Approve', key=f'ap_{e.evidence_id}', icon=':material/check:'):
-                    store.approve_evidence(e.evidence_id, state.user()['display_name']); st.rerun()
+                    if store.approve_evidence(e.evidence_id) is not state.FAILED: st.rerun()
                 if e.approved and actions.button('Withdraw approval', key=f'wd_{e.evidence_id}'):
-                    store.update_evidence(e.evidence_id, approved=False, reviewer=None); st.rerun()
+                    if store.update_evidence(e.evidence_id) is not state.FAILED: st.rerun()
                 if actions.button('Delete', key=f'del_{e.evidence_id}', icon=':material/delete:'):
-                    store.delete_evidence(e.evidence_id); st.rerun()
+                    if store.delete_evidence(e.evidence_id) is not state.FAILED: st.rerun()
             else:
                 actions.caption('Only reviewers can approve evidence.')
 
@@ -159,9 +178,10 @@ with impact_tab:
         if ai.get('spread'):
             st.caption(f"{ai['spread']['changed_near_hotspot']} changed properties are within {cfg.hotspot_tag_radius_m/1000:g} km of a named hotspot; "
                        f"{ai['spread']['changed_away_from_hotspots']} are further away.")
-        st.altair_chart(ep_chart(report, compare_ai=True), width='stretch')
-        badges('AI', 'ASSUMPTION')
-        st.caption('A higher loss is not proof of a better model. The hit-rate check below is the evidence.')
+        st.altair_chart(ylt_chart(state.ylt(report), report, compare_ai=True), width='stretch')
+        explain('The loss curve before (blue) and after (orange) applying approved drainage evidence, each from 10,000 simulated years.',
+                'Where the orange curve sits above the blue, the evidence raised losses. A higher loss is not proof of a better model — the '
+                'named-hotspot check below is the evidence.', ['AI', 'ASSUMPTION'])
 
     st.subheader('Named-hotspot check')
     comparison = hotspot_comparison(rt.hotspots, rt.hazard, store.list_evidence(), cfg)

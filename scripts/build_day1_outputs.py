@@ -20,6 +20,8 @@ from floodcat.hazard.hotspots import load_hotspots, hotspot_check, nearest_hotsp
 from floodcat.hazard.raster import RasterHazard
 from floodcat.services.analysis import analyse
 from floodcat.services.sensitivity import assumption_sensitivity
+from floodcat.financial.uncertainty import uncertainty_ranges
+from floodcat.financial.ylt import ylt_for_report
 from floodcat.vulnerability.functions import matrix
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +75,8 @@ def main():
         check = hotspot_check(hotspots, rasters)
         report = analyse(rows, config, rasters, hotspots=hotspots, allow_partial=False)
     sensitivity = assumption_sensitivity(rows, config)
+    sim = uncertainty_ranges(report, rows, config)['baseline']['gross']
+    ylt = ylt_for_report(report, rows, config)['baseline']['gross']
 
     write_csv('nairobi_hazard_lookup.csv', lookup)
     write_csv('nairobi_hotspot_check.csv', [{**{k: p[k] for k in ('name', 'lat', 'lon')}, **{f'score_{t}': p[t] for t in TIERS},
@@ -95,6 +99,8 @@ def main():
         {'case': case, **{f'loss_{t}_kes': v['loss_kes_by_tier'][t] for t in TIERS}, 'aal_kes': v['aal_kes']}
         for case, v in sensitivity['cases'].items()])
 
+    write_csv('nairobi_ylt_ep_curve.csv', ylt['curve'])
+    write_csv('nairobi_uncertainty_ranges.csv', [{'tier': t, **v} for t, v in sim['by_tier'].items()] + [{'tier': 'aal', 'return_period_years': '', **sim['aal']}])
     tiv = Decimal(report['modelled_tiv_kes'])
     curve = {p['tier']: p for p in run['ep_curve']}
     rp100 = next(t for t in TIERS if config.return_periods[t] == 100.)
@@ -132,6 +138,26 @@ Generated {date.today().isoformat()} by `scripts/build_day1_outputs.py`. Config 
 
 Tier names describe how extreme a cell is, not how often it floods: `extreme` keeps the top 5% of cells (narrowest
 footprint, most frequent event); `common` keeps the top 40% (widest footprint, rarest event).
+
+## EP curve from {ylt['years']:,} simulated years
+
+{md_table(['Rarity', 'Loss', f"Simulation range ({ylt['band_pct'][0]:g}–{ylt['band_pct'][1]:g}th pct)", 'Modelled from'], [
+    [f"1-in-{p['return_period_years']:,.0f}", kes(p['loss_kes']), f"{kes(p['band_low_kes'])} – {kes(p['band_high_kes'])}",
+     'hazard tiers' if p['return_period_years'] <= ylt['rarest_modelled_return_period'] else 'damage uncertainty only']
+    for p in ylt['table']])}
+
+Average annual loss from the simulation: {kes(ylt['aal']['aal_kes'])} (range {kes(ylt['aal']['band_low_kes'])} – {kes(ylt['aal']['band_high_kes'])});
+{ylt['zero_loss_years']:,} of {ylt['years']:,} years have no loss. Each simulated year draws its rarity and one damage-uncertainty
+trial, and reads the loss between the five scenario points (linear in annual chance). {ylt['note']}
+
+## Likely ranges per scenario (damage-ratio uncertainty, ASSUMPTION)
+
+{md_table(['Return period', f"{sim['interval_pct'][0]:g}th pct", 'Median', f"{sim['interval_pct'][1]:g}th pct"], [
+    [f"1-in-{v['return_period_years']:g}", kes(v['p_low_kes']), kes(v['median_kes']), kes(v['p_high_kes'])] for v in sim['by_tier'].values()]
+    + [['Average annual loss', kes(sim['aal']['p_low_kes']), kes(sim['aal']['median_kes']), kes(sim['aal']['p_high_kes'])]])}
+
+{sim['trials']:,} simulations; each property's damage ratio varies around its curve with log-spread σ={sim['damage_sigma']:g}, of which a
+share ρ={sim['correlation']:g} is common to the whole portfolio. {sim['note']}
 
 ## Loss by housing class (1-in-{config.return_periods[rp100]:g})
 
@@ -203,7 +229,7 @@ Vulnerability matrix at max depth {config.max_depth_m:g} m (damage ratio):
 ## Files
 
 `nairobi_hazard_lookup.csv`, `nairobi_hotspot_check.csv`, `nairobi_vulnerability_matrix.csv`, `nairobi_property_losses.csv`,
-`nairobi_ep_curve.csv`, `nairobi_accumulation.csv`, `nairobi_sensitivity.csv`.
+`nairobi_ep_curve.csv`, `nairobi_accumulation.csv`, `nairobi_sensitivity.csv`, `nairobi_uncertainty_ranges.csv`, `nairobi_ylt_ep_curve.csv`.
 """
     (OUT/'nairobi_day1_results.md').write_text(md)
     print(f'Wrote outputs to {OUT}')

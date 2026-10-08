@@ -57,6 +57,13 @@ def optional_positive(row,key):
     if value<=0: raise ModelError("invalid_replacement_cost", f"{key} must be positive")
     return value
 
+def optional_count(row,key,low,high):
+    if row.get(key) in (None,''): return None
+    value=finite(row[key],key)
+    if value!=int(value) or not low<=value<=high:
+        raise ModelError("invalid_count", f"{key} must be a whole number from {low} to {high}")
+    return int(value)
+
 def parse_row(row):
     missing=[key for key in REQUIRED if row.get(key) in (None,"")]
     if missing: raise ModelError("missing_fields", "Missing: "+", ".join(missing))
@@ -70,31 +77,54 @@ def parse_row(row):
     hazard={t:bounded(row['hazard_score_'+t],'hazard_score_'+t) for t in supplied}
     if supplied and len(supplied)<len(TIERS):
         notes.append(("partial_hazard_scores","Only some hazard_score columns supplied; scores will come from the hazard maps"))
-    asset=Exposure(identifier,lat,lon,c,parse_money(row['tiv_kes']),parse_bool(row['synthetic']),text_field(row,'source'),area,cost,hazard)
+    deductible=parse_money(row['deductible_kes'],'deductible_kes') if row.get('deductible_kes') not in (None,'') else None
+    limit=parse_money(row['limit_kes'],'limit_kes') if row.get('limit_kes') not in (None,'') else None
+    if limit is not None and limit==0: raise ModelError("invalid_policy_terms", "limit_kes must be positive")
+    if deductible is not None and limit is not None and deductible>=limit:
+        raise ModelError("invalid_policy_terms", "deductible_kes must be below limit_kes")
+    floors=optional_count(row,'floors_above_ground',1,200)
+    basements=optional_count(row,'basement_levels',0,10)
+    pct=None
+    if row.get('deductible_pct_of_loss') not in (None,''):
+        text=str(row['deductible_pct_of_loss']).strip()
+        pct=finite(text.rstrip('%'),'deductible_pct_of_loss')/(100 if text.endswith('%') or finite(text.rstrip('%'),'deductible_pct_of_loss')>1 else 1)
+        bounded(pct,'deductible_pct_of_loss',0,0.99)
+    asset=Exposure(identifier,lat,lon,c,parse_money(row['tiv_kes']),parse_bool(row['synthetic']),text_field(row,'source'),area,cost,hazard,deductible,limit,
+                   floors,basements,pct)
     return asset,notes
 
 def check_columns(rows):
     present=set().union(*(r.keys() for r in rows)) if rows else set()
     missing=[k for k in REQUIRED if k not in present]
     if missing:
-        hint=" Tick 'declare synthetic' to supply synthetic/source." if set(missing)<={'synthetic','source'} else ""
+        hint=" State whether the data is real or synthetic to supply synthetic/source." if set(missing)<={'synthetic','source'} else ""
         raise ModelError("missing_columns", "Required columns missing: "+", ".join(missing)+"."+hint)
 
-def apply_declarations(rows, declare_synthetic=False, source_label=None, assign_missing_ids=False):
-    """Explicit, user-confirmed fills for upload convenience. Never applied implicitly."""
+DATA_ORIGINS=('real','synthetic')
+
+def apply_declarations(rows, declare_synthetic=False, source_label=None, assign_missing_ids=False, data_origin=None):
+    """Explicit, user-confirmed fills for upload convenience. Never applied implicitly.
+
+    data_origin ('real' or 'synthetic') fills a blank `synthetic` column from the user's statement of where the
+    data came from; declare_synthetic=True is the older spelling of data_origin='synthetic'.
+    """
+    origin=data_origin or ('synthetic' if declare_synthetic else None)
+    if origin is not None and origin not in DATA_ORIGINS: raise ModelError('invalid_origin','data_origin must be real or synthetic')
     prepared=[]; notes=[]
     for index,row in enumerate(rows,1):
         row=dict(row)
-        if declare_synthetic and row.get('synthetic') in (None,''):
-            row['synthetic']='True'; row['source']=row.get('source') or (source_label or 'uploaded; declared synthetic by user')
+        if origin and row.get('synthetic') in (None,''):
+            row['synthetic']='True' if origin=='synthetic' else 'False'
+            row['source']=row.get('source') or (source_label or f'uploaded; declared {origin} by user')
         if assign_missing_ids and row.get('loc_id') in (None,''):
             row['loc_id']=f'UPL-{index:05d}'
         prepared.append(row)
-    if declare_synthetic: notes.append('synthetic/source filled from user declaration where blank')
+    if origin: notes.append(f'synthetic/source filled from the user\'s declaration ({origin} data) where blank')
     if assign_missing_ids: notes.append('blank loc_id replaced with UPL-<row number>')
     return prepared,notes
 
-def validate_rows(rows):
+def validate_rows(rows, synthetic_only=False):
+    """synthetic_only=True (e.g. a public demo deployment) rejects records marked real."""
     if not rows: raise ModelError("empty_portfolio", "Portfolio contains no records")
     check_columns(rows)
     accepted=[]; issues=[]; ids=set(); locations={}
@@ -102,7 +132,7 @@ def validate_rows(rows):
         try:
             asset,notes=parse_row(row)
             if asset.loc_id in ids: raise ModelError("duplicate_id", f"Duplicate loc_id {asset.loc_id}; later record excluded")
-            if not asset.synthetic: raise ModelError("real_portfolio_out_of_scope", "Hackathon accepts synthetic exposure only")
+            if synthetic_only and not asset.synthetic: raise ModelError("real_data_disabled", "This deployment accepts synthetic exposure only")
             ids.add(asset.loc_id)
             accepted.append(asset)
             for code,message in notes:

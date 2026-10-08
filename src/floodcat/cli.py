@@ -22,8 +22,18 @@ def main():
     sensitivity=commands.add_parser('sensitivity');sensitivity.add_argument('csv');sensitivity.add_argument('--output',default='runtime/sensitivity.json')
     sensitivity.add_argument('--rasters')
     imported=commands.add_parser('import-data');imported.add_argument('--exposure',default='data/exposure_nairobi_with_hazard.csv');imported.add_argument('--hotspots',default='data/nairobi_hotspots_geocoded.csv')
+    admin=commands.add_parser('create-platform-admin',help='Create the first Xpat staff account');admin.add_argument('email');admin.add_argument('--name',default='Xpat staff')
+    org=commands.add_parser('create-org',help='Create an organisation and e-mail its first owner an invitation');org.add_argument('name');org.add_argument('owner_email')
+    org.add_argument('--seats',type=int,default=10);org.add_argument('--plan',default='pilot');org.add_argument('--domains',default='',help='Comma-separated allowed e-mail domains')
+    commands.add_parser('retention',help='Delete data past each organisation\'s retention period')
+    commands.add_parser('verify-audit',help='Check the audit log hash chain')
+    commands.add_parser('alerts',help='Raise security alerts from the audit log (run every few minutes)')
+    commands.add_parser('init-db',help='Create the platform tables (development / SQLite)')
+    commands.add_parser('generate-secret-key',help='Print a new FLOODCAT_SECRET_KEY')
     args=parser.parse_args()
     try:
+        if args.command in ('create-platform-admin','create-org','retention','verify-audit','init-db','generate-secret-key','alerts'):
+            return platform_command(args)
         if args.command=='serve':
             import uvicorn
             uvicorn.run('floodcat.api.app:create_app',factory=True,host='127.0.0.1',port=args.port)
@@ -57,4 +67,35 @@ def main():
         parser.exit(2,f'{exc}\n'+'\n'.join(lines)+'\nRe-run with --allow-partial to model the valid records only.\n')
     except (ModelError,OSError,ValueError) as exc:
         parser.exit(2,f'{getattr(exc,"code","input_error")}: {exc}\n')
+def platform_command(args):
+    import getpass
+    from .platform import audit, data, identity
+    from .platform.service import platform
+    if args.command=='generate-secret-key':
+        from cryptography.fernet import Fernet
+        print(Fernet.generate_key().decode()); return
+    plat=platform()
+    if args.command=='init-db':
+        from .platform.db import create_schema
+        create_schema(plat.engine); print(f'Platform tables ready on {plat.engine.dialect.name}'); return
+    with plat.tx() as conn:
+        if args.command=='create-platform-admin':
+            password=getpass.getpass('Password (12+ characters): ')
+            if password!=getpass.getpass('Repeat password: '): raise ModelError('mismatch','Passwords do not match')
+            identity.bootstrap_platform_admin(conn,args.email,args.name,password)
+            print(f'Platform admin {args.email} created. Sign in at {identity.auth_url()}/auth/login and set up two-step verification.')
+        elif args.command=='create-org':
+            org_id,_=identity.create_organisation(conn,None,args.name,args.owner_email,plan=args.plan,seats=args.seats,
+                                                  settings={'allowed_domains':[d.strip() for d in args.domains.split(',') if d.strip()]})
+            print(f'Organisation {args.name} created ({org_id}). Invitation e-mailed to {args.owner_email}.')
+        elif args.command=='retention':
+            print(json.dumps(data.run_retention(conn)))
+        elif args.command=='alerts':
+            from .platform import alerts
+            print(json.dumps(alerts.evaluate(conn)))
+        elif args.command=='verify-audit':
+            ok,bad=audit.verify_chain(conn)
+            print('Audit chain intact' if ok else f'Audit chain BROKEN at event {bad}')
+            if not ok: raise SystemExit(1)
+
 if __name__=='__main__': main()

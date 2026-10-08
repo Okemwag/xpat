@@ -23,21 +23,6 @@ class Runtime:
         self.blank_sample_path = self.data_dir/'exposure_nairobi_synthetic.csv'
 
     @cached_property
-    def store(self):
-        url = os.getenv('FLOODCAT_DATABASE_URL')
-        if url:
-            from ..storage.repository import Repository
-            return Repository(url)
-        from ..storage.local import LocalStore
-        return LocalStore(self.store_dir)
-
-    @cached_property
-    def local_store(self):
-        """Accounts always live in the local store, even when runs go to PostGIS."""
-        from ..storage.local import LocalStore
-        return self.store if type(self.store).__name__ == 'LocalStore' else LocalStore(self.store_dir)
-
-    @cached_property
     def class_defaults(self):
         from ..ai.ingestion import class_defaults
         assets, _ = validate_rows(read_csv(self.sample_path))
@@ -61,11 +46,15 @@ class Runtime:
     def parse_upload(self, data):
         return parse_csv_text(data)
 
-    def run(self, rows, *, config=None, declare_synthetic=False, source_label=None, assign_missing_ids=False,
+    @property
+    def synthetic_only(self):
+        return os.getenv('FLOODCAT_SYNTHETIC_ONLY') == '1'
+
+    def run(self, rows, *, config=None, declare_synthetic=False, data_origin=None, source_label=None, assign_missing_ids=False,
             allow_partial=False, ai_adjustment=False, evidence=None):
-        rows, notes = apply_declarations(rows, declare_synthetic, source_label, assign_missing_ids)
-        if ai_adjustment and evidence is None: evidence = self.store.list_evidence()
+        rows, notes = apply_declarations(rows, declare_synthetic, source_label, assign_missing_ids, data_origin)
+        # Callers pass the organisation's evidence explicitly (tenant-scoped); none means no adjustment input.
         result = analyse(rows, config or self.config, self.hazard, evidence=evidence or (), allow_partial=allow_partial,
-                         hotspots=self.hotspots, ai_adjustment=ai_adjustment)
+                         hotspots=self.hotspots, ai_adjustment=ai_adjustment, synthetic_only=self.synthetic_only)
         result['declarations'] = notes
         return result

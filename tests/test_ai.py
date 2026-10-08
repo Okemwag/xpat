@@ -36,9 +36,9 @@ def test_ingestion_expands_groups_and_rows_pass_the_csv_contract():
                                          source_quote='A concrete block in Kibera, 2.5m')], 'unparsed': []}
     result = ingest(TEXT, FakeLLM(response), FakeGazetteer(), DEFAULTS, batch_id='T')
     assert len(result['rows']) == 21
-    assets, issues = validate_rows(result['rows'])
+    assert all(r['synthetic'] == '' for r in result['rows'])  # the user states real vs synthetic before modelling
+    assets, issues = validate_rows([{**r, 'synthetic': 'False'} for r in result['rows']])
     assert len(assets) == 21 and not [i for i in issues if i['severity'] == 'error']
-    assert all(a.synthetic for a in assets)
     assert result['groups'][0]['field_provenance'].startswith('housing_class: AI')
 
 def test_ingestion_flags_hallucinated_quote_unknown_place_and_missing_class():
@@ -46,7 +46,7 @@ def test_ingestion_flags_hallucinated_quote_unknown_place_and_missing_class():
     result = build_rows(TEXT, response, FakeGazetteer(), DEFAULTS, 'fake', 'T')
     flags = ' '.join(result['groups'][0]['flags'])
     assert 'quote not found' in flags and 'could not locate' in flags and 'housing class' in flags
-    _, issues = validate_rows(result['rows'])
+    _, issues = validate_rows([{**r, 'synthetic': 'True'} for r in result['rows']])
     assert {i['code'] for i in issues if i['severity'] == 'error'} == {'missing_fields'}
 
 def test_ingestion_fills_value_from_class_medians_and_labels_it():
@@ -176,3 +176,58 @@ def test_gemini_all_unavailable_reports_each_failure(gemini):
 def test_gemini_malformed_json_rejected(gemini):
     client, _ = gemini({'retired': 'not json', 'busy': '{}', 'good': '{}'})
     with pytest.raises(ModelError): client.generate_json('s', 'p', {})
+
+from floodcat.ai.ingestion_eval import score_case, summarise
+
+def g(location, housing_class, count, tiv, flags=(), quote=True):
+    return {'location_name': location, 'housing_class': housing_class, 'count': count, 'tiv_kes_each': tiv, 'flags': list(flags), 'quote_verified': quote}
+
+CASE = {'id': 'c', 'expected': [{'location': 'Kibera', 'housing_class': 'permanent_masonry', 'count': 12, 'tiv_kes_each': 1200000},
+                                {'location': 'Westlands', 'housing_class': None, 'count': 3, 'tiv_kes_each': None}]}
+
+def test_scorer_perfect_extraction():
+    s = score_case(CASE, {'groups': [g('Westlands', '—', 3, '—'), g('Kibera', 'permanent_masonry', 12, '1200000.00')]})
+    assert s['exact'] and summarise([s])['housing_class']['rate'] == 1
+
+def test_scorer_catches_guessed_class_wrong_value_and_extras():
+    s = score_case(CASE, {'groups': [g('Kibera', 'permanent_masonry', 12, '1300000.00'), g('Westlands', 'concrete_rcc', 3, '—'),
+                                     g('Narnia', 'concrete_rcc', 500, '1e9')]})
+    assert not s['exact'] and s['extra_groups'] == 1
+    assert s['fields']['tiv_kes_each'] == [False] and s['fields']['housing_class'] == [True, False]
+
+def test_scorer_missing_group_and_unlocated():
+    s = score_case(CASE, {'groups': [g('Kibera', 'permanent_masonry', 12, '1200000.00', flags=["could not locate 'Kibera'"])]})
+    assert s['fields']['found'] == [True, False] and s['fields']['located'] == [False]
+
+# Briefing ---------------------------------------------------------------------------------------------
+from floodcat.ai.briefing import build_facts, draft, to_markdown, verify
+
+@pytest.fixture(scope='module')
+def sample_report(starter_rows):
+    from floodcat.core.config import load_config
+    from floodcat.hazard.hotspots import load_hotspots
+    from conftest import DATA
+    return analyse(starter_rows, load_config(), hotspots=load_hotspots(DATA/'nairobi_hotspots_geocoded.csv'))
+
+def test_fact_pack_carries_figures_and_provenance(sample_report):
+    facts = build_facts(sample_report, hotspot_check={'flagged_any_tier': 12, 'hotspot_count': 24})
+    text = ' '.join(f['text'] for f in facts)
+    assert 'KES 1.70 bn' in text and '12 of 24' in text and 'SYNTHETIC' in {f['provenance'] for f in facts}
+    assert any('not calibrated' in f['text'] for f in facts)
+
+def test_briefing_figures_are_checked_against_facts(sample_report):
+    facts = build_facts(sample_report)
+    good = {'headline': 'A 1-in-100 flood costs KES 1.7 bn', 'sections': [{'heading': 'What the results say', 'paragraphs': ['Loss of KES 1.70 bn at 1-in-100.']}],
+            'checks': ['Confirm the 3 largest locations.']}
+    assert verify(good, facts) == []
+    bad = {**good, 'sections': [{'heading': 'x', 'paragraphs': ['The 1-in-1000 loss is KES 9.99 bn and premium should be 2.5%.']}]}
+    assert set(verify(bad, facts)) >= {'9.99', '2.5'}
+
+def test_draft_validates_and_flags(sample_report):
+    facts = build_facts(sample_report)
+    llm = FakeLLM({'headline': 'Flood loss of KES 1.70 bn at 1-in-100', 'sections': [{'heading': 'What drives the loss',
+                   'paragraphs': ['Concrete dominates; a made-up 7,777 figure.']}], 'checks': ['Check the depth assumption.']})
+    briefing = draft(facts, llm)
+    assert briefing['unsupported_figures'] == ['7777'] and briefing['model'] == 'fake-gemini'
+    assert '"fact"' in llm.calls[0] and 'Flood loss of KES 1.70 bn' in to_markdown(briefing)
+    with pytest.raises(ModelError): draft(facts, FakeLLM({'sections': []}))

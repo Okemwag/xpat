@@ -64,11 +64,14 @@ src/floodcat/
   hazard/        raster lookup (in-memory), providers, hotspots, score interpretation
   vulnerability/ damage (depth-damage) functions
   exposure/      loaders, models, schema validation (the contract for CSV and AI rows)
-  financial/     loss, EP curve + AAL, accumulation
-  ai/            gemini client, ingestion, extraction, geocode, evidence, evaluation
+  financial/     loss, EP curve + AAL, accumulation, policy terms, uncertainty (damage MC), ylt (10,000-year table)
+  ai/            gemini client, ingestion, documents, submission, extraction, geocode, evidence, briefing, privacy, evaluation
+  platform/      organisations, identity (sessions, MFA, flows), rbac, audit, sso, data (org-scoped runs, evidence,
+                 assumption sets, submissions), orgs (settings, teams, support access, quotas), email (Resend), scanning,
+                 alerts, web (auth pages, FastAPI), db (schema), service
   services/      analysis orchestration, runtime (live context), accounts, sensitivity, data audit
   reporting/     export, provenance, markdown summary
-  storage/       local file store (default), repository (PostGIS, when FLOODCAT_DATABASE_URL is set)
+  storage/       legacy PostGIS repository (CLI import only); business data lives in platform/
   api/           HTTP app + schemas
   cli.py         command-line entry point
 tests/                      pytest suite
@@ -116,8 +119,15 @@ Tier names describe **how extreme a cell is, not how often it floods**.
   damage ratio) — the problem statement asks for it.
 
 ### 3.4 Exposure
-- The portfolio is **synthetic**. Keep the `synthetic` and `source` columns
-  through every filter, join and export so the label reaches the results.
+- The **starter portfolio is synthetic**, but the product is built for real use:
+  users may upload **real** schedules and broker documents (e.g. a placement memo).
+  Every record states its origin in `synthetic` (true/false) — if a file lacks it,
+  the user must choose "real" or "synthetic" (never defaulted), and real data needs
+  an explicit authorisation tick. Results are labelled REAL, SYNTHETIC or both from
+  the actual data (`exposure_origin`). Keep `synthetic` and `source` through every
+  filter, join and export.
+- `FLOODCAT_SYNTHETIC_ONLY=1` restores synthetic-only validation, e.g. for a public
+  demo deployment.
 - The supplied `tiv_kes` is ≈ **10 ×** floor_area_m2 × cost_per_m2_kes in every
   row (total KES 63.64 bn). The cause is unconfirmed. Use the supplied value as is,
   keep the `tiv_mismatch` warning, and show area × cost only as a sensitivity.
@@ -134,7 +144,15 @@ sum to portfolio loss → EP curve across return periods.
   integration assumptions stated), loss by housing class, top locations,
   loss as % of total insured value, accumulation by area.
 - Base result is **gross insured loss**. Simple per-risk policy terms
-  (deductible / limit) may exist in config, default off.
+  (`policy_terms`: deductible / limit as % of TIV, or per-row `deductible_kes` /
+  `limit_kes`) are in config, default off; they add an insured curve and AAL.
+- Multi-storey buildings: when `floors_above_ground` is known, only basements plus
+  the lowest `storey_exposure.flooded_storeys_above_ground` storeys are flood-exposed
+  (`financial/loss.exposed_fraction`, ASSUMPTION, value spread evenly by storey).
+  Rows may also give `deductible_pct_of_loss` (with `deductible_kes` as minimum).
+- Uncertainty ranges (`financial/uncertainty.py`, `uncertainty` in config) are
+  Monte Carlo on the damage ratio only, with a portfolio-wide correlation.
+  Label them ASSUMPTION; never call them confidence intervals.
 - **Out of scope:** reinsurance treaty structuring, layers, net-of-reinsurance
   loss, multi-peril aggregation, real policy/claims data. Do not build these.
 
@@ -150,7 +168,13 @@ the same plain terms.
 
 - `data/` is the starter kit. **Treat it as read-only.** Never edit, overwrite
   or "fix" these files; write derived data to `outputs/` or `runtime/`.
-- Do not add any real client, policy or claims data to the repo.
+- Real client, policy or claims data may be processed **in the app** but must
+  **never be committed** to the repo — not documents, not extractions, not runs.
+  `runtime/` (local store) is gitignored; keep it that way.
+- Before any text goes to an external AI service, remove e-mails and phone numbers
+  (`ai/privacy.redact`, applied when documents are read and before every Gemini
+  call), and ask the user's consent in the UI. Do not extract or store people's
+  contact details. Do not keep the original uploaded document.
 - If you regenerate or extend the portfolio, write it to a new file, label it
   synthetic in-file, and record how it was generated (seed, method).
 
@@ -165,7 +189,7 @@ Every number shown to a user carries one of these labels (see
 |---|---|
 | `REAL` | Observed / published data (e.g. hotspot names, terrain, JRC curve points) |
 | `PROXY` | Derived from real inputs but not a measurement (hazard score) |
-| `SYNTHETIC` | Generated for this hackathon (exposure portfolio) |
+| `SYNTHETIC` | Generated or test data (e.g. the starter portfolio) |
 | `ASSUMPTION` | A modelling choice we made (return periods, max depth, class adjustments) |
 | `AI` | Produced or changed by the AI stage, with evidence of what changed |
 
@@ -232,6 +256,15 @@ optional at runtime (no key → the app says AI is off; everything else works):
    Nominatim (AI estimate only as a flagged fallback); missing size/value is
    filled from starter-portfolio class medians (ASSUMPTION). Rows must pass
    `exposure/validation.py` unchanged — the same contract as CSV uploads.
+1b. **Submission documents** (`ai/documents.py`, `ai/submission.py`): PDF / DOCX /
+   text (type detected from bytes, not the file name) → Gemini extracts each
+   property with a verbatim quote per field → deterministic checks: quotes and
+   numbers found in the document, coordinate parsing, stated GPS vs geocoded
+   locality, floor-area arithmetic, implied cost/m² vs class median, landmark
+   claims vs OpenStreetMap, deductible basis, basements, the hazard model's view
+   vs the document's flood claims. Rows pass the same validation as a CSV after
+   the user states whether the data is real or synthetic. Never extract or store
+   contact details. Never commit received documents or their extractions.
 2. **Drainage-evidence hazard adjustment** (`ai/extraction.py`,
    `ai/evidence.py`, `hazard/interpretation.enhance`): reports → candidate
    evidence with verbatim quotes → human approval by a named reviewer →
@@ -247,7 +280,54 @@ Rules:
   Evidence derived from the county hotspot list makes the check circular.
 - A higher loss is not evidence of a better model. Never claim accuracy.
 - Tests use fake LLM and gazetteer objects; no test may call the network.
+- Ingestion accuracy: `make eval-ingestion` scores Gemini on the held-out cases in
+  `evaluation/ingestion_cases.json` → `outputs/ingestion_eval.{json,md}`. Never
+  tune the prompt on those cases; add new cases instead of editing failed ones.
 - An LLM-written summary of results on its own does **not** satisfy the brief.
+
+---
+
+## 7a. UI and explainability
+
+The problem statement's three figures (after Steps 2, 3 and 5) show what each stage's output should look like.
+They are **requirements** for the interface, alongside "understandable and honest" (Step 6).
+
+| Figure | Required view | Where |
+|---|---|---|
+| 1 · Damage matrix | Damage ratio **against the 0–1 hazard score**, one curve per class, plus the matrix table. State where our curves differ from the reference (≈85/69/52/31% at score 1) and why | Assumptions page |
+| 2 · Exposure & hazard map | All properties; size = insured value, colour = hazard score; tooltip traces **class → value → score → depth → damage → loss** with the arithmetic (`KES X × Y% = KES Z`) | Accumulation map |
+| 3 · EP curve | From a **10,000-year simulated year-loss table** (`financial/ylt.py`), **log return-period axis 1–10,000**, grey 5–95% bootstrap band, tooltip in words (“1-in-500 year loss: KES …”) | Loss curve, Overview |
+
+Rules for every user-facing chart:
+- A three-line caption via `ui.components.explain`: **What it shows** / **How to read it** / **Where it comes from** with
+  REAL · PROXY · SYNTHETIC · ASSUMPTION · AI badges.
+- Tooltips trace calculations in plain words, not raw field names.
+- Mark the edge of modelled information: beyond the rarest tier the YLT varies only with damage uncertainty — say so on the chart.
+- Keep the two ranges distinct: the **simulation range** (bootstrap of simulated years, on the curve) and the
+  **damage-uncertainty range** (per scenario, `financial/uncertainty.py`). Never call either a confidence interval.
+- Show the pipeline strip (Hazard → Vulnerability → Exposure → Financial engine → Loss curve) on stage pages.
+- The Data & honesty page keeps the 12-of-24 hotspot hit/miss map and the limitations list; the Methods page explains
+  the four stages, what a return period is and is not, why tier names do not match frequency, and the simulation.
+
+---
+
+## 7b. Organisation platform and security
+
+The product is multi-tenant and used by teams (see `docs/ORGANISATION_CHECKLIST.md`). Rules:
+- **Every business record has an `org_id`.** Read and write it only through `platform/data.py` (or `identity`/`orgs`), which take a
+  `Principal` and enforce isolation and permissions. Never query business tables from pages or the API directly.
+- **Permissions are defined once** in `platform/rbac.py` (`PERMISSIONS`) and checked with `require()` / `principal.can()`. Pages hide what a
+  role cannot do; the backend still enforces it. Add a row to the permission-matrix test for every new permission.
+- **Every state change writes an audit event** (`platform/audit.record`) in the same transaction, with actor, target and outcome. Never
+  put passwords, tokens, document text or contact details in audit details. The audit table is append-only (database trigger).
+- **Sessions**: the auth pages (FastAPI, `/auth`) issue the HttpOnly `xpat_session` cookie; Streamlit only reads it and resolves it on
+  every rerun. Do not add sign-in forms to Streamlit. Sensitive changes call `require_recent_auth` (step-up).
+- **Separation of duties** (evidence approval, assumption changes) is on by default; only the public demo organisation relaxes it.
+- **Secrets** (TOTP seeds, SSO client secrets, stored inputs) are encrypted with `FLOODCAT_SECRET_KEY`. Tokens are stored as hashes.
+- **AI calls** go through the organisation's `ai_mode`, the user's `ai.extract` permission and `check_ai_quota`.
+- **Uploads** pass `scanning.scan` (ClamAV; required in production) and the upload quota before they are parsed.
+- Platform tests run on SQLite and, with `TEST_DATABASE_URL`, on PostgreSQL (`make test-postgres`); run both after schema changes and
+  add an Alembic migration.
 
 ---
 
@@ -265,7 +345,8 @@ Rules:
 
 - Don't invert the tier → return-period mapping.
 - Don't call a hazard score a flood depth.
-- Don't present synthetic or assumed values as real.
+- Don't present synthetic or assumed values as real, or real data as synthetic.
+- Don't commit real client documents, extractions or runs.
 - Don't modify files in `data/`.
 - Don't build reinsurance layers/treaties or multi-peril features.
 - Don't commit secrets; use `.env` (template in `.env.example`).

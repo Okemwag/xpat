@@ -1,3 +1,22 @@
+# Local or single-host deployment: PostGIS, migrations, sign-in/API server, interface, ClamAV and a Caddy reverse proxy.
+# Copy .env.example to .env first. For a public host set XPAT_DOMAIN (Caddy then obtains HTTPS certificates).
+x-app: &app
+  build: .
+  env_file: .env
+  environment:
+    FLOODCAT_DATABASE_URL: postgresql+psycopg://floodcat:${FLOODCAT_DB_PASSWORD:-floodcat-local-only}@db:5432/floodcat
+    FLOODCAT_CLAMAV: clamav:3310
+    FLOODCAT_TRUST_PROXY: "1"
+    FLOODCAT_APP_URL: https://${XPAT_DOMAIN:-localhost}
+    FLOODCAT_AUTH_URL: https://${XPAT_DOMAIN:-localhost}
+    FLOODCAT_CORS_ORIGINS: https://${XPAT_DOMAIN:-localhost}
+    FLOODCAT_COOKIE_SECURE: "1"
+  volumes:
+    - ./data:/app/data:ro
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
 services:
   db:
     image: postgis/postgis:16-3.5
@@ -23,20 +42,34 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    profiles: ["app"]
 
-  backend:
-    build: .
+  api:
+    <<: *app
+    profiles: ["app"]
+
+  ui:
+    <<: *app
+    command: [".venv/bin/streamlit", "run", "app/streamlit_app.py", "--server.headless", "true", "--server.port", "8501", "--server.address", "0.0.0.0"]
+    profiles: ["app"]
+
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["app"]
+
+  proxy:
+    image: caddy:2
     ports:
-      - "127.0.0.1:8000:8000"
+      - "80:80"
+      - "443:443"
     environment:
-      FLOODCAT_DATABASE_URL: postgresql+psycopg://floodcat:${FLOODCAT_DB_PASSWORD:-floodcat-local-only}@db:5432/floodcat
-      FLOODCAT_API_TOKEN: ${FLOODCAT_API_TOKEN:-}
-      FLOODCAT_ENV: development
+      XPAT_DOMAIN: ${XPAT_DOMAIN:-localhost}
     volumes:
-      - ./data:/app/data:ro
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [api, ui]
+    profiles: ["app"]
 
 volumes:
   postgres_data:
+  caddy_data:

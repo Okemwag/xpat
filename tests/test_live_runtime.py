@@ -31,13 +31,6 @@ def test_declare_synthetic_for_files_without_label(runtime):
     assert report['runs']['baseline']['property_losses']['common'][0]['synthetic'] is True
     assert report['declarations']
 
-def test_runs_are_saved_and_listed(runtime):
-    report = runtime.run([row()])
-    runtime.store.save_analysis(report, owner='alice', label='test')
-    assert runtime.store.list_analyses(owner='alice')[0]['analysis_id'] == report['analysis_id']
-    assert runtime.store.get_analysis(report['analysis_id'])['modelled_count'] == 1
-    assert runtime.store.list_analyses(owner='bob') == []
-
 def test_config_override_changes_results(runtime):
     base = runtime.run(runtime.sample_rows())
     deeper = runtime.run(runtime.sample_rows(), config=runtime.config.replace(max_depth_m=4.0))

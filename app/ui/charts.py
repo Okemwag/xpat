@@ -1,4 +1,5 @@
 """Charts follow one palette: blue = baseline model, orange = AI-adjusted; classes use slots 1–4 in fixed order."""
+import html
 from decimal import Decimal
 import altair as alt
 import pandas as pd
@@ -101,13 +102,13 @@ def portfolio_map(rows, hotspots=(), evidence=(), color_by='loss'):
                         radius_min_pixels=2, radius_max_pixels=18, pickable=True, stroked=True, get_line_color=[255, 255, 255, 200],
                         line_width_min_pixels=1)]
     if hotspots:
-        hs = [{'name': h.name, 'lat': h.lat, 'lon': h.lon, 'tooltip': f'Named flood hotspot: {h.name}'} for h in hotspots]
+        hs = [{'name': h.name, 'lat': h.lat, 'lon': h.lon, 'tooltip': f'Named flood hotspot: {html.escape(h.name)}'} for h in hotspots]
         layers.append(pdk.Layer('ScatterplotLayer', data=hs, get_position='[lon, lat]', get_radius=140, radius_min_pixels=5,
                                 filled=False, stroked=True, get_line_color=[235, 104, 52, 255], line_width_min_pixels=2, pickable=True))
         layers.append(pdk.Layer('TextLayer', data=hs, get_position='[lon, lat]', get_text='name', get_size=12, get_color=[60, 60, 60, 255],
                                 get_pixel_offset=[0, -14], background=True, get_background_color=[255, 255, 255, 200]))
     if evidence:
-        ev = [{'lat': e.lat, 'lon': e.lon, 'tooltip': f'AI evidence: {e.location_name} ({e.mechanism})'} for e in evidence]
+        ev = [{'lat': e.lat, 'lon': e.lon, 'tooltip': f'AI evidence: {html.escape(e.location_name)} ({html.escape(e.mechanism)})'} for e in evidence]
         layers.append(pdk.Layer('ScatterplotLayer', data=ev, get_position='[lon, lat]', get_radius=1000, filled=True,
                                 get_fill_color=[74, 58, 167, 40], stroked=True, get_line_color=[74, 58, 167, 200], line_width_min_pixels=1, pickable=True))
     lat = sum(r['lat'] for r in rows)/len(rows) if rows else -1.28
@@ -181,7 +182,7 @@ def damage_vs_score_chart(cfg, reference=None):
 def hotspot_check_map(points):
     """Named hotspots: filled = flagged by the proxy, hollow = missed. Labels carry the status, not colour alone."""
     data = [{'lat': p['lat'], 'lon': p['lon'], 'name': f"{p['name']} {'✓' if p['flagged_any_tier'] else '✗'}",
-             'tooltip': f"<b>{p['name']}</b><br/>{'Flagged' if p['flagged_any_tier'] else 'Missed'} by the proxy<br/>common-tier score {p['common']:.3f}",
+             'tooltip': f"<b>{html.escape(p['name'])}</b><br/>{'Flagged' if p['flagged_any_tier'] else 'Missed'} by the proxy<br/>common-tier score {p['common']:.3f}",
              'fill': [42, 120, 214, 230] if p['flagged_any_tier'] else [255, 255, 255, 0]} for p in points]
     layers = [pdk.Layer('ScatterplotLayer', data=data, get_position='[lon, lat]', get_radius=500, radius_min_pixels=6, radius_max_pixels=14,
                         get_fill_color='fill', stroked=True, get_line_color=[42, 120, 214, 255], line_width_min_pixels=2, pickable=True),
@@ -189,3 +190,54 @@ def hotspot_check_map(points):
                         get_pixel_offset=[0, -16], background=True, get_background_color=[255, 255, 255, 210])]
     return pdk.Deck(layers=layers, initial_view_state=pdk.ViewState(latitude=-1.285, longitude=36.84, zoom=10.3),
                     tooltip={'html': '{tooltip}'}, map_style=None)
+
+
+def donut(rows, label, value, title=None, colors=None, fmt=None, height=220):
+    """Share of a total. rows: list of dicts. Categories keep fixed palette order (largest first)."""
+    data = pd.DataFrame(rows)
+    if data.empty or data[value].sum() == 0: return None
+    domain = list(data[label])
+    palette = colors or (SERIES+['#e87ba4', '#008300', '#4a3aa7', '#e34948'])[:len(domain)]
+    data['Share'] = data[value]/data[value].sum()
+    tooltip = [label, alt.Tooltip('Share:Q', format='.0%')] + ([fmt] if fmt else [])
+    base = alt.Chart(data).encode(theta=alt.Theta(f'{value}:Q', stack=True),
+                                  color=alt.Color(f'{label}:N', scale=alt.Scale(domain=domain, range=palette), legend=alt.Legend(orient='right', title=None)),
+                                  tooltip=tooltip)
+    chart = base.mark_arc(innerRadius=55, outerRadius=90, stroke='white', strokeWidth=2)
+    return chart.properties(height=height, title=title or '')
+
+def hbars(rows, label, value, value_title, text=None, color=None, height_per=28, sort='-x', fmt=None):
+    """Horizontal bars for a ranked list (one series, one colour)."""
+    data = pd.DataFrame(rows)
+    if data.empty: return None
+    bars = alt.Chart(data).mark_bar(color=color or BASE, cornerRadiusEnd=4, height=max(12, height_per-8)).encode(
+        y=alt.Y(f'{label}:N', sort=sort, title=None), x=alt.X(f'{value}:Q', title=value_title, axis=alt.Axis(gridOpacity=0.4, format=fmt or '')),
+        tooltip=[c for c in data.columns if not c.startswith('_')])
+    layers = [bars]
+    if text: layers.append(bars.mark_text(align='left', dx=4, fontSize=11).encode(text=f'{text}:N', color=alt.value('#6b6b66')))
+    return alt.layer(*layers).properties(height=height_per*len(data)+20)
+
+def columns_chart(rows, x, y, y_title, color=None, height=220, x_title=None, sort=None):
+    data = pd.DataFrame(rows)
+    if data.empty: return None
+    return alt.Chart(data).mark_bar(color=color or BASE, cornerRadiusEnd=4).encode(
+        x=alt.X(f'{x}:N', sort=sort, title=x_title, axis=alt.Axis(labelAngle=0)), y=alt.Y(f'{y}:Q', title=y_title, axis=alt.Axis(gridOpacity=0.4)),
+        tooltip=list(data.columns)).properties(height=height)
+
+def timeline(rows, x, y, y_title, height=200):
+    data = pd.DataFrame(rows)
+    if data.empty: return None
+    return alt.Chart(data).mark_bar(color=BASE, cornerRadiusEnd=3).encode(
+        x=alt.X(f'{x}:T', title=None), y=alt.Y(f'{y}:Q', title=y_title, axis=alt.Axis(gridOpacity=0.4)), tooltip=list(data.columns)).properties(height=height)
+
+def tornado(rows, height_per=30):
+    """Sensitivity: change in a measure for each scenario versus the base (negative left, positive right)."""
+    data = pd.DataFrame(rows)
+    if data.empty: return None
+    color = alt.condition(alt.datum.Change > 0, alt.value(SERIES[1]), alt.value(BASE))
+    bars = alt.Chart(data).mark_bar(cornerRadius=3, height=max(12, height_per-10)).encode(
+        y=alt.Y('Scenario:N', sort=alt.EncodingSortField('Abs', order='descending'), title=None),
+        x=alt.X('Change:Q', title='Change in average annual loss vs current (%)', axis=alt.Axis(gridOpacity=0.4)), color=color,
+        tooltip=['Scenario', alt.Tooltip('Change:Q', format='+.0f', title='Change (%)'), 'AAL'])
+    rule = alt.Chart(pd.DataFrame({'x': [0]})).mark_rule(color='#9ca3af').encode(x='x:Q')
+    return alt.layer(bars, rule).properties(height=height_per*len(data)+20)

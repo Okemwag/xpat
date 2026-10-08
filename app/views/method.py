@@ -57,16 +57,20 @@ st.caption('Dashed line: the assumed maximum depth (a score of 1). Fragile class
            'reflect that land and foundations survive. JRC Africa residential rests on South African and Mozambican data only.')
 
 st.header('3 · Exposure')
-badges('SYNTHETIC')
+badges('REAL', 'SYNTHETIC')
 st.write('Each property needs an ID, latitude/longitude, housing class and insured value (KES). Uploaded files and AI-described '
-         'portfolios pass the same validation. Only synthetic or test data is accepted.')
+         'portfolios pass the same validation. Schedules (CSV, Excel) are read directly; broker documents (PDF, Word) are read by AI '
+         'with every value quoted and checked. Real data is labelled REAL, synthetic data SYNTHETIC.')
 
 st.header('4 · Financial engine')
 badges('ASSUMPTION')
 st.write('For every property and tier: hazard score → depth → damage ratio → **loss = damage ratio × insured value**. '
          'Losses are summed per tier into the loss curve. Average annual loss integrates that curve over annual chance, assuming '
          f'no loss below a {state.rp_label(cfg.aal_zero_loss_return_period)} event and holding the rarest loss beyond '
-         f'{state.rp_label(max(cfg.return_periods.values()))}. Losses are gross: no deductibles, limits or reinsurance.')
+         f'{state.rp_label(max(cfg.return_periods.values()))}.')
+st.markdown('**Insured vs reinsured.** Results are **gross** (ground-up). With policy terms on, Xpat also gives the **insured** loss after each '
+            'property\'s deductible and limit — including facultative terms read from a submission. **Reinsured** loss (net of treaties, '
+            'layers or quota shares) is not modelled: the brief puts reinsurance structuring out of scope.')
 
 st.header('5 · AI')
 badges('AI')

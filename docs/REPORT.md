@@ -33,7 +33,8 @@
 ## 1. Summary
 
 Xpat is a working end-to-end flood catastrophe model for Nairobi: **hazard → vulnerability → exposure → financial engine → loss curve**,
-with two AI stages that change the model's inputs, and a web interface that a judge can use live by uploading a CSV.
+with AI that changes the model's inputs, and a multi-user web platform an underwriting team can use on real submissions — or a judge can
+open as a demo and upload a CSV.
 
 **Headline results for the 600-property synthetic starter portfolio (KES 63.64 bn insured, gross loss):**
 
@@ -56,14 +57,26 @@ with two AI stages that change the model's inputs, and a web interface that a ju
 3. **Most of the loss is away from the named hotspots** (56% falls more than 2 km from any of them), and the baseline hazard misses
    half of the named hotspots. Both point to the same gap — drainage-driven flooding — which is what the AI evidence stage targets.
 
-**What is AI and what is not.** Gemini is used in two places where a deterministic pipeline cannot help: turning a plain-English
-portfolio description into validated records (12 of 12 held-out test cases extracted fully correctly), and turning flood reports into
-reviewed, geolocated drainage evidence that raises the hazard where the proxy is blind. The AI never sets a depth, damage ratio or loss
-directly; every AI output is re-validated by deterministic code and, for hazard, approved by a named reviewer.
+**What is AI and what is not.** Gemini is used where a deterministic pipeline cannot help:
+1. **Reading exposure** — broker submissions (PDF/Word), schedules with unfamiliar columns, and plain-English descriptions become validated
+   property records, every value quoted from the source and checked (12 of 12 held-out descriptions read fully correctly; the real
+   21-page Landmark Plaza memo read with every field verified and nine underwriting problems surfaced). Without this step those
+   properties cannot be modelled at all.
+2. **Drainage evidence** — flood reports become reviewed, geolocated evidence that raises hazard where the proxy is blind (built and
+   tested; no real reports loaded yet, so no hazard improvement is claimed).
+3. **Underwriting briefing** — a short briefing written only from the model's own figures, with every number checked back against the
+   model output.
 
-**Status.** The pipeline, both AI features, the uncertainty layers and the interface are built and tested (157 automated tests, plus
-headless tests of every interface page and live checks against Gemini). The drainage-evidence library is empty until the team adds
-real, independent flood reports; until then no improvement in hotspot detection is claimed.
+The AI never sets a depth, damage ratio or loss; every AI output is re-validated by deterministic code and, for hazard, approved by a
+named reviewer.
+
+**Insured vs reinsured.** Xpat models **gross (ground-up) loss** and, when policy terms are applied, **insured loss after per-property
+deductibles and limits** — including facultative terms read from a submission (e.g. "5% of each loss, minimum KES 5 m; limit = full
+value"). It does **not** model reinsurance treaties, layers or net-of-reinsurance loss: the brief's scope section excludes them.
+
+**Status.** The pipeline, the AI features, the uncertainty layers, the interface and an organisation platform (company sign-in, roles,
+audit log, admin console) are built and tested (346 automated tests, including every page for every role and the platform on a real
+PostgreSQL; plus live checks against Gemini).
 
 ---
 
@@ -82,8 +95,12 @@ output, and is honest about what is real and what is assumed.
 | County & disaster bodies | A map of where the baseline hazard is blind, and a route to fix it with local evidence |
 | Cedants & brokers | Faster, consistent first-look flood quotes from a CSV or a description |
 
-Out of scope by the brief, and not built: reinsurance treaties, layers, net-of-reinsurance loss, multi-peril aggregation, real policy or
-claims data, and physically based hydrology.
+Out of scope by the brief, and not built: reinsurance treaties, layers, net-of-reinsurance loss, multi-peril aggregation, claims-data
+integration and physically based hydrology. The objective's "insured/reinsured loss" is therefore met as **gross and per-risk insured
+loss** (§8.5); reinsurance structuring is deliberately not attempted.
+
+Real use is in scope beyond the brief: the platform accepts real schedules and broker documents, labels them REAL, and handles them under
+the data rules in §11.4.
 
 ---
 
@@ -291,8 +308,8 @@ Required: `loc_id`, `lat`, `lon`, `housing_class`, `tiv_kes`, `synthetic`, `sour
 | Latitude/longitude swapped | Rejected with "lat and lon appear swapped" |
 | 0,0 coordinates, points outside the hazard maps | Rejected |
 | Duplicate IDs | Later record rejected |
-| Real (non-synthetic) portfolio flag | Rejected — out of scope |
-| Missing `synthetic`/`source` columns | Rejected unless the user explicitly declares the file synthetic |
+| Real (non-synthetic) records | Accepted and labelled REAL (rejected only when `FLOODCAT_SYNTHETIC_ONLY=1`) |
+| Missing `synthetic`/`source` columns | The user must state "real" or "synthetic"; real data also needs an authorisation tick |
 | Missing IDs | Rejected unless the user explicitly asks for generated IDs |
 | Zero value, shared coordinates, value > 100× median, value ≠ area × cost | Accepted with a warning |
 | Invalid deductible/limit | Rejected |
@@ -345,8 +362,11 @@ hazard, frequency and values are held fixed — so these are **assumption ranges
 
 A simple per-property deductible and limit, as a percentage of insured value or set per row (`deductible_kes`, `limit_kes`):
 `insured = min(max(gross − deductible, 0), limit − deductible)`. Turning it on adds an insured EP curve, insured AAL and insured
-ranges. Example: a 1% deductible and 50% limit gives a sample 1-in-100 of **KES 1.51 bn insured** against KES 1.70 bn gross. No layers or
-reinsurance (out of scope).
+ranges. Example: a 1% deductible and 50% limit gives a sample 1-in-100 of **KES 1.51 bn insured** against KES 1.70 bn gross.
+
+Rows may also give `deductible_pct_of_loss` with `deductible_kes` as its minimum — the usual form of a flood deductible ("5% of each loss,
+minimum KES 5 m"). This is the **insured** loss of the objective. **Reinsured** (net of treaty) loss is out of scope by the brief: no
+quota share, surplus, excess-of-loss layers or reinstatements are modelled.
 
 ### 8.6 Accumulation
 
@@ -461,6 +481,51 @@ by someone other than the prompt author would strengthen it.*
 **Known difference:** an AI-described building without a stated value is valued at area × cost, while the starter portfolio's values are
 about 10× that (§7.1). The two sources therefore value buildings on different bases until the 10× question is resolved.
 
+### 10.1b Submission documents (PDF, Word, text)
+
+Brokers send placement memos, not CSVs. Xpat reads the document (detecting the real file type from its bytes —
+the test submission `OFFER_NAIROBI_LANDMARK_PLAZA.docx.pdf` is a PDF with a Word-style name), and Gemini extracts each insured
+property with **a verbatim quote for every value**. Deterministic checks then test the document against itself, the map and the
+model. On the 21-page Landmark Plaza placement memo (an 18-storey RCC office tower, KES 1.09 bn) they found:
+
+| Check | Finding |
+|---|---|
+| Every extracted value quoted word-for-word | ✓ all fields verified |
+| Stated GPS vs the address's locality | GPS (−1.2847, 36.8247) is **1.7 km from Upper Hill** — it lies in the CBD; one of them is wrong |
+| Floor areas | Listed floors add up to **28,680 m²** vs the stated **24,500 m²** (+17%) |
+| Implied rebuild cost | KES 44,490/m² — **63%** of the class median: possible under-insurance |
+| Flood deductible "5% or KES 5 m minimum" | As 5% of value (KES 54.5 m) the minimum could never apply → read as **5% of each loss**, flagged to confirm |
+| Landmarks vs OpenStreetMap | **3 of 5 wrong** (e.g. Kenyatta University "3.2 km east" is 16.5 km NE) |
+| Basements | 2 levels with generators, transformers, chillers and pumps — the first place surface water goes |
+| Hazard model at the location | Proxy score **0 in every tier** — the map's known blind spot, so "no modelled loss" is not "safe" |
+| "No flood losses in 11 years" | Weak evidence: a 1-in-100 flood would leave no loss in 11 years 90% of the time |
+
+The location to model and the deductible basis are reviewer choices; the document's deductible and limit can be applied as
+per-property terms (insured loss next to gross). **Real documents are supported:** e-mails and phone numbers are removed when the file is
+read (the Landmark memo lost 4 e-mails and 2 phone numbers before any AI saw it), the user consents before the text is sent to Gemini,
+the original file is not stored, the user states that the data is real and that they are authorised to process it, and the results are
+labelled REAL throughout. Received documents and their extractions are never committed to the repository.
+
+**One upload for everything.** The Portfolio page takes a single file and routes it by content: CSV and Excel schedules are read directly;
+PDF, Word and free-text documents — and schedules whose columns do not match the template — are read by AI.
+
+**Multi-storey exposure (ASSUMPTION).** JRC damage factors describe flooded storeys. When a document gives storey counts, only basements
+plus the lowest storey are treated as flood-exposed: for Landmark Plaza (18 storeys + 2 basements) that is 3/20 = **15%** of value.
+Without this, a ground-level flood would be charged against all eighteen storeys.
+
+### 10.1c Underwriting briefing
+
+A one-click briefing on the Overview page, written by Gemini **only from a fact pack** that code builds from the run: portfolio size and
+origin, scenario and simulated losses with ranges, AAL, insured loss, drivers by construction, concentrations by named area, the top
+properties, the hazard map's 12-of-24 check, the main assumptions, and any submission-document checks. Each fact carries its provenance label.
+
+The model must copy figures exactly and may not recommend binding, declining or a price. After drafting, **every number in the briefing is
+compared with the fact pack**; any figure that does not match is listed as unsupported and highlighted. On the sample portfolio the live
+briefing used 28 facts and contained **no unsupported figures**; its five "before relying on this result" checks were the 341 unflagged
+properties, the three largest concrete risks, the 57% of loss away from named flood areas, the damage-curve applicability, and drainage near
+the sites. The briefing is audited, quota-limited, and included in the Markdown export. It adds reading speed, not model accuracy — which is
+why the AI objective rests on §10.1 and §10.1b rather than on the briefing.
+
 ### 10.2 Feature 2 — Drainage evidence to improve the hazard
 
 **Why.** The baseline hazard flags 12 of 24 named hotspots; the misses flood because of drainage, which terrain and rivers cannot show.
@@ -508,9 +573,9 @@ A Streamlit web app (`make app`, http://localhost:8501).
 
 ### 11.1 User journeys
 
-1. **Arrive** — a landing page explains the product in plain words, shows a live preview computed from the sample portfolio, and offers
-   *Create account*, *Sign in* or *Explore as guest* (for judges; no account needed).
-2. **Load a portfolio** — upload a CSV (template provided), describe it in words (AI), or use the sample. Validation issues are grouped
+1. **Arrive** — a short landing page with a live sample preview; *Sign in* (company SSO or password; accounts are by invitation) or
+   *View demo* (a separate temporary workspace, for judges).
+2. **Load a portfolio** — upload a CSV or Excel schedule, upload a broker document (PDF/Word, read by AI), describe it in words (AI), or use the sample. Validation issues are grouped
    ("tiv mismatch — 600 records") with examples; declarations and partial runs are explicit choices.
 3. **Read the result** — Overview: total value, 1-in-100 and 1-in-250 loss, AAL, each with a one-line meaning; the simulated loss curve;
    loss by class; where loss concentrates; the AI effect.
@@ -534,11 +599,31 @@ A Streamlit web app (`make app`, http://localhost:8501).
 - **The Methods page** explains the four stages, what a return period is and is not ("about a 1% chance each year, not once a
   century"), why tier names do not match frequency, and how the simulation works.
 
-### 11.3 Accounts and roles
+### 11.3 Organisation platform
 
-Local accounts with PBKDF2-SHA256 password hashing, password rules, login throttling and three roles: **analyst** (run and view),
-**reviewer** (also approve AI evidence) and **admin** (also manage users). Guests get a temporary session (reviewer role by default so a
-judge can try the evidence workflow; configurable). This is demo-grade authentication, not production identity management.
+A reinsurer has many underwriters, so Xpat is multi-tenant and built for teams (details and status in `docs/ORGANISATION_CHECKLIST.md`):
+
+| Area | What is built |
+|---|---|
+| Tenancy | Every record carries its organisation; isolation is enforced in the data layer and tested on every list/open/export/delete path |
+| Sign-in | Company single sign-on (OpenID Connect: Entra ID, Google, Okta) per organisation with PKCE, state, nonce and signature checks; password accounts as a fallback |
+| Passwords | Argon2id, 12+ characters, breached-password check (HIBP k-anonymity), no composition rules (NIST 800-63B style) |
+| Two-step | TOTP with recovery codes; mandatory for admins by default, configurable for everyone |
+| Sessions | Server-side, HttpOnly cookie, idle and absolute timeouts, revoked on password/role change and deactivation, device list, step-up re-authentication for sensitive changes |
+| Account flows | Invitation-only joining, forgot/reset password (single-use, 30-minute, no account enumeration), change password and e-mail, leavers with hand-over, admin-assisted MFA reset |
+| Roles | Owner, admin, head of underwriting, underwriter, analyst, evidence reviewer, viewer, auditor; plus Xpat staff with no data access unless a customer grants time-limited support access |
+| Controls | Maker–checker for evidence and assumption changes; underwriting authority limits with referral; per-run visibility (private / team / organisation) |
+| Audit | Append-only (database-enforced), hash-chained, viewer with filters, CSV export and integrity check; security alerts |
+| Security | CSRF tokens, security headers, malware scanning (ClamAV), rate limits and AI quotas, scoped expiring API tokens, encrypted secrets |
+| Administration | Organisation console (users, teams, security & SSO, settings, access review, usage, audit) and a platform console for Xpat staff |
+
+### 11.4 Real data
+
+Real schedules and documents are accepted and labelled **REAL** throughout. E-mails and phone numbers are removed from a document as soon
+as it is read and before any text reaches Gemini; the user consents before the text is sent; the original file is not stored (only the
+extracted values, their quotes and the checks, in an extraction record); inputs kept for re-running are encrypted; and received documents
+and runs are never committed to the source repository. Compliance obligations (Kenya Data Protection Act registration, DPIA, data
+processing agreements, cross-border transfer to the AI provider) are listed in the checklist and need legal confirmation.
 
 ---
 
@@ -568,6 +653,7 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | A18 | Evidence used | drainage & surface runoff, confidence ≥ 0.5, approved | ASSUMPTION | Mechanisms the proxy cannot see | What changes hazard |
 | A19 | AI-filled sizes | starter class medians | ASSUMPTION | Only reference available | Values for under-described buildings |
 | A20 | Coverage | raster extent only | — (rule) | Never assume zero hazard | Points outside are rejected |
+| A21 | Flood-exposed share of multi-storey value | (basements + 1 storey) ÷ (storeys + basements), only when storeys are known | ASSUMPTION | JRC factors apply to flooded storeys; value spread evenly | Landmark Plaza: 15% of value exposed |
 
 ---
 
@@ -594,14 +680,16 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 - Gemini model availability changes; the fallback chain mitigates this but outputs may differ between models.
 
 **Interface and operations**
-- Accounts and runs are stored locally; on a host with ephemeral disk they reset on restart.
-- Authentication is demo-grade. The app is not deployed publicly; hosting and secret management are open decisions.
+- The app is not deployed publicly; production hosting, the secret key, Resend e-mail and ClamAV must be configured (see `.env.example`,
+  `compose.yaml`, `deploy/Caddyfile`).
+- Compliance items (ODPC registration, DPIA, DPA, sub-processor list, penetration test) are organisational tasks, not code.
+- The interface has been tested headlessly for every page and role, but its appearance has not been reviewed on every browser and screen size.
 
 ---
 
 ## 14. Verification and testing
 
-**157 automated tests** (`make test`), including the invariants the project requires:
+**346 automated tests** (`make test`; the platform suite also runs on PostgreSQL with `make test-postgres`), including:
 
 | Invariant | Tested |
 |---|---|
@@ -616,7 +704,11 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | AI uplift keeps scores in 0–1 and tier order; only approved, confident drainage evidence applies | ✓ |
 | Gemini fallback, retry, malformed and blocked responses; quote checks; abusive responses rejected | ✓ |
 | Upload edge cases (≈30 cases), accounts, lockout, roles, path traversal, API | ✓ |
-| The real upload page with clean, faulty, unlabelled and non-CSV files | ✓ |
+| The real upload page with clean, faulty, unlabelled and non-CSV files; documents end to end | ✓ |
+| Tenant isolation; every role × permission; invitations, MFA, reset, sessions, SSO (fake identity provider) | ✓ |
+| Audit log append-only and hash chain; tampering detected; alerts; malware scan protocol; quotas | ✓ |
+| Every page renders for all eight roles; admin and workflow actions through the real pages | ✓ |
+| AI briefing figures checked against the fact pack | ✓ |
 
 Beyond the suite: every interface page was driven headlessly signed-out, signed-in, before and after a run, with policy terms and AI
 evidence applied (no exceptions); the JRC values were checked against the source PDF; the AAL was checked by hand; and both AI features
@@ -628,10 +720,12 @@ were exercised live against Gemini.
 
 ```bash
 make install          # dependencies (uv): dev, geo, ui, ai extras
-make test             # 157 tests
+make test             # 346 tests
+make db && make test-postgres   # platform tests on a real PostgreSQL
 make outputs          # rebuild outputs/ (Day 1 tables, EP, YLT, ranges, sensitivity)
 make eval-ingestion   # re-score AI ingestion (needs GEMINI_API_KEY)
-make app              # interface at http://localhost:8501
+make app              # migrate, then sign-in/API server (:8000) + interface (:8501)
+uv run flood-cat create-org "Company" owner@company.com --domains company.com   # first organisation and owner invitation
 ```
 
 Every analysis stores its config fingerprint, input fingerprint, hazard provider, declarations and the evidence snapshot it used.
@@ -644,10 +738,11 @@ inputs, assumptions and generation date and are never hand-edited.
 
 | Item | Why it matters |
 |---|---|
-| Collect real, independent flood reports and run the evidence workflow | Turns the AI hazard feature from demonstrated to evidenced; the main differentiator |
+| Collect real, independent flood reports and run the evidence workflow | Turns the AI hazard feature from demonstrated to evidenced |
+| Configure production: secret key, Resend, ClamAV, domain and HTTPS (compose + Caddy provided) | Needed before real customers sign in |
+| Compliance tasks: ODPC registration, DPIA, DPA template, sub-processor list, penetration test | Organisational, not code; see the checklist |
 | Resolve the 10× insured-value question with the data owner | Changes every loss by a factor of ten |
 | Harder ingestion test cases written by someone other than the prompt author | Strengthens the AI accuracy claim |
-| Decide hosting (public link vs local), secret storage and persistent accounts | Needed if judges test remotely |
 | Visual review of the interface in a browser (layout, dark mode, phone width) | Pages are tested for errors, not yet for appearance |
 | Rehearse the demo with a prepared CSV and description | The two-minute understanding test |
 

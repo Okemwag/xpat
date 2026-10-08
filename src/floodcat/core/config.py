@@ -27,6 +27,7 @@ class ModelConfig:
     aal_tail: str
     hotspot_tag_radius_m: float
     top_n: int
+    storey_exposure: dict
     policy_terms: dict
     uncertainty: dict
     year_loss_table: dict
@@ -46,6 +47,8 @@ class ModelConfig:
                                                               'damage_cap':float(self.class_adjustments[c]['damage_cap'])} for c in CLASSES})
             object.__setattr__(self, 'uplift_factors', {t:float(self.uplift_factors[t]) for t in TIERS})
             object.__setattr__(self, 'evidence_mechanisms', tuple(self.evidence_mechanisms))
+            object.__setattr__(self, 'storey_exposure', {'enabled':bool(self.storey_exposure['enabled']),
+                'flooded_storeys_above_ground':int(self.storey_exposure['flooded_storeys_above_ground'])})
             object.__setattr__(self, 'policy_terms', {'enabled':bool(self.policy_terms['enabled']),
                 'deductible_pct_of_tiv':float(self.policy_terms['deductible_pct_of_tiv']),'limit_pct_of_tiv':float(self.policy_terms['limit_pct_of_tiv'])})
             u=self.uncertainty
@@ -100,6 +103,11 @@ class ModelConfig:
             raise ModelError("invalid_config", "top_n must be a positive integer")
         bounded(self.uplift_weight,"uplift_weight")
         bounded(self.evidence_min_confidence,"evidence_min_confidence")
+        se=self.storey_exposure
+        if set(se)!={'enabled','flooded_storeys_above_ground'} or not isinstance(se['enabled'],bool):
+            raise ModelError("invalid_config", "storey_exposure needs enabled (true/false) and flooded_storeys_above_ground")
+        if isinstance(se['flooded_storeys_above_ground'],bool) or not isinstance(se['flooded_storeys_above_ground'],int) or not 1<=se['flooded_storeys_above_ground']<=5:
+            raise ModelError("invalid_config", "flooded_storeys_above_ground must be an integer from 1 to 5")
         terms=self.policy_terms
         if set(terms)!={'enabled','deductible_pct_of_tiv','limit_pct_of_tiv'} or not isinstance(terms['enabled'],bool):
             raise ModelError("invalid_config", "policy_terms needs enabled (true/false), deductible_pct_of_tiv and limit_pct_of_tiv")

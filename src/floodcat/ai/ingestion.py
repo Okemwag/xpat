@@ -74,7 +74,7 @@ def build_rows(text, response, gazetteer, defaults, model_name, batch_id):
     if not isinstance(response, dict) or not isinstance(response.get('groups'), list):
         raise ModelError('ai_invalid', 'AI response has no groups; nothing was created')
     rows, review, total = [], [], 0
-    source = f'AI-ingested from free text by {model_name} ({PROMPT_VERSION}); synthetic, not a real portfolio'
+    source = f'AI-ingested from free text by {model_name} ({PROMPT_VERSION})'
     for g_no, group in enumerate(response['groups'], 1):
         flags, origin = [], {}
         quote = str(group.get('source_quote') or '')
@@ -124,7 +124,7 @@ def build_rows(text, response, gazetteer, defaults, model_name, batch_id):
             rows.append({'loc_id': f'{batch_id}-{g_no:02d}-{k+1:03d}', 'lat': '' if lat is None else str(lat), 'lon': '' if lon is None else str(lon),
                          'housing_class': housing_class, 'floor_area_m2': '' if area is None else str(area),
                          'cost_per_m2_kes': '' if cost is None else str(cost), 'tiv_kes': tiv,
-                         'synthetic': 'True', 'source': source, 'ai_group': str(g_no), 'ai_field_provenance': provenance})
+                         'synthetic': '', 'source': source, 'ai_group': str(g_no), 'ai_field_provenance': provenance})
         review.append({'group': g_no, 'location_name': name, 'housing_class': housing_class or '—', 'count': count,
                        'tiv_kes_each': tiv or '—', 'source_quote': quote, 'quote_verified': quote_ok,
                        'field_provenance': provenance, 'flags': flags})
@@ -136,6 +136,8 @@ def ingest(text, llm, gazetteer, defaults, batch_id='AI'):
     if not text: raise ModelError('ai_invalid', 'Describe at least one building')
     if len(text) > MAX_TEXT: raise ModelError('ai_invalid', f'Description is limited to {MAX_TEXT} characters')
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,20}', batch_id): raise ModelError('ai_invalid', 'Invalid batch id')
+    from .privacy import redact
+    text, _ = redact(text)
     response = llm.generate_json(SYSTEM, 'Portfolio description (data):\n'+json.dumps(text), SCHEMA)
     from .gemini import model_used
     return build_rows(text, response, gazetteer, defaults, model_used(llm), batch_id)

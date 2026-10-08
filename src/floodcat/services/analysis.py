@@ -16,16 +16,16 @@ from ..ai.evaluation import spread
 from ..financial.loss import property_loss, total_loss
 from ..financial.ep import ep_curve, average_annual_loss
 from ..financial.accumulation import group_losses
-from ..reporting.provenance import provenance
+from ..reporting.provenance import provenance, exposure_origin
 
 SUPPLIED_SCORE_TOLERANCE = 1e-6
 
-def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotspots=(),ai_adjustment=False):
+def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotspots=(),ai_adjustment=False,synthetic_only=False):
     """Run the full chain for one portfolio. Pure: no files, network or database."""
     config=config or load_config();provider=provider or AttachedHazard()
     hotspots=tuple(hotspots);evidence=tuple(evidence)
     applied=usable(evidence,config) if ai_adjustment else []
-    assets,issues=validate_rows(rows)
+    assets,issues=validate_rows(rows,synthetic_only)
     results={'baseline':{t:[] for t in TIERS}}
     if ai_adjustment: results['enhanced']={t:[] for t in TIERS}
     excluded=[];hazard_ok=[];changes=[];signals={}
@@ -84,7 +84,8 @@ def analyse(rows,config=None,provider=None,evidence=(),allow_partial=False,hotsp
             'accepted_tiv_kes':money_string(accepted_tiv),'modelled_tiv_kes':money_string(covered_tiv),
             'unmodelled_accepted_tiv_kes':money_string(accepted_tiv-covered_tiv),'partial':has_errors,
             'issues':issues,'runs':runs,'ai_contribution':contribution,'config':config.to_dict(),'config_fingerprint':config.fingerprint,
-            'provenance':provenance(config),
+            'exposure_origin':exposure_origin(hazard_ok),
+            'provenance':provenance(config,exposure_origin(hazard_ok)),
             'limitations':['Scenario EP points and AAL use assumed return periods, not a calibrated annual loss distribution.',
             ('Insured loss applies a simple per-property deductible and limit; no layers or reinsurance.' if config.policy_terms['enabled']
              else 'Losses are gross of policy terms; no deductible, limit or reinsurance is applied.'),

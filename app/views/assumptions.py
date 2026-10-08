@@ -10,8 +10,19 @@ from ui.components import badges, explain, page_header, pipeline_strip
 
 page_header('Vulnerability, assumptions & sensitivity', 'Every modelling choice is visible here. Change one, re-run, and see how much the answer moves.')
 pipeline_strip('Vulnerability')
-base = state.runtime().config
+base = state.house_config()
 current = state.config()
+editable = state.can('assumptions.sandbox')
+p = state.principal()
+from floodcat.platform import data
+with state.platform().tx() as conn:
+    house = data.house_set(conn, p.org_id)
+    sets = data.list_sets(conn, p)
+st.info((f"House view: **{house['name']}** (version {house['version']}), approved for {state.org().get('name', 'your organisation')}."
+         if house else "House view: Xpat's documented defaults (`configs/default.json`) — your organisation has not approved its own yet.")
+        + (' You are working with **personal sandbox changes** below.' if st.session_state.get('config_overrides') else ''), icon=':material/account_balance:')
+if not editable:
+    st.caption('Your role can view the assumptions but not change them. Analysts and the head of underwriting can try changes and propose them.')
 
 with st.form('assumptions'):
     st.subheader('Hazard interpretation')
@@ -48,7 +59,7 @@ with st.form('assumptions'):
     sigma = a.slider('Damage spread σ (log scale)', 0.0, 1.0, float(uc['damage_sigma']), 0.05)
     rho = b.slider('Portfolio-wide correlation ρ', 0.0, 1.0, float(uc['correlation']), 0.05)
     trials = c.select_slider('Simulations', [500, 1000, 2000, 5000, 10000], value=uc['trials'] if uc['trials'] in (500, 1000, 2000, 5000, 10000) else 2000)
-    apply = st.form_submit_button('Apply and re-run', type='primary', icon=':material/refresh:')
+    apply = st.form_submit_button('Apply to my sandbox and re-run', type='primary', icon=':material/refresh:', disabled=not editable)
 if apply:
     overrides = {'max_depth_m': max_depth, 'return_periods': rps, 'class_adjustments': adj, 'aal_zero_loss_return_period': zero, 'hotspot_tag_radius_m': radius,
                  'policy_terms': {'enabled': terms_on, 'deductible_pct_of_tiv': deductible/100, 'limit_pct_of_tiv': limit/100},
@@ -65,12 +76,64 @@ if apply:
         st.success('Assumptions applied.' + (' Results updated.' if state.result() else ' Run a portfolio to see results.'))
     except ModelError as exc:
         st.error(str(exc))
-if st.session_state.get('config_overrides') and st.button('Reset to the documented defaults', icon=':material/restart_alt:'):
+if st.session_state.get('config_overrides') and st.button('Reset to the house view', icon=':material/restart_alt:'):
     st.session_state.pop('config_overrides')
     if state.result():
         settings = st.session_state.get('run_settings', {})
         state.execute(st.session_state['rows'], st.session_state.get('run_label', 'Run').replace(' (custom assumptions)', ''), settings=settings)
     st.rerun()
+
+st.subheader('Governance: changing the house view')
+st.caption('Changes to the organisation\'s assumptions follow maker–checker: an analyst proposes with a reason, and someone else '
+           '(the head of underwriting) approves. Every proposal, decision and change of house view is in the audit log.')
+overrides = st.session_state.get('config_overrides') or {}
+if state.can('assumptions.propose'):
+    with st.form('propose'):
+        st.markdown(f"**Propose your sandbox as the new house view** ({len(overrides)} change(s): {', '.join(overrides) or 'none yet'})")
+        name = st.text_input('Name', value='Proposed house view')
+        reason = st.text_area('Why should the organisation change its assumptions?', placeholder='Evidence, source, expected effect…')
+        a, b = st.columns(2)
+        propose_clicked = a.form_submit_button('Submit proposal', disabled=not overrides)
+        sandbox_clicked = b.form_submit_button('Save as my sandbox only', disabled=not overrides)
+    if propose_clicked and state.guarded(data.propose, name, state.config().to_dict(), reason) is not state.FAILED:
+        st.success('Proposal submitted. The head of underwriting has been notified.')
+    if sandbox_clicked and state.guarded(data.save_sandbox, name, state.config().to_dict()) is not state.FAILED:
+        st.success('Saved to your sandboxes.')
+import json as _json
+_norm = lambda d: _json.loads(_json.dumps(d, default=list))
+house_dict = _norm(base.to_dict())
+pending = [x for x in sets if x['status'] == 'proposed']
+if state.can('assumptions.approve') and pending:
+    st.markdown('**Proposals waiting for a decision**')
+    for x in pending:
+        with st.container(border=True):
+            changes = {k: v for k, v in _norm(x['config']).items() if house_dict.get(k) != v}
+            st.markdown(f"**{x['name']}** (v{x['version']}) — {x['reason']}")
+            st.caption('Changes from the current house view: ' + (', '.join(changes) or 'none'))
+            with st.expander('Details'): st.json({k: {'house': house_dict.get(k), 'proposed': v} for k, v in changes.items()})
+            note = st.text_input('Decision note', key=f"note_{x['id']}")
+            a, b, c = st.columns(3)
+            if a.button('Approve and make house view', key=f"apd_{x['id']}", type='primary'):
+                if state.guarded(data.decide, x['id'], True, note, True) is not state.FAILED: st.rerun()
+            if b.button('Approve only', key=f"ap_{x['id']}"):
+                if state.guarded(data.decide, x['id'], True, note, False) is not state.FAILED: st.rerun()
+            if c.button('Reject', key=f"rj_{x['id']}"):
+                if state.guarded(data.decide, x['id'], False, note) is not state.FAILED: st.rerun()
+approved = [x for x in sets if x['status'] == 'approved' and not x['is_default']]
+if state.can('assumptions.approve') and approved:
+    choice = st.selectbox('Make an approved set the house view', [x['id'] for x in approved], format_func={x['id']: f"v{x['version']} {x['name']}" for x in approved}.get)
+    if st.button('Use as house view') and state.guarded(data.set_default, choice) is not state.FAILED: st.rerun()
+mine = [x for x in sets if x['personal']]
+if mine and editable:
+    choice = st.selectbox('Load one of my sandboxes', [x['id'] for x in mine], format_func={x['id']: f"v{x['version']} {x['name']}" for x in mine}.get)
+    if st.button('Load sandbox'):
+        cfgd = next(x for x in mine if x['id'] == choice)['config']
+        st.session_state['config_overrides'] = {k: v for k, v in _norm(cfgd).items() if house_dict.get(k) != v}; st.rerun()
+if sets:
+    with st.expander('History of assumption sets'):
+        st.dataframe(pd.DataFrame([{'Version': x['version'], 'Name': x['name'], 'Status': x['status'] + (' · house view' if x['is_default'] else ''),
+                                    'Personal': 'yes' if x['personal'] else '', 'Reason': x['reason'] or '', 'Decision': x['decision_note'] or ''} for x in sets]),
+                     hide_index=True, width='stretch')
 
 cfg = state.config()
 # Approximate damage at score 1 read from the reference dashboard in PROBLEM_STATEMENT.md, Figure 1 (display only).
@@ -125,7 +188,8 @@ else:
         with st.spinner('Re-running the portfolio under each scenario…'):
             rows, settings = st.session_state['rows'], st.session_state.get('run_settings', {})
             from floodcat.exposure.validation import apply_declarations
-            prepared, _ = apply_declarations(rows, settings.get('declare_synthetic', False), settings.get('source_label'), settings.get('assign_missing_ids', False))
+            prepared, _ = apply_declarations(rows, settings.get('declare_synthetic', False), settings.get('source_label'), settings.get('assign_missing_ids', False),
+                                             settings.get('data_origin'))
             st.session_state['sensitivity'] = assumption_sensitivity(prepared, cfg, state.runtime().hazard)
     sens = st.session_state.get('sensitivity')
     if sens:

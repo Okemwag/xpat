@@ -26,6 +26,6 @@ jobs:
         with:
           version: '0.9.0'
       - run: uv python install 3.12
-      - run: uv sync --locked --extra dev --extra geo
-      - run: uv run --locked --extra dev --extra geo alembic upgrade head
-      - run: uv run --locked --extra dev --extra geo python -m pytest -q
+      - run: uv sync --locked --extra dev --extra geo --extra ui --extra ai
+      - run: uv run --locked --extra dev --extra geo --extra ui --extra ai alembic upgrade head
+      - run: uv run --locked --extra dev --extra geo --extra ui --extra ai python -m pytest -q

@@ -1,5 +1,5 @@
 {
-  "version": "nairobi-prototype-v0.5",
+  "version": "nairobi-prototype-v0.6",
   "return_periods": {
     "extreme": 10.0,
     "severe": 25.0,
@@ -69,6 +69,10 @@
   "aal_tail": "hold_rarest",
   "hotspot_tag_radius_m": 2000.0,
   "top_n": 10,
+  "storey_exposure": {
+    "enabled": true,
+    "flooded_storeys_above_ground": 1
+  },
   "policy_terms": {
     "enabled": false,
     "deductible_pct_of_tiv": 0.0,

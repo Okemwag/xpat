@@ -29,11 +29,14 @@ def simulate_losses(run, assets_by_id, config, insured=False):
     ids = [r['loc_id'] for r in rows]
     by_tier = {t: {r['loc_id']: r for r in run['property_losses'][t]} for t in TIERS}
     mean = np.array([[by_tier[t][i]['damage_ratio'] for t in TIERS] for i in ids])
-    tiv = np.array([float(by_tier[TIERS[0]][i]['tiv_kes']) for i in ids])
+    tiv = np.array([float(by_tier[TIERS[0]][i]['tiv_kes'])*by_tier[TIERS[0]][i].get('exposed_fraction', 1.0) for i in ids])
     cap = np.array([config.class_adjustments[by_tier[TIERS[0]][i]['housing_class']]['damage_cap'] for i in ids])
     if insured:
         pairs = [terms(assets_by_id[i], config) for i in ids]
-        deductible = np.array([float(d) for d, _ in pairs]); cover = np.maximum(np.array([float(l) for _, l in pairs])-deductible, 0)
+        pct = np.array([assets_by_id[i].deductible_pct_of_loss or 0.0 for i in ids])
+        minimum = np.array([float(assets_by_id[i].deductible_kes or 0) if assets_by_id[i].deductible_pct_of_loss is not None else float(d)
+                            for i, (d, _) in zip(ids, pairs)])
+        limit = np.array([float(l) for _, l in pairs])
     sigma, rho = u['damage_sigma'], u['correlation']
     rng = np.random.default_rng(u['seed'])
     losses = []
@@ -44,7 +47,8 @@ def simulate_losses(run, assets_by_id, config, insured=False):
         ratio = np.minimum(mean[None, :, :]*factor, cap[None, :, None])       # trials × properties × tiers
         gross = ratio*tiv[None, :, None]
         if insured:
-            gross = np.minimum(np.maximum(gross-deductible[None, :, None], 0), cover[None, :, None])
+            deductible = np.maximum(gross*pct[None, :, None], minimum[None, :, None])
+            gross = np.minimum(np.maximum(gross-deductible, 0), np.maximum(limit[None, :, None]-deductible, 0))
         losses.append(gross.sum(axis=1))                                      # trials × tiers
     return np.vstack(losses)
 

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · Xpat</title>
+<style>
+  :root { --brand:#2a78d6; --ink:#0b0b0b; --muted:#5a5a57; --line:#e2e1dc; --bg:#f6f6f3; --card:#ffffff; --error:#b42318; --ok:#067647; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#f2f2ef; --muted:#b9b8b0; --line:#34342f; --bg:#121211; --card:#1b1b19; --error:#f97066; --ok:#47cd89; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:440px; margin:6vh auto; padding:0 16px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.2rem; margin-bottom:18px; }
+  .brand span { color:var(--brand); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:26px 24px; }
+  h1 { font-size:1.35rem; margin:0 0 6px; } p.lead { color:var(--muted); margin:0 0 18px; line-height:1.45; }
+  label { display:block; font-size:.9rem; font-weight:600; margin:14px 0 6px; }
+  input[type=text],input[type=email],input[type=password] { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:9px;
+      background:transparent; color:var(--ink); font-size:1rem; }
+  input:focus { outline:2px solid var(--brand); outline-offset:1px; }
+  .hint { color:var(--muted); font-size:.82rem; margin-top:5px; }
+  button, .button { display:inline-block; width:100%; margin-top:20px; padding:12px; border:0; border-radius:9px; background:var(--brand); color:#fff;
+      font-size:1rem; font-weight:600; cursor:pointer; text-align:center; text-decoration:none; }
+  .secondary { background:transparent; color:var(--brand); border:1px solid var(--brand); }
+  .error { color:var(--error); background:color-mix(in srgb, var(--error) 10%, transparent); border-radius:8px; padding:10px 12px; margin:0 0 14px; }
+  .ok { color:var(--ok); background:color-mix(in srgb, var(--ok) 10%, transparent); border-radius:8px; padding:10px 12px; margin:0 0 14px; }
+  .links { margin-top:16px; display:flex; justify-content:space-between; gap:12px; font-size:.9rem; } a { color:var(--brand); }
+  .choice { display:block; padding:12px; border:1px solid var(--line); border-radius:9px; margin:8px 0; text-decoration:none; color:var(--ink); }
+  footer { color:var(--muted); font-size:.78rem; text-align:center; margin-top:18px; }
+</style>
+</head>
+<body><main>
+  <div class="brand">X<span>pat</span> · flood risk intelligence</div>
+  <div class="card">
+    <h1>{{ title }}</h1>{% if lead %}<p class="lead">{{ lead }}</p>{% endif %}
+    {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+    {% if message %}<div class="ok" role="status">{{ message }}</div>{% endif %}
+    {% block body %}{% endblock %}
+  </div>
+  <footer>Signed-in activity is recorded in your organisation's audit log.</footer>
+</main></body></html>

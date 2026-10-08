@@ -10,7 +10,7 @@ def markdown_summary(report, ranges=None, ylt=None):
     run = report['runs']['baseline']
     curve = run['ep_curve']
     lines = [f"# Flood loss summary — {report['created_at'][:10]}", '',
-             '> Illustrative prototype: SYNTHETIC portfolio, PROXY hazard, ASSUMED return periods. '
+             f"> Indicative, uncalibrated model: {' + '.join(report.get('exposure_origin', {}).get('labels', ['SYNTHETIC']))} exposure, PROXY hazard, ASSUMED return periods. "
              + ('Gross loss plus insured loss after simple per-property terms.' if 'insured' in run else 'Gross loss, no policy terms.'), '',
              f"- Properties modelled: {report['modelled_count']} of {report['input_count']} supplied",
              f"- Insured value modelled: {_kes(report['modelled_tiv_kes'])}",

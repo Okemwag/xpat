@@ -6,6 +6,8 @@ class AnalysisRequest(BaseModel):
     rows: list[dict[str,Any]]=Field(min_length=1,max_length=10000)
     allow_partial: bool=False
     declare_synthetic: bool=False
+    data_origin: str | None=Field(default=None,pattern='^(real|synthetic)$')
+    visibility: str | None=Field(default=None,pattern='^(private|team|org)$')
     ai_adjustment: bool=False
     config: dict[str,Any] | None=None
 
@@ -35,5 +37,7 @@ class CSVAnalysisRequest(BaseModel):
     csv_text: str=Field(min_length=1,max_length=10_000_000)
     allow_partial: bool=False
     declare_synthetic: bool=False
+    data_origin: str | None=Field(default=None,pattern='^(real|synthetic)$')
+    visibility: str | None=Field(default=None,pattern='^(private|team|org)$')
     ai_adjustment: bool=False
     config: dict[str,Any] | None=None

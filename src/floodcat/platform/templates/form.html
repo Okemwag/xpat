@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block body %}
+{% if fields is not none %}
+<form method="post" action="{{ action }}" autocomplete="on">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% for f in fields %}
+  <label for="{{ f.name }}">{{ f.label }}</label>
+  <input id="{{ f.name }}" name="{{ f.name }}" type="{{ f.type or 'text' }}" value="{{ f.value or '' }}" {% if f.autocomplete %}autocomplete="{{ f.autocomplete }}"{% endif %}
+         {% if f.required is not false %}required{% endif %} {% if f.inputmode %}inputmode="{{ f.inputmode }}"{% endif %} {% if loop.first %}autofocus{% endif %}>
+  {% if f.hint %}<div class="hint">{{ f.hint }}</div>{% endif %}
+  {% endfor %}
+  <button type="submit">{{ submit }}</button>
+</form>
+{% endif %}
+{% for c in choices or [] %}<a class="choice" href="{{ c.href }}">{{ c.label }}</a>{% endfor %}
+{% if button %}<a class="button {{ button.style or '' }}" href="{{ button.href }}">{{ button.label }}</a>{% endif %}
+{% if links %}<div class="links">{% for l in links %}<a href="{{ l.href }}">{{ l.label }}</a>{% endfor %}</div>{% endif %}
+{% endblock %}

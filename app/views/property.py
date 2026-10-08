@@ -6,7 +6,7 @@ from ui.charts import vulnerability_chart
 from ui.components import explain, page_header, pipeline_strip, require_result, run_banner
 
 page_header('Property explorer', 'Trace any loss back to its inputs: value, location, hazard score, assumed depth and damage curve.',
-            ('SYNTHETIC', 'PROXY', 'ASSUMPTION'))
+            ('PROXY', 'ASSUMPTION'))
 pipeline_strip('Financial engine')
 report = require_result()
 run_banner(report)
@@ -42,8 +42,10 @@ with left:
                                 'Damage ratio': st.column_config.NumberColumn(format='percent')})
     last = rows[-1]
     st.markdown(f"**The calculation at {last['Return period']}:** score {last['Hazard score']:.3f} × {cfg.max_depth_m:g} m = "
-                f"{last['Depth (m)']:.2f} m → {last['Damage ratio']:.1%} damage → {state.kes(p['tiv_kes'])} × {last['Damage ratio']:.1%} = **{last['Loss']}**")
-    st.caption('Hazard score: PROXY · depth conversion and class curve: ASSUMPTION on a published JRC curve · value: SYNTHETIC.')
+                f"{last['Depth (m)']:.2f} m → {last['Damage ratio']:.1%} damage → {state.kes(p['tiv_kes'])} × {last['Damage ratio']:.1%}"
+                + (f" × {p['exposed_fraction']:.0%} flood-exposed share (basements + lowest storey)" if p.get('exposed_fraction', 1) < 1 else '')
+                + f" = **{last['Loss']}**")
+    st.caption(f"Hazard score: PROXY · depth conversion and class curve: ASSUMPTION on a published JRC curve · value: {'REAL' if not p.get('synthetic', True) else 'SYNTHETIC'}.")
     if all(r['Hazard score'] == 0 for r in rows):
         st.info('The proxy map does not flag this location in any tier, so it has no modelled loss. That does not mean it cannot '
                 'flood — drainage failures are invisible to the proxy.', icon=':material/info:')

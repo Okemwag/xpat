@@ -65,6 +65,16 @@ def test_invalid_records_require_explicit_partial_analysis(config):
     report = analyse(rows, config, allow_partial=True)
     assert report['partial'] and report['modelled_count'] == 1
 
-def test_real_portfolio_rejected(config):
+def test_real_portfolio_is_modelled_and_labelled_real(config):
+    report = analyse([row(synthetic='False', source='broker submission')], config)
+    assert report['exposure_origin'] == {'real': 1, 'synthetic': 0, 'labels': ['REAL']}
+    assert report['provenance'][0]['label'] == 'REAL'
+    assert report['runs']['baseline']['property_losses']['common'][0]['synthetic'] is False
+
+def test_mixed_portfolio_labelled_both(config):
+    report = analyse([row(), row(loc_id='T-2', synthetic='False')], config)
+    assert report['exposure_origin']['labels'] == ['REAL', 'SYNTHETIC'] and report['provenance'][0]['label'] == 'REAL+SYNTHETIC'
+
+def test_synthetic_only_deployment_rejects_real(config):
     with pytest.raises(ModelError):
-        analyse([row(synthetic='False')], config)
+        analyse([row(synthetic='False')], config, synthetic_only=True)

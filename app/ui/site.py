@@ -88,25 +88,25 @@ def plan(name, price, period, blurb, features, featured=False, tag=None):
             + f"<p class='x-price'>{_e(price)} <small>{_e(period)}</small></p>"
             + '<ul>' + ''.join(f'<li>{_e(f)}</li>' for f in features) + '</ul></div>')
 
-def cta_row(primary='Start free', key='cta'):
-    """Standard call-to-action buttons. Returns nothing; navigates on click."""
+def cta_row(primary='Sign in', key='cta'):
+    """Standard call-to-action buttons. Accounts are by invitation, so the primary action is signing in."""
     from . import state
-    row = st.container(horizontal=True, gap='small')
-    if row.button(primary, type='primary', icon=':material/rocket_launch:', key=f'{key}_start'):
-        st.session_state['auth_tab'] = 'register'; st.switch_page('views/auth.py')
-    if state.guest_allowed() and row.button('Explore as guest', icon=':material/visibility:', key=f'{key}_guest',
-                                           help='Judges: no account needed. Sessions are temporary.'):
-        state.sign_in_guest(); st.rerun()
-    if row.button('See pricing', icon=':material/sell:', key=f'{key}_pricing'):
-        st.switch_page('views/pricing.py')
+    from .components import link
+    row = st.columns([1, 1, 1, 3])
+    with row[0]:
+        if st.button(primary, type='primary', icon=':material/login:', key=f'{key}_start'): st.switch_page('views/signin.py')
+    if state.guest_allowed():
+        with row[1]: link('Explore the demo', state.auth_link('/auth/guest'), primary=False)
+    from pathlib import Path
+    if (Path(__file__).resolve().parents[1]/'views'/'pricing.py').exists():
+        with row[2]:
+            if st.button('See pricing', icon=':material/sell:', key=f'{key}_pricing'): st.switch_page('views/pricing.py')
 
 def footer():
     st.html("""<div class='x-footer'>
-      <b>Xpat</b> · Localized catastrophe-risk intelligence for African insurance markets<br/>
-      Prototype built for the Nairobi Urban Flood Challenge. All results are illustrative: synthetic portfolio, proxy hazard,
-      assumed return periods. Not a commercial offer or underwriting advice.</div>""")
+      <b>Xpat</b> · Flood risk intelligence for insurers and reinsurers. Results are indicative, not a price or underwriting advice.</div>""")
     row = st.container(horizontal=True, gap='small')
     for page, label in (('views/landing.py', 'Home'), ('views/solutions.py', 'Solutions'), ('views/pricing.py', 'Pricing'),
-                        ('views/method.py', 'How it works'), ('views/auth.py', 'Sign in')):
+                        ('views/method.py', 'How it works'), ('views/signin.py', 'Sign in')):
         try: row.page_link(page, label=label)
         except Exception: pass

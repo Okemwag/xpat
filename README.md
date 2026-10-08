@@ -37,6 +37,8 @@ The intended result is an underwriting assessment that can be traced from a port
 
 ## The Nairobi demonstration
 
+Xpat accepts real portfolios — a CSV or Excel schedule, or a broker document such as a placement memo (PDF or Word), read by AI with every value quoted and checked. Real data is labelled REAL in every result; contact details are removed before any AI sees a document, and nothing uploaded is stored as a file.
+
 The current demonstration uses **600 synthetic Nairobi properties** across four construction categories: informal iron-sheet, semi-permanent, permanent masonry, and reinforced concrete. Each property has a location and an insured value. Five supplied flood-susceptibility scenarios provide the starting hazard view.
 
 The demonstration can validate the portfolio, identify value inconsistencies, calculate illustrative damage and loss for each property, and aggregate those results across the portfolio. It also shows how losses vary across the five scenarios and where insured value and modelled loss are concentrated. The results can be reviewed and exported with their assumptions and provenance.
@@ -75,16 +77,33 @@ These distinctions are part of the product's purpose. A useful risk assessment s
 
 ## Running Xpat
 
-The full approach, assumptions, results and limitations are in **[docs/REPORT.md](docs/REPORT.md)**.
+The full approach, assumptions, results and limitations are in **[docs/REPORT.md](docs/REPORT.md)**; the organisation and security work is
+tracked in **[docs/ORGANISATION_CHECKLIST.md](docs/ORGANISATION_CHECKLIST.md)**.
 
 ```bash
-make install        # uv sync with dev, geo, ui and ai extras
-make app            # Streamlit interface at http://localhost:8501
-make test           # full test suite
-make outputs        # rebuild the published results in outputs/
+cp .env.example .env   # then set GEMINI_API_KEY (AI), RESEND_API_KEY / RESEND_FROM (e-mail)
+make install           # uv sync with dev, geo, ui and ai extras
+make db                # optional: local PostgreSQL (set FLOODCAT_DATABASE_URL in .env); otherwise SQLite is used
+make app               # migrate, then sign-in/API server on :8000 and the interface on :8501
+make test              # full test suite
 ```
 
-Copy `.env.example` to `.env` and set `GEMINI_API_KEY` to enable the AI features; without it the app runs and says AI is off. Set `FLOODCAT_ADMIN_USER` and `FLOODCAT_ADMIN_PASSWORD` to create the first admin. Judges can use **Explore as guest**. No database is needed; runs, evidence and accounts are kept under `runtime/store/`.
+**First organisation.** Accounts are by invitation. Create an organisation and its owner:
+
+```bash
+uv run flood-cat create-org "Your company" owner@company.com --domains company.com
+```
+
+The owner receives an invitation e-mail (without Resend configured, it is kept in the database outbox). Owners then invite colleagues,
+assign roles and set up company single sign-on from **Administration** in the app. `uv run flood-cat create-platform-admin you@xpat.io`
+creates an Xpat staff account for the platform console.
+
+**Demo.** Set `FLOODCAT_ALLOW_GUEST=1` to offer **View demo**: a separate, temporary workspace with the sample portfolio — useful for
+judges, off for customer deployments.
+
+**Production.** `docker compose --profile app up` runs PostgreSQL, migrations, the API, the interface, ClamAV and a Caddy reverse proxy
+that serves everything on one HTTPS domain (`XPAT_DOMAIN`). Set `FLOODCAT_ENV=production` and `FLOODCAT_SECRET_KEY`
+(`uv run flood-cat generate-secret-key`). Schedule `make retention` daily and `make alerts` every few minutes.
 
 ## The longer-term vision
 

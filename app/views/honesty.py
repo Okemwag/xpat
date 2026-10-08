@@ -65,7 +65,8 @@ for item in ['The 600 properties are invented. They are not a real insurer\'s ho
              'Hazard values are relative susceptibility, not measured depths or annual probabilities.',
              'The damage curve is a published regional curve adapted by assumption; it is not validated against Kenyan claims.',
              'The years attached to the five tiers are assumptions, so the loss curve compares assumed scenarios rather than forecasting annual loss.',
-             'Losses are gross of policy terms: no deductibles, limits or reinsurance.',
+             'Losses are gross unless policy terms are applied; then insured loss is shown after per-property deductibles and limits. '
+             'Reinsurance (treaties, layers, net-of-reinsurance loss) is not modelled — out of scope by the brief.',
              'A zero score means the proxy did not flag a place, not that it cannot flood.',
              'Hotspot coordinates are approximate neighbourhood centres, not flooded buildings.',
              'The named-hotspot check uses only known flood areas, so it cannot measure false alarms.',

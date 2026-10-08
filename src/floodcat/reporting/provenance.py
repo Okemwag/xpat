@@ -1,7 +1,17 @@
 # Labels follow AGENTS.md §5: REAL, PROXY, SYNTHETIC, ASSUMPTION, AI.
-def provenance(config):
+def exposure_origin(assets):
+    """How many modelled properties are real vs synthetic, and the label(s) to show."""
+    real=sum(not a.synthetic for a in assets); synthetic=len(assets)-real
+    labels=(['REAL'] if real else [])+(['SYNTHETIC'] if synthetic else [])
+    return {'real':real,'synthetic':synthetic,'labels':labels or ['SYNTHETIC']}
+
+def provenance(config,origin=None):
+    origin=origin or {'real':0,'synthetic':1,'labels':['SYNTHETIC']}
+    if origin['real'] and origin['synthetic']: note=f"{origin['real']} real and {origin['synthetic']} synthetic properties"
+    elif origin['real']: note='Real exposure supplied by the user (e.g. a broker submission); values as supplied, not verified by Xpat'
+    else: note='Synthetic or test properties; not a real portfolio'
     return [
-        {'component':'exposure','label':'SYNTHETIC','status':'synthetic','note':'Generated for the hackathon starter kit; not real client properties'},
+        {'component':'exposure','label':'+'.join(origin['labels']),'status':'real' if origin['real'] and not origin['synthetic'] else 'synthetic' if not origin['real'] else 'mixed','note':note},
         {'component':'baseline_hazard','label':'PROXY','status':'derived_proxy','note':'Real terrain + OSM rivers, not observed depths; blind to drainage'},
         {'component':'hotspots','label':'REAL','status':'named_locations','note':'Government-named areas; coordinates approximate (OSM Nominatim); validation and tagging only'},
         {'component':'score_to_depth','label':'ASSUMPTION','status':'assumed','note':f'depth = score × {config.max_depth_m} m'},

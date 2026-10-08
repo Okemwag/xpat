@@ -40,7 +40,7 @@ def test_row_with_extra_values_rejected():
 def test_missing_columns_reported_once_with_hint():
     with pytest.raises(ModelError) as exc:
         validate_rows([{'loc_id': 'A', 'lat': '-1.28', 'lon': '36.82', 'housing_class': 'concrete_rcc', 'tiv_kes': '1'}])
-    assert exc.value.code == 'missing_columns' and 'declare synthetic' in str(exc.value)
+    assert exc.value.code == 'missing_columns' and 'real or synthetic' in str(exc.value)
 
 def test_declaration_fills_only_blanks_and_is_recorded():
     rows, notes = apply_declarations([{'loc_id': ''}, {'loc_id': 'B', 'synthetic': 'False', 'source': 's'}],
@@ -88,9 +88,16 @@ def test_duplicates_shared_points_zero_tiv_and_outliers():
     assert 'duplicate_id' in codes(issues)
     assert {'shared_coordinates', 'zero_tiv', 'tiv_outlier'} <= codes(issues, 'warning')
 
-def test_real_portfolio_flag_rejected():
-    _, issues = validate_rows([row(synthetic='no')])
-    assert 'real_portfolio_out_of_scope' in codes(issues)
+def test_real_records_accepted_unless_deployment_is_synthetic_only():
+    assets, issues = validate_rows([row(synthetic='no')])
+    assert len(assets) == 1 and not codes(issues)
+    _, issues = validate_rows([row(synthetic='no')], synthetic_only=True)
+    assert 'real_data_disabled' in codes(issues)
+
+def test_declared_real_origin_fills_blanks():
+    rows, notes = apply_declarations([{'loc_id': 'A'}], data_origin='real', source_label='broker doc')
+    assert rows[0]['synthetic'] == 'False' and rows[0]['source'] == 'broker doc' and 'real' in notes[0]
+    with pytest.raises(ModelError): apply_declarations([{}], data_origin='maybe')
 
 def test_review_required_carries_issues_then_partial_runs(config):
     rows = [row(), row(loc_id='BAD', lat='36.82', lon='-1.28')]

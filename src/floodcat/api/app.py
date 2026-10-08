@@ -71,7 +71,7 @@ def create_app(runtime=None):
 
     @app.get('/health')
     def health():
-        from ..ai.gemini import available
+        from ..ai.llm import available
         with platform().tx() as conn: conn.exec_driver_sql('SELECT 1')
         return {'status': 'ok', 'ai_available': available(), 'database': platform().engine.dialect.name}
 

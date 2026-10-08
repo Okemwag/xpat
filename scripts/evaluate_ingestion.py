@@ -9,7 +9,7 @@ import os
 from collections import Counter
 from datetime import date
 from pathlib import Path
-from floodcat.ai.gemini import GeminiClient
+from floodcat.ai.llm import make_client
 from floodcat.ai.geocode import Gazetteer
 from floodcat.ai.ingestion import PROMPT_VERSION, ingest
 from floodcat.ai.ingestion_eval import score_case, summarise
@@ -35,7 +35,7 @@ def main():
     load_env()
     suite = json.loads(CASES.read_text())
     runtime = Runtime()
-    llm = GeminiClient()
+    llm = make_client()
     gazetteer = Gazetteer(runtime.store_dir/'geocode_cache.json', llm=llm)
     scores, details, models = [], [], Counter()
     for case in suite['cases']:

@@ -5,7 +5,7 @@ from ..core.errors import ModelError
 ROLES = {
     'owner': 'Organisation owner — everything an admin can do, plus plan, billing and closing the organisation',
     'admin': 'Organisation admin — users, invitations, roles, teams, SSO and security policy, audit log',
-    'head_uw': 'Head of underwriting / model owner — approves house assumptions, evidence and referrals',
+    'head_uw': 'Head of underwriting / model owner — approves house assumptions, evidence and referrals; sets underwriting rules',
     'underwriter': 'Underwriter — upload schedules and documents, run analyses, export',
     'analyst': 'Analyst / cat modeller — as underwriter, plus assumption sandboxes and proposals',
     'reviewer': 'Evidence reviewer — approves or withdraws AI-extracted flood evidence',
@@ -15,11 +15,11 @@ ROLES = {
 ASSIGNABLE = tuple(ROLES)
 
 _ADMIN = {'users.manage', 'security.manage', 'audit.read', 'teams.manage', 'settings.manage', 'tokens.manage', 'usage.read', 'access_review.read'}
-_WORK = {'runs.create', 'runs.read', 'runs.export', 'ai.extract', 'evidence.add', 'submissions.manage', 'comments.write'}
+_WORK = {'runs.create', 'runs.read', 'runs.export', 'ai.extract', 'evidence.add', 'submissions.manage', 'comments.write', 'underwriting.decide'}
 PERMISSIONS = {
     'owner': _ADMIN | {'org.billing', 'org.close', 'runs.read', 'support.grant'},
     'admin': _ADMIN | {'support.grant'},
-    'head_uw': _WORK | {'assumptions.propose', 'assumptions.approve', 'assumptions.sandbox', 'evidence.approve', 'referrals.approve',
+    'head_uw': _WORK | {'assumptions.propose', 'assumptions.approve', 'assumptions.sandbox', 'evidence.approve', 'referrals.approve', 'underwriting.rules',
                         'runs.delete_any', 'usage.read'},
     'underwriter': set(_WORK),
     'analyst': _WORK | {'assumptions.propose', 'assumptions.sandbox', 'sensitivity.run'},

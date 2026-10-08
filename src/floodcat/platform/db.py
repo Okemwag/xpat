@@ -115,6 +115,13 @@ submissions = Table('submissions', metadata, _id(), _org(), Column('name', Strin
     Column('team_id', String(32)), Column('created_by', String(32), nullable=False), _ts('created_at', False), _ts('updated_at', False),
     Column('tiv_kes', String(40)), Column('loss_250_kes', String(40)), Column('referral_reason', Text))
 
+# Underwriting decisions: the rules' recommendation (recomputed server-side), the optional AI explanation, and the person's call.
+decisions = Table('decisions', metadata, _id(), _org(), Column('run_id', String(64), nullable=False, index=True),
+    Column('submission_id', String(32), index=True), Column('decided_by', String(32), nullable=False), _ts('created_at', False),
+    Column('premium_100_kes', String(40), nullable=False), Column('offered_share_pct', String(20), nullable=False),
+    Column('recommendation', JSON, nullable=False), Column('rationale', JSON), Column('outcome', String(10), nullable=False),
+    Column('share_pct', String(20), nullable=False), Column('overrode', Boolean, nullable=False), Column('reason', Text))
+
 comments = Table('comments', metadata, _id(), _org(), Column('target_type', String(30), nullable=False),
     Column('target_id', String(64), nullable=False, index=True), Column('author_id', String(32), nullable=False),
     Column('body', Text, nullable=False), _ts('created_at', False))

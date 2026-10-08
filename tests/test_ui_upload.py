@@ -101,10 +101,10 @@ def test_document_upload_extract_review_and_run(tmp_path):
     from test_submission import DOC_LINES, make_pdf
     at = doc_page(tmp_path, make_pdf(DOC_LINES), 'OFFER.docx.pdf'); at.run()
     assert not at.exception
-    extract = next(b for b in at.button if b.label == 'Extract properties with Gemini')
+    extract = next(b for b in at.button if b.label == 'Extract properties with AI')
     assert extract.disabled                                      # nothing goes to Gemini without consent
-    next(c for c in at.checkbox if c.label.startswith('Send the text above to Google Gemini')).check(); at.run()
-    next(b for b in at.button if b.label == 'Extract properties with Gemini').click(); at.run()
+    next(c for c in at.checkbox if c.label.startswith('Send the text above to')).check(); at.run()
+    next(b for b in at.button if b.label == 'Extract properties with AI').click(); at.run()
     assert not at.exception and 'submission' in at.session_state
     assert any('km from' in w.value for w in at.warning)          # GPS vs address conflict surfaced
     assert not [b for b in at.button if b.key == 'doc_run']          # no run until the data origin is stated

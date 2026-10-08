@@ -29,8 +29,8 @@ class Runtime:
         return class_defaults(assets)
 
     def llm(self):
-        from ..ai.gemini import GeminiClient
-        return GeminiClient()
+        from ..ai.llm import make_client
+        return make_client()
 
     def gazetteer(self, with_ai_fallback=True):
         from ..ai.geocode import Gazetteer

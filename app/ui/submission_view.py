@@ -58,14 +58,16 @@ def submission_flow(data, filename, review_and_run):
         st.warning('Documents cannot be read here: AI is not configured on this server, or your organisation has turned it off. '
                    'Upload a CSV or Excel schedule instead.', icon=':material/key_off:')
         return
-    consent = st.checkbox('Send the text above to Google Gemini to extract the property details', key=f'consent_{digest[:8]}',
-                          help='Contact details are removed first. Names of people and companies may remain.')
-    if st.button('Extract properties with Gemini', type='primary', icon=':material/auto_awesome:', disabled=not consent, key='doc_extract'):
+    where = 'the local AI model' if state.ai_local() else 'Google Gemini'
+    consent = st.checkbox(f'Send the text above to {where} ({state.ai_name()}) to extract the property details', key=f'consent_{digest[:8]}',
+                          help='Contact details are removed first. Names of people and companies may remain.'
+                               + (" The model runs on this organisation's own server; the text does not leave it." if state.ai_local() else ''))
+    if st.button('Extract properties with AI', type='primary', icon=':material/auto_awesome:', disabled=not consent, key='doc_extract'):
         from floodcat.ai.submission import extract_submission
         rt = state.runtime()
         if not state.ai_quota(): return
         try:
-            with st.spinner('Gemini is reading the document; checking it against the map and the model…'):
+            with st.spinner(f'{state.ai_name()} is reading the document; checking it against the map and the model…'):
                 st.session_state['submission'] = extract_submission(doc, rt.llm(), rt.gazetteer(), rt.hazard, rt.hotspots, state.config(), rt.class_defaults)
             from floodcat.platform import data
             extraction_id = state.guarded(data.save_extraction, doc, st.session_state['submission'], consent)

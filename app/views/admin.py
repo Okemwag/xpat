@@ -3,7 +3,9 @@ import streamlit as st
 from floodcat.platform import identity, orgs
 from floodcat.platform.rbac import ASSIGNABLE, ROLES
 from ui import state
-from ui.components import page_header, when
+from collections import Counter
+from ui.charts import hbars
+from ui.components import kpis, page_header, section, when
 
 p = state.principal()
 page_header('Users & invitations', 'Invite people, set their roles, and remove access when they leave. Every change is audited.')
@@ -13,8 +15,10 @@ with state.platform().tx() as conn:
     teams = orgs.list_teams(conn, p.org_id)
     org = orgs.get_org(conn, p.org_id)
 active = [m for m in members if m['status'] == 'active']
-a, b, c = st.columns(3)
-a.metric('Active users', len(active)); b.metric('Pending invitations', len([i for i in invites if not i['expired']])); c.metric('Seats', org['seats'])
+with_mfa = sum(bool(m['mfa_enabled_at']) for m in active)
+kpis([('Active users', len(active), None, f"{len(active)} of {org['seats']} seats"), ('Pending invitations', len([i for i in invites if not i['expired']])),
+      ('Two-step verification', f'{with_mfa} of {len(active)}', 'Active members with two-step turned on'),
+      ('Deactivated', sum(m['status'] != 'active' for m in members), 'Access removed; their work kept')])
 role_label = lambda r: f"{r.replace('_', ' ').title()} — {ROLES[r]}"
 grantable = [r for r in ASSIGNABLE if r != 'owner' or 'owner' in p.roles]
 
@@ -29,7 +33,7 @@ with st.expander('Invite someone', icon=':material/person_add:', expanded=not in
             if state.guarded(identity.invite, email, roles, team_ids) is not state.FAILED: st.success(f'Invitation sent to {email}.')
 
 if invites:
-    st.subheader('Pending invitations')
+    section('Pending invitations')
     for inv in invites:
         with st.container(border=True, horizontal=True, vertical_alignment='center'):
             st.markdown(f"**{inv['email']}** · {', '.join(inv['roles'])} · {'expired' if inv['expired'] else 'expires ' + when(inv['expires_at'])}")
@@ -38,13 +42,20 @@ if invites:
             if st.button('Revoke', key=f"revoke_{inv['id']}"):
                 if state.guarded(identity.revoke_invitation, inv['id']) is not state.FAILED: st.rerun()
 
-st.subheader('Members')
-st.dataframe(pd.DataFrame([{'Name': m['display_name'], 'E-mail': m['email'], 'Roles': ', '.join(m['roles']), 'Status': m['status'],
-                            'Two-step': 'on' if m['mfa_enabled_at'] else 'off', 'Last sign-in': when(m['last_login_at'])} for m in members]),
-             hide_index=True, width='stretch')
+left, right = st.columns([3, 1], gap='large')
+with left.container(border=True, height='stretch'):
+    section('Members')
+    st.dataframe(pd.DataFrame([{'Name': m['display_name'], 'E-mail': m['email'], 'Roles': m['roles'], 'Status': m['status'],
+                                'Two-step': bool(m['mfa_enabled_at']), 'Last sign-in': when(m['last_login_at'])} for m in members]),
+                 hide_index=True, width='stretch', alt='Organisation members', column_config={'Roles': st.column_config.ListColumn(), 'Two-step': st.column_config.CheckboxColumn()})
+with right.container(border=True, height='stretch'):
+    section('People per role')
+    roles_count = Counter(r for m in active for r in m['roles'])
+    chart = hbars([{'Role': r.replace('_', ' '), 'People': n, '_label': str(n)} for r, n in roles_count.most_common()], 'Role', 'People', 'People', text='_label', height_per=26)
+    if chart: st.altair_chart(chart, width='stretch', alt='Active members per role')
 others = [m for m in members if m['id'] != p.user_id]
 if others:
-    st.subheader('Change a member')
+    section('Change a member')
     choice = st.selectbox('Member', [m['id'] for m in others], format_func={m['id']: f"{m['display_name']} ({m['email']}) — {m['status']}" for m in others}.get)
     m = next(x for x in others if x['id'] == choice)
     roles_tab, leave_tab, mfa_tab = st.tabs(['Roles', 'Deactivate / reactivate', 'Reset two-step'])

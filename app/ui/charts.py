@@ -241,3 +241,20 @@ def tornado(rows, height_per=30):
         tooltip=['Scenario', alt.Tooltip('Change:Q', format='+.0f', title='Change (%)'), 'AAL'])
     rule = alt.Chart(pd.DataFrame({'x': [0]})).mark_rule(color='#9ca3af').encode(x='x:Q')
     return alt.layer(bars, rule).properties(height=height_per*len(data)+20)
+
+def scenario_lines(rows, base_name, height=320):
+    """Sensitivity: loss against return period, one line per assumption scenario; the current assumptions drawn thicker in blue.
+    rows: dicts with Scenario, Return period (years), Loss (KES bn), Loss."""
+    data = pd.DataFrame(rows)
+    if data.empty: return None
+    others = [s for s in dict.fromkeys(data['Scenario']) if s != base_name]
+    domain = [base_name] + others
+    palette = [BASE] + ['#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#9ca3af'][:len(others)]
+    ticks = sorted(data['Return period (years)'].unique().tolist())
+    x = alt.X('Return period (years):Q', scale=alt.Scale(type='log'), axis=alt.Axis(values=ticks, labelExpr="'1-in-' + datum.value", title='Assumed return period', grid=False))
+    y = alt.Y('Loss (KES bn):Q', title='Portfolio loss (KES bn)', axis=alt.Axis(gridOpacity=0.4))
+    color = alt.Color('Scenario:N', scale=alt.Scale(domain=domain, range=palette), legend=alt.Legend(orient='right', title=None, labelLimit=260))
+    width = alt.condition(alt.datum.Scenario == base_name, alt.value(3.5), alt.value(1.5))
+    lines = alt.Chart(data).mark_line(point=alt.OverlayMarkDef(size=40, filled=True)).encode(x=x, y=y, color=color, strokeWidth=width,
+                                                                                               tooltip=['Scenario', alt.Tooltip('Return period (years):Q', title='Return period'), 'Loss'])
+    return lines.properties(height=height)

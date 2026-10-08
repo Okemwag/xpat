@@ -20,8 +20,18 @@ def platform():
     from floodcat.platform.service import Platform
     return Platform()
 
+def ai_name():
+    """The model serving AI features, for consent text and captions."""
+    from floodcat.ai.llm import describe
+    return describe()
+
+def ai_local():
+    from floodcat.ai.llm import provider
+    try: return provider() == 'ollama'
+    except ModelError: return False
+
 def ai_available():
-    from floodcat.ai.gemini import available
+    from floodcat.ai.llm import available
     return available()
 
 def guest_allowed():
@@ -98,7 +108,7 @@ def ai_mode():
     return org().get('settings', {}).get('ai_mode', 'full')
 
 def ai_enabled(kind='extraction'):
-    """Gemini configured, the organisation allows this AI feature, and the user may use it."""
+    """An AI model configured (Gemini or local Ollama), the organisation allows this AI feature, and the user may use it."""
     if not ai_available() or not can('ai.extract'): return False
     mode = ai_mode()
     return mode == 'full' or (mode == 'extraction' and kind == 'extraction')
@@ -294,7 +304,7 @@ def briefing_facts(report=None):
     return build_facts(report, y, r, hotspot_check(runtime().hotspots, runtime().hazard), sub)
 
 def draft_briefing():
-    """Gemini briefing from the fact pack; stored in the session for this analysis and audited."""
+    """AI briefing from the fact pack; stored in the session for this analysis and audited."""
     from floodcat.ai.briefing import draft
     from floodcat.platform import audit
     report = result()
@@ -315,3 +325,13 @@ def current_briefing():
     b = st.session_state.get('briefing')
     report = result()
     return b if b and report and b['analysis_id'] == report['analysis_id'] else None
+
+def people():
+    """{user_id: display name} for the organisation's active members (for showing who did what)."""
+    from sqlalchemy import select
+    from floodcat.platform.db import memberships, users
+    p = principal()
+    if p is None or not p.org_id: return {}
+    with platform().tx() as conn:
+        return {r.id: r.display_name for r in conn.execute(select(users.c.id, users.c.display_name).join(memberships, memberships.c.user_id == users.c.id)
+                                                           .where(memberships.c.org_id == p.org_id, memberships.c.status == 'active'))}

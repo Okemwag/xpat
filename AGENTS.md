@@ -54,6 +54,7 @@ app/                        Streamlit interface (live use: upload → results)
   ui/                        session state, components, charts
   views/                     one file per page
 configs/default.json        Single source of truth for model assumptions
+configs/underwriting_rules.json  Starter underwriting appetite (ASSUMPTION); each organisation sets its own
 data/                       Starter kit (read-only, see §4)
 migrations/                 Alembic migrations (PostGIS, optional)
 outputs/                    Generated CSV/MD results (reproducible, see §6)
@@ -65,12 +66,14 @@ src/floodcat/
   vulnerability/ damage (depth-damage) functions
   exposure/      loaders, models, schema validation (the contract for CSV and AI rows)
   financial/     loss, EP curve + AAL, accumulation, policy terms, uncertainty (damage MC), ylt (10,000-year table)
-  ai/            gemini client, ingestion, documents, submission, extraction, geocode, evidence, briefing, privacy, evaluation
+  ai/            gemini client, ingestion, documents, submission, extraction, geocode, evidence, briefing, decision (explains a
+                 recommendation), privacy, evaluation
   platform/      organisations, identity (sessions, MFA, flows), rbac, audit, sso, data (org-scoped runs, evidence,
                  assumption sets, submissions), orgs (settings, teams, support access, quotas), email (Resend), scanning,
                  alerts, web (auth pages, FastAPI), db (schema), service
   services/      analysis orchestration, runtime (live context), accounts, sensitivity, data audit
-  reporting/     export, provenance, markdown summary
+  underwriting/  decision: accept / smaller share / decline from model output, offered terms and the organisation's rules
+  reporting/     export, provenance, markdown summary, document (report content) → formats (PDF, Word, Excel) with charts
   storage/       legacy PostGIS repository (CLI import only); business data lives in platform/
   api/           HTTP app + schemas
   cli.py         command-line entry point
@@ -248,8 +251,9 @@ before shipping it.
 
 ## 7. AI stage
 
-Two AI features, both Gemini (`ai/gemini.py`, model from `GEMINI_MODEL`), both
-optional at runtime (no key → the app says AI is off; everything else works):
+Two AI features, served by Gemini (`ai/gemini.py`, model from `GEMINI_MODEL`) or a local Ollama model
+(`ai/ollama.py`, `OLLAMA_MODEL`), chosen in `ai/llm.py` (`FLOODCAT_AI_PROVIDER`). Both are optional at runtime
+(no provider → the app says AI is off; everything else works). Get clients only via `ai.llm.make_client()`:
 
 1. **Free-text exposure ingestion** (`ai/ingestion.py`): description → groups →
    rows. Quotes are checked against the input; places are geocoded with
@@ -284,6 +288,9 @@ Rules:
   `evaluation/ingestion_cases.json` → `outputs/ingestion_eval.{json,md}`. Never
   tune the prompt on those cases; add new cases instead of editing failed ones.
 - An LLM-written summary of results on its own does **not** satisfy the brief.
+- **Underwriting explanation** (`ai/decision.py`): Gemini explains a recommendation made by deterministic rules
+  (`underwriting/decision.py`). Its schema has no outcome or share field, every figure is checked against the fact pack,
+  and a person records the decision (`platform/data.record_decision`, which recomputes the recommendation server-side).
 
 ---
 
@@ -325,6 +332,9 @@ The product is multi-tenant and used by teams (see `docs/ORGANISATION_CHECKLIST.
 - **Separation of duties** (evidence approval, assumption changes) is on by default; only the public demo organisation relaxes it.
 - **Secrets** (TOTP seeds, SSO client secrets, stored inputs) are encrypted with `FLOODCAT_SECRET_KEY`. Tokens are stored as hashes.
 - **AI calls** go through the organisation's `ai_mode`, the user's `ai.extract` permission and `check_ai_quota`.
+- **Underwriting decisions**: `underwriting.decide` (underwriter, analyst, head of underwriting) records a decision;
+  `underwriting.rules` (head of underwriting) sets the organisation's rules. Overrides need a reason; accepting above the
+  authority limits needs `referrals.approve`. Reason text stays out of the audit log.
 - **Uploads** pass `scanning.scan` (ClamAV; required in production) and the upload quota before they are parsed.
 - Platform tests run on SQLite and, with `TEST_DATABASE_URL`, on PostgreSQL (`make test-postgres`); run both after schema changes and
   add an Alembic migration.

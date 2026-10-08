@@ -53,11 +53,17 @@ The intended experience begins with a portfolio review. Xpat highlights missing 
 
 For each scenario, the underwriter can see the portfolio loss, a breakdown by construction type and area, and a loss-versus-rarity view. A property-level explanation connects the value at risk, its hazard score, the assumed damage relationship, and the resulting loss. The final assessment brings together the findings, evidence, assumptions, and open questions so the underwriter can make a documented decision.
 
+On the **Underwriting decision** page the underwriter enters the offered premium (for 100% of the risk) and the offered share. The organisation's own rules — set by the head of underwriting — recommend **accept**, **take a smaller share** or **decline**, showing each rule's check: price against a technical premium (modelled annual loss with an uncertainty load, at a target loss ratio), our share of the 1-in-250 loss and of insured value against capacity limits, and how much of the schedule could be modelled. AI can explain the recommendation and suggest questions for the broker, but it cannot change it. A person records the final call; overriding the rules needs a written reason, and decisions above the authority limits need the head of underwriting. Starter rules are in `configs/underwriting_rules.json` and are an assumption, not market guidance.
+
+Every analysis can be downloaded as a **PDF** or **Word** report (headline figures, loss curve, concentrations, assumptions, provenance, limitations, and any AI briefing and decisions) or as an **Excel** workbook with every table and every property's loss in every scenario as numbers.
+
 ## Where AI fits
 
-Xpat uses Gemini in two places. First, a portfolio can be described in plain English and turned into validated property records. Second, and more importantly, the AI focuses on flood evidence that ordinary maps may miss. Reports about flooding, drainage failures, and affected neighbourhoods can contain useful local information, but they arrive as unstructured text. The workflow extracts the reported place, event, flood mechanism, and supporting passage; preserves the source; and requires a named reviewer's approval when a location or claim is uncertain.
+Xpat uses Gemini in a few clearly bounded places. First, a portfolio can be described in plain English and turned into validated property records. Second, and more importantly, the AI focuses on flood evidence that ordinary maps may miss. Reports about flooding, drainage failures, and affected neighbourhoods can contain useful local information, but they arrive as unstructured text. The workflow extracts the reported place, event, flood mechanism, and supporting passage; preserves the source; and requires a named reviewer's approval when a location or claim is uncertain.
 
 Approved evidence informs a **documented adjustment** to the baseline hazard assessment. Xpat recalculates losses and shows exactly which properties and portfolio figures changed. The financial calculation itself remains governed by explicit model assumptions: an AI-generated statement is not treated as a flood depth, damage ratio, or monetary loss.
+
+Gemini also drafts plain-English explanations — an underwriting briefing of the results and the reasoning behind an underwriting recommendation. Both are written only from figures the model produced; every number is checked against them, and neither can change a result or a recommendation.
 
 **This enhancement is built but not validated.** The app reports the named-hotspot hit rate before and after, using only evidence independent of the county's hotspot list; any claim that it improves the model still requires independent evaluation. A higher estimate of loss alone is not proof of better risk assessment.
 
@@ -81,12 +87,16 @@ The full approach, assumptions, results and limitations are in **[docs/REPORT.md
 tracked in **[docs/ORGANISATION_CHECKLIST.md](docs/ORGANISATION_CHECKLIST.md)**.
 
 ```bash
-cp .env.example .env   # then set GEMINI_API_KEY (AI), RESEND_API_KEY / RESEND_FROM (e-mail)
+cp .env.example .env   # then set GEMINI_API_KEY or OLLAMA_MODEL (AI), RESEND_API_KEY / RESEND_FROM (e-mail)
 make install           # uv sync with dev, geo, ui and ai extras
 make db                # optional: local PostgreSQL (set FLOODCAT_DATABASE_URL in .env); otherwise SQLite is used
 make app               # migrate, then sign-in/API server on :8000 and the interface on :8501
 make test              # full test suite
 ```
+
+**Local AI with Ollama.** To keep documents on your own machine, run a local model instead of Gemini: `ollama pull llama3.2:3b`, then in `.env` set
+`FLOODCAT_AI_PROVIDER=ollama` and `OLLAMA_MODEL=llama3.2:3b` (`OLLAMA_HOST` defaults to `http://127.0.0.1:11434`). Every AI output goes through the
+same checks as Gemini's. Small local models are much slower on a CPU and less reliable at reasoning; raise `OLLAMA_TIMEOUT_S` if requests time out.
 
 **First organisation.** Accounts are by invitation. Create an organisation and its owner:
 

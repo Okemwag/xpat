@@ -231,3 +231,49 @@ def test_draft_validates_and_flags(sample_report):
     assert briefing['unsupported_figures'] == ['7777'] and briefing['model'] == 'fake-gemini'
     assert '"fact"' in llm.calls[0] and 'Flood loss of KES 1.70 bn' in to_markdown(briefing)
     with pytest.raises(ModelError): draft(facts, FakeLLM({'sections': []}))
+
+# Ollama provider (fake HTTP transport; no network) -----------------------------------------------------------
+def test_ollama_client_sends_schema_and_parses_json(monkeypatch):
+    import httpx, json as _json
+    from floodcat.ai.ollama import OllamaClient
+    seen = {}
+    def handler(request):
+        seen.update(_json.loads(request.content)); seen['url'] = str(request.url)
+        return httpx.Response(200, json={'message': {'role': 'assistant', 'content': '{"headline": "ok"}'}})
+    client = OllamaClient(model='llama3.2:3b', host='127.0.0.1:11434', transport=httpx.MockTransport(handler))
+    assert client.generate_json('sys', 'prompt', {'type': 'object'}) == {'headline': 'ok'}
+    assert seen['url'] == 'http://127.0.0.1:11434/api/chat' and seen['format'] == {'type': 'object'} and seen['stream'] is False
+    assert seen['options']['temperature'] == 0 and seen['messages'][0] == {'role': 'system', 'content': 'sys'}
+    assert client.last_model == 'ollama:llama3.2:3b'
+
+@pytest.mark.parametrize('response,code', [(lambda r: httpx_response(404, {'error': 'model not found'}), 'ai_unavailable'),
+                                           (lambda r: httpx_response(200, {'message': {'content': 'not json'}}), 'ai_failed'),
+                                           (lambda r: httpx_response(500, {'error': 'boom'}), 'ai_failed')])
+def test_ollama_failures_change_nothing(response, code):
+    import httpx
+    from floodcat.ai.ollama import OllamaClient
+    client = OllamaClient(model='m', transport=httpx.MockTransport(response))
+    with pytest.raises(ModelError) as exc: client.generate_json('s', 'p', {})
+    assert exc.value.code == code and 'Nothing was changed' in str(exc.value)
+
+def test_ollama_unreachable_is_reported():
+    import httpx
+    from floodcat.ai.ollama import OllamaClient
+    def refuse(request): raise httpx.ConnectError('refused')
+    with pytest.raises(ModelError, match='not reachable'):
+        OllamaClient(model='m', transport=httpx.MockTransport(refuse)).generate_json('s', 'p', {})
+
+def httpx_response(status, body):
+    import httpx
+    return httpx.Response(status, json=body)
+
+@pytest.mark.parametrize('env,expected', [({'GEMINI_API_KEY': 'k'}, 'gemini'), ({'OLLAMA_MODEL': 'llama3.2:3b'}, 'ollama'),
+                                          ({'GEMINI_API_KEY': 'k', 'OLLAMA_MODEL': 'x', 'FLOODCAT_AI_PROVIDER': 'ollama'}, 'ollama'), ({}, None)])
+def test_provider_selection(monkeypatch, env, expected):
+    from floodcat.ai import llm
+    for k in ('GEMINI_API_KEY', 'GOOGLE_API_KEY', 'OLLAMA_MODEL', 'FLOODCAT_AI_PROVIDER'): monkeypatch.delenv(k, raising=False)
+    for k, v in env.items(): monkeypatch.setenv(k, v)
+    assert llm.provider() == expected and llm.available() == (expected is not None)
+    if expected == 'ollama': assert type(llm.make_client()).__name__ == 'OllamaClient'
+    if expected is None:
+        with pytest.raises(ModelError): llm.make_client()

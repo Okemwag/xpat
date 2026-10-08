@@ -2,15 +2,19 @@ import streamlit as st
 from floodcat.platform import orgs, sso
 from floodcat.platform.identity import auth_url
 from ui import state
-from ui.components import page_header, when
+from ui.components import kpis, page_header, section, when
 
 p = state.principal()
 page_header('Security & sign-in', 'How your people sign in and how long sessions last. Changes need your password and are audited.')
 with state.platform().tx() as conn:
     org = orgs.get_org(conn, p.org_id); s = org['settings']; sso_cfg = sso.get_config(conn, p.org_id); grants = orgs.list_support_grants(conn, p.org_id)
 
-st.subheader('Sign-in policy')
+kpis([('Two-step required for', {'off': 'Nobody', 'admins': 'Owners and admins', 'all': 'Everyone'}[s['mfa_policy']]),
+      ('Idle sign-out', f"{s['session_idle_minutes']} min"), ('Longest session', f"{s['session_max_hours']} h"),
+      ('Single sign-on', ('required' if sso_cfg.get('enforced') else 'on') if sso_cfg and sso_cfg.get('enabled') else 'off'),
+      ('Support access', sum(g['active'] for g in grants), 'Active grants to Xpat support')])
 with st.form('policy'):
+    section('Sign-in policy')
     mfa = st.radio('Two-step verification required for', ['off', 'admins', 'all'], index=['off', 'admins', 'all'].index(s['mfa_policy']), horizontal=True,
                    format_func={'off': 'Nobody (not recommended)', 'admins': 'Owners and admins', 'all': 'Everyone'}.get)
     a, b = st.columns(2)
@@ -24,7 +28,7 @@ with st.form('policy'):
                    'allowed_domains': [d.strip() for d in domains.split(',') if d.strip()], 'enforce_separation_of_duties': sod}
         if state.guarded(orgs.update_settings, changes) is not state.FAILED: st.success('Policy saved.')
 
-st.subheader('Single sign-on (OpenID Connect)')
+section('Single sign-on (OpenID Connect)')
 st.caption(f'Register Xpat in your identity provider (Microsoft Entra ID, Google Workspace, Okta…) with redirect URI '
            f'`{auth_url()}/auth/sso/callback`, then enter its details here. Your provider then handles passwords, MFA and leavers.')
 with st.form('sso'):
@@ -44,7 +48,7 @@ with st.form('sso'):
             if group.strip() and roles.strip(): mapping[group.strip()] = [r.strip() for r in roles.split(',') if r.strip()]
         if state.guarded(sso.configure, url, client_id, secret, default_role, mapping, enabled, enforced) is not state.FAILED: st.success('Single sign-on saved.')
 
-st.subheader('Xpat support access')
+section('Xpat support access')
 st.caption('Let Xpat support see your organisation for a limited time, e.g. to investigate a ticket. They can read, not change. Fully audited.')
 if p.can('support.grant'):
     with st.form('support'):

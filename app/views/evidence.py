@@ -9,9 +9,9 @@ from floodcat.core.errors import ModelError
 from floodcat.platform import data
 from ui import state
 from ui.charts import ylt_chart
-from ui.components import badges, explain, page_header
+from ui.components import badges, explain, kpis, page_header, section
 
-page_header('AI flood evidence', 'The baseline map cannot see drainage failures. Turn flood reports into reviewed evidence and measure what it changes.', ('AI', 'REAL'))
+page_header('AI flood evidence', 'The baseline map cannot see drainage failures. Turn flood reports into reviewed evidence and measure what it changes.')
 rt = state.runtime(); cfg = state.config()
 
 class OrgEvidence:
@@ -35,7 +35,7 @@ MECH_LABEL = {'drainage': 'Drainage failure', 'surface_runoff': 'Surface runoff 
 
 with st.expander('How this works and what it can and cannot prove', icon=':material/help:'):
     st.markdown(f"""
-1. **Extract** — paste a flood report. Gemini proposes places, dates, mechanism and a verbatim quote. Quotes not found in the
+1. **Extract** — paste a flood report. The AI model proposes places, dates, mechanism and a verbatim quote. Quotes not found in the
    report are dropped; places are located with OpenStreetMap (an AI estimate is used only as a flagged fallback).
 2. **Review** — a reviewer checks each item, fixes the location if needed, and states whether the source is **independent of the
    county's hotspot list**. Nothing affects the model until a named reviewer approves it.
@@ -45,6 +45,16 @@ with st.expander('How this works and what it can and cannot prove', icon=':mater
 4. **Measure** — the loss curve before and after, the properties that changed, and how many of the 24 named hotspots are flagged
    before and after — counting **only independent evidence**, because evidence taken from the hotspot list itself would make the check circular.
 """)
+
+_all = store.list_evidence()
+_applied = usable(_all, cfg)
+_check = hotspot_comparison(rt.hotspots, rt.hazard, _all, cfg)
+kpis([('Evidence items', len(_all), 'Extracted or added by hand'), ('Approved', sum(e.approved for e in _all), 'By a named reviewer'),
+      ('Awaiting review', sum(not e.approved for e in _all), 'No effect until approved'),
+      ('Changing the hazard', len(_applied), 'Approved drainage / runoff, confident enough'),
+      ('Named hotspots flagged', f"{_check['after_flagged']} of {_check['hotspot_count']}", 'Independent evidence only',
+       f"{_check['after_flagged']-_check['before_flagged']:+d} vs the map alone ({_check['before_flagged']})")])
+badges('AI', 'REAL', 'ASSUMPTION')
 
 extract_tab, library_tab, impact_tab, manual_tab = st.tabs([':material/auto_awesome: Extract from a report', ':material/library_books: Evidence library',
                                                            ':material/compare_arrows: Impact on losses', ':material/edit_location: Add manually'])
@@ -72,7 +82,7 @@ with extract_tab:
         from floodcat.ai.extraction import extract
         if not state.ai_quota(): st.stop()
         try:
-            with st.spinner('Gemini is reading the report; locating places…'):
+            with st.spinner(f'{state.ai_name()} is reading the report; locating places…'):
                 st.session_state['extraction'] = extract(text, source, rt.llm(), rt.gazetteer()) | {'independent': independent}
         except ModelError as exc: st.error(str(exc), icon=':material/error:')
     ex = st.session_state.get('extraction')
@@ -153,8 +163,7 @@ with library_tab:
                 actions.caption('Only reviewers can approve evidence.')
 
 with impact_tab:
-    applied = usable(store.list_evidence(), cfg)
-    st.metric('Evidence that will change hazard', len(applied))
+    applied = _applied
     report = state.result()
     if not applied:
         st.info('Approve at least one drainage or surface-runoff item to see its effect.')
@@ -169,30 +178,29 @@ with impact_tab:
     report = state.result()
     if report and report['ai_contribution']['enabled']:
         ai = report['ai_contribution']
-        st.subheader('What the AI evidence changed')
-        a, b, c = st.columns(3)
-        a.metric('Properties with raised hazard', ai['changed_properties'])
+        section('What the AI evidence changed')
         rarest = TIERS[-1]
-        b.metric(f"Change in {state.rp_label(cfg.return_periods[rarest])} loss", state.kes(ai['loss_delta_kes'][rarest]))
-        c.metric('Change in average annual loss', state.kes(ai['aal_delta_kes']))
+        kpis([('Properties with raised hazard', ai['changed_properties']),
+              (f"Change in {state.rp_label(cfg.return_periods[rarest])} loss", state.kes(ai['loss_delta_kes'][rarest])),
+              ('Change in average annual loss', state.kes(ai['aal_delta_kes']))])
         if ai.get('spread'):
             st.caption(f"{ai['spread']['changed_near_hotspot']} changed properties are within {cfg.hotspot_tag_radius_m/1000:g} km of a named hotspot; "
                        f"{ai['spread']['changed_away_from_hotspots']} are further away.")
-        st.altair_chart(ylt_chart(state.ylt(report), report, compare_ai=True), width='stretch')
+        st.altair_chart(ylt_chart(state.ylt(report), report, compare_ai=True), width='stretch', alt='Loss curve before and after AI drainage evidence')
         explain('The loss curve before (blue) and after (orange) applying approved drainage evidence, each from 10,000 simulated years.',
                 'Where the orange curve sits above the blue, the evidence raised losses. A higher loss is not proof of a better model — the '
                 'named-hotspot check below is the evidence.', ['AI', 'ASSUMPTION'])
 
-    st.subheader('Named-hotspot check')
-    comparison = hotspot_comparison(rt.hotspots, rt.hazard, store.list_evidence(), cfg)
-    a, b = st.columns(2)
-    a.metric('Flagged before (baseline map)', f"{comparison['before_flagged']} of {comparison['hotspot_count']}")
-    b.metric('Flagged after (independent evidence only)', f"{comparison['after_flagged']} of {comparison['hotspot_count']}",
-             delta=comparison['after_flagged']-comparison['before_flagged'] or None)
+    section('Named-hotspot check', 'Does approved, independent evidence help the map find the 24 places the county says flood?')
+    comparison = _check
+    kpis([('Flagged before (baseline map)', f"{comparison['before_flagged']} of {comparison['hotspot_count']}"),
+          ('Flagged after (independent evidence only)', f"{comparison['after_flagged']} of {comparison['hotspot_count']}", None,
+           f"{comparison['after_flagged']-comparison['before_flagged']:+d} hotspots")])
     st.caption(f"{comparison['evaluated_evidence_count']} independent item(s) evaluated; {comparison['excluded_non_independent']} excluded as non-independent."
                + (f" Newly flagged: {', '.join(comparison['newly_flagged'])}." if comparison['newly_flagged'] else ''))
     table = pd.DataFrame([{'Hotspot': p['name'], 'Before (common tier)': p['before_common'], 'After (common tier)': p['after_common'],
                            'Flagged before': p['before_flagged'], 'Flagged after': p['after_flagged']} for p in comparison['points']])
-    st.dataframe(table, hide_index=True, width='stretch',
-                 column_config={'Before (common tier)': st.column_config.NumberColumn(format='%.3f'), 'After (common tier)': st.column_config.NumberColumn(format='%.3f')})
+    st.dataframe(table, hide_index=True, width='stretch', alt='Hazard score at each named hotspot before and after evidence',
+                 column_config={'Before (common tier)': st.column_config.ProgressColumn(format='%.3f', min_value=0, max_value=1),
+                                'After (common tier)': st.column_config.ProgressColumn(format='%.3f', min_value=0, max_value=1)})
     for caveat in comparison['caveats']: st.caption(f'• {caveat}')

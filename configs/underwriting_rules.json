@@ -1,0 +1,13 @@
+{
+  "_about": "Starter underwriting appetite (ASSUMPTION). Each organisation replaces these with its own rules on the Underwriting decision page; nothing here is market guidance. Money in KES; percentages as 0-100.",
+  "target_loss_ratio": 0.6,
+  "uncertainty_load": 0.35,
+  "decline_below_adequacy": 0.75,
+  "marginal_share_factor": 0.5,
+  "pml_return_period": 250,
+  "max_pml_kes": 500000000,
+  "max_line_tiv_kes": 5000000000,
+  "min_share_pct": 5,
+  "max_unmodelled_pct": 10,
+  "share_step_pct": 0.5
+}

@@ -198,7 +198,7 @@ def usage_summary(conn, principal, days=30):
 def export_org(conn, principal, request=None):
     """Everything the organisation owns, as one JSON document (runs without encrypted inputs)."""
     require(principal, 'settings.manage'); require_recent_auth(conn, principal)
-    from .db import assumption_sets, audit_events, comments, evidence, extractions, submissions
+    from .db import assumption_sets, audit_events, comments, decisions, evidence, extractions, submissions
     org_id = principal.org_id
     def rows(table, exclude=()):
         return [{k: v for k, v in r.items() if k not in exclude} for r in conn.execute(select(table).where(table.c.org_id == org_id)).mappings()]
@@ -206,7 +206,7 @@ def export_org(conn, principal, request=None):
             'members': [dict(r) for r in conn.execute(select(users.c.id, users.c.email, users.c.display_name, memberships.c.roles, memberships.c.status)
                                                       .join(memberships, memberships.c.user_id == users.c.id).where(memberships.c.org_id == org_id)).mappings()],
             'runs': rows(runs, ('inputs_enc',)), 'extractions': rows(extractions), 'evidence': rows(evidence),
-            'assumption_sets': rows(assumption_sets), 'submissions': rows(submissions), 'comments': rows(comments),
+            'assumption_sets': rows(assumption_sets), 'submissions': rows(submissions), 'decisions': rows(decisions), 'comments': rows(comments),
             'audit_events': rows(audit_events), 'sso': [{k: v for k, v in r.items() if k != 'client_secret_enc'}
                                                        for r in conn.execute(select(sso_configs).where(sso_configs.c.org_id == org_id)).mappings()]}
     audit.record(conn, 'org.exported', actor=principal, target_type='organisation', target_id=org_id, request=request)

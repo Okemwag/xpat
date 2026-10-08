@@ -6,7 +6,8 @@ from floodcat.core.constants import CLASSES
 from floodcat.core.errors import ModelError, ReviewRequired
 from floodcat.exposure.validation import apply_declarations, validate_rows
 from ui import state
-from ui.components import badges, issues_panel, page_header, pipeline_strip
+from ui.charts import donut
+from ui.components import badges, explain, issues_panel, kpis, page_header, pipeline_strip, section
 
 TEMPLATE = ('loc_id,lat,lon,housing_class,floor_area_m2,cost_per_m2_kes,tiv_kes,synthetic,source\n'
             'P-001,-1.2576,36.8962,semi_permanent,33,10000,3300000,True,my test portfolio\n'
@@ -46,9 +47,21 @@ def run_and_go(rows, label, settings):
     else:
         st.error(f'{error}', icon=':material/error:')
 
-def preview_map(assets):
-    if assets:
+def preview(assets):
+    """Where the valid records are and what they are made of, before anything is modelled."""
+    if not assets: return
+    left, right = st.columns([3, 2], gap='large')
+    with left.container(border=True, height='stretch'):
+        section('Where they are')
         st.map(pd.DataFrame({'lat': [a.lat for a in assets], 'lon': [a.lon for a in assets]}), size=40, color='#2a78d6', height=280)
+    with right.container(border=True, height='stretch'):
+        section('What they are made of', 'Share of insured value by construction')
+        mix = {}
+        for a in assets: mix[a.housing_class] = mix.get(a.housing_class, 0) + float(a.tiv_kes)
+        chart = donut([{'Class': state.class_label(c), 'Value': mix[c], 'Amount': state.kes(mix[c])} for c in CLASSES if c in mix], 'Class', 'Value', fmt='Amount', height=240)
+        if chart: st.altair_chart(chart, width='stretch', alt='Insured value by construction class')
+        explain('How the insured value splits across the four construction classes.',
+                'Fragile classes lose a larger share of value in a flood; concrete loses less per metre but often holds most of the value.', ['ASSUMPTION'])
 
 def review_and_run(rows, label_default, source_kind, key, origin_hint=None):
     """Shared review step: where the data comes from, validation summary, preview, explicit partial run."""
@@ -79,10 +92,12 @@ def review_and_run(rows, label_default, source_kind, key, origin_hint=None):
     except ModelError as exc:
         st.error(str(exc), icon=':material/error:')
         return
-    a, b, c = st.columns(3)
-    a.metric('Records', len(rows)); b.metric('Valid', len(assets)); c.metric('Insured value (valid)', state.kes(sum(x.tiv_kes for x in assets)))
+    real = sum(not x.synthetic for x in assets)
+    kpis([('Records', f'{len(rows):,}'), ('Valid', f'{len(assets):,}', None, f'{len(rows)-len(assets)} cannot be modelled' if len(rows) > len(assets) else 'all valid'),
+          ('Insured value (valid)', state.kes(sum(x.tiv_kes for x in assets))),
+          ('Data', 'REAL' if real == len(assets) and assets else 'SYNTHETIC' if not real else 'REAL + SYNTHETIC', 'As declared for each record')])
     issues_panel(issues, expanded=True)
-    preview_map(assets)
+    preview(assets)
     errors = any(i['severity'] == 'error' for i in issues)
     review = st.session_state.get('review_error')
     partial = False
@@ -158,7 +173,7 @@ with describe:
     ev = state.ingestion_eval()
     if ev: st.caption(f"Tested on {ev['summary']['cases']} held-out descriptions: {ev['summary']['cases_fully_correct']} fully correct "
                       f"(see Data & honesty). You still review every record.")
-    st.write('Describe buildings as you would to a colleague. Gemini turns your words into records; OpenStreetMap locates the places; '
+    st.write('Describe buildings as you would to a colleague. The AI model turns your words into records; OpenStreetMap locates the places; '
              'anything you did not say is filled from a stated assumption and marked. You review every row before it is modelled.')
     ex = st.pills('Examples', ['Example 1', 'Example 2'], key='example_pick')
     default_text = EXAMPLES[int(ex[-1])-1] if ex else st.session_state.get('describe_text', '')
@@ -169,7 +184,7 @@ with describe:
         from floodcat.ai.ingestion import ingest
         if not state.ai_quota(): st.stop()
         try:
-            with st.spinner('Gemini is reading the description; locating places…'):
+            with st.spinner(f'{state.ai_name()} is reading the description; locating places…'):
                 rt = state.runtime()
                 draft = ingest(text, rt.llm(), rt.gazetteer(), rt.class_defaults, batch_id='AI'+secrets.token_hex(2).upper())
             st.session_state['ai_draft'] = draft; st.session_state.pop('review_error', None)
@@ -202,10 +217,22 @@ with describe:
 
 with sample:
     badges('SYNTHETIC', 'PROXY')
-    st.write('600 synthetic Nairobi properties supplied with the hackathon starter kit, across four construction classes '
-             '(KES 63.64 bn insured). Their insured values are about 10× floor area × cost per m² — the cause is unconfirmed, '
-             'so the supplied values are used as they are and the gap is flagged.')
-    if st.button('Run the sample portfolio', type='primary', icon=':material/play_arrow:'):
-        run_and_go(state.runtime().sample_rows(), 'Starter kit sample (600 synthetic)', {})
-    st.download_button('Download the sample CSV', state.runtime().sample_path.read_bytes(), 'exposure_nairobi_with_hazard.csv', 'text/csv',
-                       icon=':material/download:')
+    sample_rows = state.runtime().sample_rows()
+    by_class = {}
+    for r in sample_rows: by_class[r['housing_class']] = by_class.get(r['housing_class'], 0) + float(r['tiv_kes'])
+    kpis([('Properties', f'{len(sample_rows):,}', 'Invented Nairobi buildings'), ('Insured value', state.kes(sum(by_class.values()))),
+          ('Construction classes', len(by_class)), ('Origin', 'SYNTHETIC', 'Hackathon starter kit — not a real portfolio')])
+    left, right = st.columns([3, 2], gap='large')
+    with left:
+        st.write('600 synthetic Nairobi properties supplied with the hackathon starter kit. Their insured values are about '
+                 '10× floor area × cost per m² — the cause is unconfirmed, so the supplied values are used as they are and the gap is flagged.')
+        with st.container(horizontal=True):
+            if st.button('Run the sample portfolio', type='primary', icon=':material/play_arrow:'):
+                run_and_go(sample_rows, 'Starter kit sample (600 synthetic)', {})
+            st.download_button('Download the sample CSV', state.runtime().sample_path.read_bytes(), 'exposure_nairobi_with_hazard.csv', 'text/csv',
+                               icon=':material/download:')
+    with right.container(border=True):
+        chart = donut([{'Class': state.class_label(c), 'Value': by_class[c], 'Amount': state.kes(by_class[c])} for c in CLASSES if c in by_class],
+                      'Class', 'Value', fmt='Amount', height=200)
+        if chart: st.altair_chart(chart, width='stretch', alt='Sample portfolio insured value by construction class')
+        st.caption('Insured value by construction. Concrete holds most of the value.')

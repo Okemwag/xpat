@@ -8,7 +8,7 @@ pytest.importorskip('streamlit'); pytest.importorskip('rasterio')
 sys.path.insert(0, str(DATA.parent/'tests')); sys.path.insert(0, str(DATA.parent/'app'))
 from streamlit.testing.v1 import AppTest
 APP = str(DATA.parent/'app'/'streamlit_app.py')
-PAGES = ['overview', 'portfolio', 'submissions', 'notifications', 'results', 'map', 'property', 'assumptions', 'evidence', 'honesty', 'method',
+PAGES = ['overview', 'portfolio', 'submissions', 'decision', 'notifications', 'results', 'map', 'property', 'assumptions', 'evidence', 'honesty', 'method',
          'history', 'account', 'admin', 'admin_teams', 'admin_security', 'admin_settings', 'admin_review', 'admin_audit']
 ROLES = ['owner', 'admin', 'head_uw', 'underwriter', 'analyst', 'reviewer', 'viewer', 'auditor']
 
@@ -137,3 +137,36 @@ def test_briefing_from_overview(store, monkeypatch):
     next(b for b in at.button if b.label == 'Draft briefing').click(); at.run()
     assert not at.exception
     assert any('4321' in w.value for w in at.warning)
+
+def test_underwriting_decision_flow(store, monkeypatch):
+    from ui_helpers import make_session
+    from floodcat.platform.service import Platform
+    from floodcat.platform.db import decisions
+    from sqlalchemy import select
+    token = make_session(store, roles=('underwriter',), org_name='Decide Re', email='uw@decide.re')
+    at = app(token)
+    at.switch_page('views/portfolio.py'); at.run()
+    next(b for b in at.button if b.label == 'Run the sample portfolio').click(); at.run()
+    at.switch_page('views/decision.py'); at.run()
+    assert not at.exception and any('Enter the offered premium' in i.value for i in at.info)
+    next(n for n in at.number_input if n.label.startswith('Offered premium')).set_value(400_000_000.0)
+    next(n for n in at.number_input if n.label.startswith('Offered share')).set_value(20.0)
+    next(b for b in at.button if b.label == 'Get recommendation').click(); at.run()
+    assert not at.exception and any('Recommended share' == m.label for m in at.metric)
+    from ui import state
+    class FakeLLM:
+        model = 'fake-gemini'
+        def generate_json(self, system, prompt, schema):
+            return {'summary': 'Price is adequate; capacity is the limit.', 'drivers': ['The 1-in-250 loss.'], 'what_would_change_it': ['A smaller share.'],
+                    'trust': 'Proxy hazard.', 'questions_for_broker': ['Confirm the locations.']}
+    monkeypatch.setattr(state, 'ai_enabled', lambda kind='extraction': True)
+    monkeypatch.setattr(state.runtime(), 'llm', lambda: FakeLLM())
+    at.run()
+    next(b for b in at.button if b.label == 'Explain this recommendation').click(); at.run()
+    assert not at.exception and any('capacity is the limit' in m.value for m in at.markdown)
+    next(b for b in at.button if b.label == 'Record decision').click(); at.run()
+    assert not at.exception
+    with Platform(f'sqlite:///{store}/platform.db').tx() as c:
+        row = c.execute(select(decisions)).mappings().first()
+    assert row and not row['overrode'] and row['rationale']['summary'].startswith('Price')
+    assert {b.label for b in at.get('download_button')} >= {'PDF report', 'Word report', 'Excel workbook'}

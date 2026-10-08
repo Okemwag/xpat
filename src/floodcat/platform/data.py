@@ -9,6 +9,7 @@ from sqlalchemy import select
 from ..core.errors import ModelError
 from . import audit, security
 from .db import (assumption_sets, comments, evidence, extractions, memberships, notifications, organisations, runs, submissions, now, uid)
+from .db import decisions as uw_decisions
 from .identity import _aware, settings_for
 from .rbac import can_see_run, require
 
@@ -338,6 +339,85 @@ def assign_submission(conn, principal, sub_id, user_id, request=None):
     notify(conn, principal.org_id, user_id, 'assigned', f"You were assigned: {sub['name']}")
     audit.record(conn, 'submission.assigned', actor=principal, target_type='submission', target_id=sub_id, details={'to': user_id}, request=request)
 
+# Underwriting decisions ------------------------------------------------------------------------------------
+def underwriting_rules(conn, org_id):
+    """The organisation's underwriting rules, or the documented starter rules (configs/underwriting_rules.json)."""
+    from ..underwriting.decision import default_rules, validate_rules
+    stored = settings_for(conn, org_id).get('underwriting_rules')
+    return validate_rules(stored) if stored else default_rules()
+
+def set_underwriting_rules(conn, principal, rules, request=None):
+    """Head of underwriting sets the organisation's appetite. Validated; before/after audited."""
+    from ..underwriting.decision import validate_rules
+    require(principal, 'underwriting.rules')
+    clean = validate_rules(rules)
+    before = underwriting_rules(conn, principal.org_id)
+    row = conn.execute(select(organisations.c.settings).where(organisations.c.id == principal.org_id)).scalar() or {}
+    conn.execute(organisations.update().where(organisations.c.id == principal.org_id).values(settings={**row, 'underwriting_rules': clean}))
+    audit.record(conn, 'underwriting.rules_changed', actor=principal, target_type='organisation', target_id=principal.org_id,
+                 details={'before': {k: before[k] for k in clean if before[k] != clean[k]}, 'after': {k: clean[k] for k in clean if before[k] != clean[k]}},
+                 request=request)
+    return clean
+
+def run_authority(conn, principal, run):
+    """Authority-limit reasons for an analysis (same limits as submissions, on 100% values)."""
+    s = run['summary']
+    return exceeds_authority(conn, principal, {'tiv_kes': s['modelled_tiv_kes'], 'loss_250_kes': s['loss_rarest_kes']})
+
+def report_authority(conn, principal, report):
+    return run_authority(conn, principal, {'summary': _summary(report)})
+
+def record_decision(conn, principal, run_id, premium_100_kes, offered_share_pct, outcome, share_pct=None, reason='', rationale=None,
+                    run=None, basis=None, request=None):
+    """A person's final call on an analysis. The recommendation is recomputed here from the stored analysis and the
+    organisation's current rules, so what is recorded is what the rules said. Overriding it needs a written reason;
+    accepting above the authority limits needs the head of underwriting."""
+    from ..underwriting.decision import OUTCOMES, recommend
+    require(principal, 'underwriting.decide')
+    if principal.extra.get('read_only'): raise ModelError('read_only', 'This organisation is suspended (read-only)')
+    row = _run_row(conn, principal, run_id)
+    rec = recommend(row['payload'], premium_100_kes, offered_share_pct, underwriting_rules(conn, principal.org_id), run=run, basis=basis)
+    if outcome not in OUTCOMES: raise ModelError('invalid', 'Choose accept, a share, or decline')
+    offered = rec['offered_share_pct']
+    if outcome == 'accept': share = offered
+    elif outcome == 'decline': share = 0.0
+    else:
+        try: share = float(share_pct)
+        except (TypeError, ValueError): raise ModelError('invalid', 'Enter the share you will take') from None
+        if not 0 < share < offered: raise ModelError('invalid', f'A smaller share must be above 0% and below the offered {offered:g}%')
+    overrode = outcome != rec['outcome'] or (outcome == 'share' and abs(share - rec['recommended_share_pct']) > 1e-9)
+    reason = str(reason or '').strip()
+    if overrode and len(reason) < 10: raise ModelError('reason_required', 'Your decision differs from the rules: say why (at least a sentence)')
+    reasons = run_authority(conn, principal, row)
+    if outcome != 'decline' and reasons and not principal.can('referrals.approve'):
+        raise ModelError('referral_required', 'Refer this to the head of underwriting first: ' + '; '.join(reasons))
+    decision_id = uid()
+    if rationale: rationale = {k: rationale[k] for k in ('summary', 'drivers', 'what_would_change_it', 'trust', 'questions_for_broker',
+                                                        'unsupported_figures', 'model', 'prompt_version') if k in rationale}
+    conn.execute(uw_decisions.insert().values(id=decision_id, org_id=principal.org_id, run_id=row['id'], submission_id=row['submission_id'],
+                                           decided_by=principal.user_id, created_at=now(), premium_100_kes=rec['premium_100_kes'],
+                                           offered_share_pct=f'{offered:g}', recommendation=json.loads(json.dumps(rec, default=str)),
+                                           rationale=rationale or None, outcome=outcome, share_pct=f'{share:g}', overrode=overrode, reason=reason[:5000]))
+    if row['submission_id']:
+        sub = _submission(conn, principal, row['submission_id'])
+        if sub['assignee_id'] and sub['assignee_id'] != principal.user_id:
+            notify(conn, principal.org_id, sub['assignee_id'], 'decision', f"{sub['name']}: decision recorded — {outcome}" + (f' {share:g}%' if outcome == 'share' else ''))
+    audit.record(conn, 'underwriting.decision_recorded', actor=principal, target_type='run', target_id=row['id'],
+                 details={'outcome': outcome, 'share_pct': share, 'recommended': rec['outcome'], 'recommended_share_pct': rec['recommended_share_pct'],
+                          'overrode': overrode, 'ai_explained': bool(rationale), 'submission_id': row['submission_id']}, request=request)
+    return decision_id
+
+def list_decisions(conn, principal, run_id=None, submission_id=None, limit=100):
+    require(principal, 'runs.read')
+    q = select(uw_decisions).where(uw_decisions.c.org_id == principal.org_id)
+    if run_id: q = q.where(uw_decisions.c.run_id == str(run_id))
+    if submission_id: q = q.where(uw_decisions.c.submission_id == submission_id)
+    out = []
+    for r in conn.execute(q.order_by(uw_decisions.c.created_at.desc()).limit(limit)).mappings():
+        run = conn.execute(select(runs).where(runs.c.id == r['run_id'], runs.c.org_id == principal.org_id)).mappings().first()
+        if run is None or can_see_run(principal, run): out.append(dict(r))
+    return out
+
 # Comments (WF-04) ---------------------------------------------------------------------------------------
 def add_comment(conn, principal, target_type, target_id, body, request=None):
     require(principal, 'comments.write')
@@ -366,7 +446,7 @@ def run_retention(conn):
         n = conn.execute(runs.delete().where(runs.c.org_id == org['id'], runs.c.created_at < cutoff)).rowcount
         n += conn.execute(extractions.delete().where(extractions.c.org_id == org['id'], extractions.c.created_at < cutoff)).rowcount
         if org['status'] == 'closed' and org['export_until'] and _aware(org['export_until']) < now():
-            for table in (runs, extractions, evidence, comments, submissions, notifications, assumption_sets):
+            for table in (uw_decisions, runs, extractions, evidence, comments, submissions, notifications, assumption_sets):
                 n += conn.execute(table.delete().where(table.c.org_id == org['id'])).rowcount
             conn.execute(memberships.update().where(memberships.c.org_id == org['id']).values(status='deactivated', deactivated_at=now()))
         if n:

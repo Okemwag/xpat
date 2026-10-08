@@ -316,6 +316,7 @@ MATRIX = {
     'runs.export': {'head_uw', 'underwriter', 'analyst', 'viewer'}, 'assumptions.sandbox': {'head_uw', 'analyst'},
     'assumptions.approve': {'head_uw'}, 'evidence.add': {'head_uw', 'underwriter', 'analyst', 'reviewer'},
     'evidence.approve': {'head_uw', 'reviewer'}, 'org.billing': {'owner'}, 'org.close': {'owner'},
+    'underwriting.decide': {'head_uw', 'underwriter', 'analyst'}, 'underwriting.rules': {'head_uw'},
 }
 
 @pytest.mark.parametrize('permission', sorted(MATRIX))
@@ -401,3 +402,43 @@ def test_alerts_on_failed_signins_and_escalation(p):
         assert {k for _, k in raised} >= {'failed_signins', 'escalation'}
         assert alerts.evaluate(c) == []                           # not repeated within the window
         assert any(n['kind'] == 'security_alert' for n in data.list_notifications(c, owner))
+
+# Underwriting decisions -------------------------------------------------------------------------------------
+def test_underwriting_decision_recorded_with_rules_override_and_authority(p, starter_rows):
+    from floodcat.platform.db import decisions
+    from floodcat.services.analysis import analyse
+    org_id, owner, _ = make_org(p)
+    uw, _ = member(p, owner, 'uw@acme.re', ['underwriter'])
+    head, _ = member(p, owner, 'head@acme.re', ['head_uw'])
+    viewer, _ = member(p, owner, 'view@acme.re', ['viewer'])
+    report = analyse(starter_rows[:20])
+    aal = float(report['runs']['baseline']['aal']['aal_kes'])
+    with p.tx() as c:
+        run_id = data.save_run(c, uw, report, starter_rows[:20], 'deal', visibility='org')
+        rules = data.underwriting_rules(c, org_id)
+        with pytest.raises(ModelError): data.set_underwriting_rules(c, uw, rules)            # only the head of underwriting
+        rules = data.set_underwriting_rules(c, head, {**rules, 'target_loss_ratio': 0.5, 'uncertainty_load': 0.0, 'max_pml_kes': 1e15,
+                                                      'max_line_tiv_kes': 1e16})
+        premium = aal/0.5*1.5                                                             # 150% of technical → accept
+        with pytest.raises(ModelError): data.record_decision(c, viewer, run_id, premium, 20, 'accept')
+        with pytest.raises(ModelError, match='say why'): data.record_decision(c, uw, run_id, premium, 20, 'decline')
+        first = data.record_decision(c, uw, run_id, premium, 20, 'accept', rationale={'summary': 'ok', 'model': 'fake', 'facts': ['dropped']})
+        data.record_decision(c, uw, run_id, premium, 20, 'decline', reason='Broker could not confirm the site coordinates.')
+        rows = data.list_decisions(c, head, run_id=run_id)
+        assert [r['outcome'] for r in rows] == ['decline', 'accept'] and rows[0]['overrode'] and not rows[1]['overrode']
+        assert rows[1]['recommendation']['outcome'] == 'accept' and 'facts' not in rows[1]['rationale']
+        events = audit.query(c, org_id, action='underwriting.')
+        assert {e['action'] for e in events} == {'underwriting.rules_changed', 'underwriting.decision_recorded'}
+        assert all('Broker' not in str(e['details']) for e in events)                    # reason text stays out of the audit log
+        # Above the authority limit an underwriter must refer; the head of underwriting may accept.
+        orgs.update_settings(c, owner, {'authority_limit_tiv_kes': 1})
+        with pytest.raises(ModelError, match='Refer'): data.record_decision(c, uw, run_id, premium, 20, 'accept')
+        data.record_decision(c, uw, run_id, premium, 20, 'decline', reason='Above our authority and the price is thin anyway.')
+        data.record_decision(c, head, run_id, premium, 20, 'accept')
+        assert c.execute(select(decisions.c.id)).scalars().all().__len__() == 4 and first
+    # Another organisation cannot see or decide on this analysis.
+    _, other, _ = make_org(p, 'Other Re', 'owner@other.re')
+    other_uw, _ = member(p, other, 'uw@other.re', ['underwriter'])
+    with p.tx() as c:
+        with pytest.raises(ModelError): data.record_decision(c, other_uw, run_id, premium, 20, 'accept')
+        assert data.list_decisions(c, other_uw, run_id=run_id) == []

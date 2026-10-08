@@ -34,6 +34,7 @@ can = principal.can
 workspace = [P('views/overview.py', 'Overview', ':material/dashboard:', default=True)]
 if can('runs.create'): workspace.append(P('views/portfolio.py', 'Portfolio', ':material/upload_file:'))
 if can('runs.read'): workspace.append(P('views/submissions.py', 'Submissions', ':material/work:'))
+if can('underwriting.decide') or can('underwriting.rules'): workspace.append(P('views/decision.py', 'Underwriting decision', ':material/gavel:'))
 workspace.append(P('views/notifications.py', 'Notifications', ':material/notifications:'))
 results = [P('views/results.py', 'Loss curve', ':material/show_chart:'), P('views/map.py', 'Accumulation map', ':material/map:'),
            P('views/property.py', 'Property explorer', ':material/home_work:')]
@@ -73,6 +74,6 @@ with st.sidebar:
         pass
     if state.result(): st.caption(f"Current run: {st.session_state.get('run_label', '—')}")
     st.caption('AI: ' + ({'off': 'off for your organisation', 'extraction': 'document and description reading', 'full': 'all features'}[state.ai_mode()]
-                         if state.ai_available() else 'not configured on this server'))
+                         + f' · {state.ai_name()}' if state.ai_available() else 'not configured on this server'))
     st.caption('Results are indicative: proxy hazard, assumed return periods and uncalibrated damage curves — not a price.')
 nav.run()

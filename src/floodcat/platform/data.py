@@ -994,7 +994,8 @@ def underwriting_rules(conn, org_id):
     from ..underwriting.decision import default_rules, validate_rules
 
     stored = settings_for(conn, org_id).get("underwriting_rules")
-    return validate_rules(stored) if stored else default_rules()
+    # Rules added after an organisation saved its own start from the documented starter values.
+    return validate_rules({**default_rules(), **stored}) if stored else default_rules()
 
 
 def set_underwriting_rules(conn, principal, rules, request=None):
@@ -1046,6 +1047,51 @@ def report_authority(conn, principal, report):
     return run_authority(conn, principal, {"summary": _summary(report)})
 
 
+def written_book(conn, principal, pml_rp, exclude_run_id=None):
+    """What the organisation already holds per 1 km area: the latest recorded decision on each analysis, when it was
+    accept or a smaller share, times that analysis's per-area loss at the PML return period. Organisation-wide (it is the
+    organisation's risk), so it counts analyses whatever their sharing setting. Returns (book, number of written risks)."""
+    from ..underwriting.accumulation import book_exposure
+
+    require(principal, "runs.read")
+    latest = {}
+    for r in conn.execute(
+        select(
+            uw_decisions.c.run_id,
+            uw_decisions.c.outcome,
+            uw_decisions.c.share_pct,
+            uw_decisions.c.recommendation,
+        )
+        .where(uw_decisions.c.org_id == principal.org_id)
+        .order_by(uw_decisions.c.created_at)
+    ).mappings():
+        latest[r["run_id"]] = r
+    entries = []
+    for run_id, d in latest.items():
+        if run_id == exclude_run_id or d["outcome"] not in ("accept", "share"):
+            continue
+        payload = conn.execute(
+            select(runs.c.payload).where(
+                runs.c.id == run_id,
+                runs.c.org_id == principal.org_id,
+                runs.c.deleted_at.is_(None),
+            )
+        ).scalar()
+        if not payload:
+            continue
+        rec = d["recommendation"] or {}
+        entries.append(
+            (
+                payload,
+                rec.get("run", "baseline"),
+                rec.get("basis", "gross"),
+                pml_rp,
+                float(d["share_pct"]),
+            )
+        )
+    return book_exposure(entries), len(entries)
+
+
 def record_decision(
     conn,
     principal,
@@ -1069,13 +1115,19 @@ def record_decision(
     if principal.extra.get("read_only"):
         raise ModelError("read_only", "This organisation is suspended (read-only)")
     row = _run_row(conn, principal, run_id)
+    rules = underwriting_rules(conn, principal.org_id)
+    book, written = written_book(
+        conn, principal, rules["pml_return_period"], exclude_run_id=row["id"]
+    )
     rec = recommend(
         row["payload"],
         premium_100_kes,
         offered_share_pct,
-        underwriting_rules(conn, principal.org_id),
+        rules,
         run=run,
         basis=basis,
+        book=book,
+        book_written=written,
     )
     if outcome not in OUTCOMES:
         raise ModelError("invalid", "Choose accept, a share, or decline")

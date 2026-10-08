@@ -280,6 +280,10 @@ def test_underwriting_decision_flow(store, monkeypatch):
     next(b for b in at.button if b.label == "Get recommendation").click()
     at.run()
     assert not at.exception and any("Recommended share" == m.label for m in at.metric)
+    page_text = " ".join(m.value for m in at.markdown)
+    assert "Our advice" in page_text and "Pricing and premium adequacy" in page_text and "Accumulation" in page_text
+    assert any(m.label == "Rate per mille" for m in at.metric)
+    assert any("synthetic data" in m.value for m in at.markdown)  # the advice warns not to quote on synthetic data
     from ui import state
 
     class FakeLLM:

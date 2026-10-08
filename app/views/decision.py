@@ -99,6 +99,13 @@ if submitted:
 rec = None
 if offer.get("premium"):
     try:
+        with state.platform().tx() as conn:
+            book, written = data.written_book(
+                conn,
+                p,
+                rules["pml_return_period"],
+                exclude_run_id=report["analysis_id"],
+            )
         rec = recommend(
             report,
             offer["premium"],
@@ -106,6 +113,8 @@ if offer.get("premium"):
             rules,
             run=offer["run"],
             basis=offer["basis"],
+            book=book,
+            book_written=written,
         )
     except ModelError as exc:
         st.error(str(exc), icon=":material/error:")
@@ -183,46 +192,106 @@ else:
                 "This analysis uses synthetic properties: the recommendation demonstrates the rules, it is not about a real risk."
             )
 
+    from floodcat.underwriting.advice import advise
+    from floodcat.underwriting.pricing import breakdown
+
+    pricing = breakdown(rec)
+    advice = advise(rec, pricing, report)
+    acc = rec["accumulation"]
+
+    # Our advice -----------------------------------------------------------------------------------------------
+    with st.container(border=True):
+        section("Our advice")
+        st.markdown(f"**{advice['headline']}**")
+        a_col, b_col = st.columns(2, gap="large")
+        with a_col:
+            st.markdown("**Why**")
+            st.markdown("\n".join(f"- {r}" for r in advice["reasons"]))
+        with b_col:
+            st.markdown(
+                "**Write it only if**"
+                if advice["outcome"] != "decline"
+                else "**Before reconsidering**"
+            )
+            st.markdown(
+                "\n".join(f"- {c}" for c in advice["conditions"])
+                or "- No further conditions from the model."
+            )
+        with st.expander(
+            f"How far to trust this: {advice['trust_level']}", icon=":material/balance:"
+        ):
+            st.markdown("\n".join(f"- {t}" for t in advice["trust"]))
+        st.caption(advice["note"])
+
+    # Pricing and premium adequacy ----------------------------------------------------------------------------
     left, right = st.columns(2, gap="large")
     with left.container(border=True, height="stretch"):
-        section("Price", "Offered premium against the technical premium (100%)")
-        chart = hbars(
-            [
-                {
-                    "Premium": "Offered",
-                    "KES m": round(float(Decimal(rec["premium_100_kes"])) / 1e6, 2),
-                    "_label": state.kes(rec["premium_100_kes"]),
-                },
-                {
-                    "Premium": "Technical",
-                    "KES m": round(
-                        float(Decimal(f["technical_premium_100_kes"])) / 1e6, 2
-                    ),
-                    "_label": state.kes(f["technical_premium_100_kes"]),
-                },
-                {
-                    "Premium": "Modelled annual loss",
-                    "KES m": round(float(Decimal(f["aal_100_kes"])) / 1e6, 2),
-                    "_label": state.kes(f["aal_100_kes"]),
-                },
-            ],
-            "Premium",
-            "KES m",
-            "KES m",
-            text="_label",
-            sort=None,
-            height_per=40,
+        section("Pricing and premium adequacy", "For 100% of the risk")
+        verdict_colour = {
+            "adequate": "green",
+            "thin": "orange",
+            "inadequate": "red",
+            "untested": "gray",
+        }[pricing["verdict"]]
+        st.markdown(
+            f":{verdict_colour}-badge[{pricing['verdict'].capitalize()}] {pricing['verdict_text']}"
         )
-        if chart:
-            st.altair_chart(
-                chart,
-                width="stretch",
-                alt="Offered premium, technical premium and modelled annual loss",
-            )
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Technical premium build-up": x["step"],
+                        "KES": state.kes(x["amount_kes"], compact=False),
+                    }
+                    for x in pricing["steps"]
+                ]
+                + [
+                    {
+                        "Technical premium build-up": "Offered premium",
+                        "KES": state.kes(pricing["offered_kes"], compact=False),
+                    },
+                    {
+                        "Technical premium build-up": "Shortfall against technical",
+                        "KES": state.kes(pricing["shortfall_kes"], compact=False),
+                    },
+                    {
+                        "Technical premium build-up": f"Lowest premium the rules accept ({rules['decline_below_adequacy']:.0%} of technical)",
+                        "KES": state.kes(
+                            pricing["minimum_acceptable_kes"], compact=False
+                        ),
+                    },
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+            alt="Technical premium build-up and offered premium",
+        )
+        m = lambda v, fmt: fmt.format(v) if v is not None else "—"
+        kpis(
+            [
+                (
+                    "Rate per mille",
+                    m(pricing["rate_per_mille_offered"], "{:.2f}‰"),
+                    "Offered premium per KES 1,000 of insured value",
+                    f"technical {m(pricing['rate_per_mille_technical'], '{:.2f}‰')}",
+                ),
+                (
+                    f"Rate on line",
+                    m(pricing["rate_on_line_pct"], "{:.1f}%"),
+                    f"Offered premium ÷ 1-in-{pricing['pml_return_period']:g} loss",
+                ),
+                (
+                    "Payback",
+                    m(pricing["payback_years"], "{:.0f} yrs"),
+                    f"Years of premium to pay one 1-in-{pricing['pml_return_period']:g} loss",
+                ),
+            ],
+            columns=3,
+        )
         explain(
-            "The offered premium next to the premium the rules need and the modelled annual loss.",
-            f"Technical = annual loss × (1 + {rules['uncertainty_load']:.0%} load) ÷ {rules['target_loss_ratio']:.0%} target loss ratio. "
-            f"Below {rules['decline_below_adequacy']:.0%} of technical the rules decline; between that and 100% they cut the line.",
+            "How the technical premium is built from the modelled annual loss, and how the offered premium compares.",
+            f"Adequacy = offered ÷ technical. From 100% the price is adequate; between {rules['decline_below_adequacy']:.0%} and 100% it is thin and the "
+            f"rules cut the line; below {rules['decline_below_adequacy']:.0%} they decline. Rate measures are for comparison, not market benchmarks.",
             ["ASSUMPTION", "PROXY", *rec["origin"]],
             source=f"{rec['basis']} loss · {'AI-adjusted' if rec['run'] == 'enhanced' else 'baseline'} hazard · your organisation’s rules",
         )
@@ -251,13 +320,83 @@ else:
             )
         explain(
             "Each capacity rule turned into the largest share it allows.",
-            f"Our share of the 1-in-{f['pml_return_period']:g} loss must stay within {state.kes(rules['max_pml_kes'])}, and of insured value within "
-            f"{state.kes(rules['max_line_tiv_kes'])}. Shares are rounded down to {rules['share_step_pct']:g}%; below {rules['min_share_pct']:g}% the rules decline.",
+            f"Our share of the 1-in-{f['pml_return_period']:g} loss must stay within {state.kes(rules['max_pml_kes'])}, of insured value within "
+            f"{state.kes(rules['max_line_tiv_kes'])}, and in any 1 km area (with our book) within {state.kes(rules['max_area_pml_kes'])}. "
+            f"Shares are rounded down to {rules['share_step_pct']:g}%; below {rules['min_share_pct']:g}% the rules decline.",
             ["ASSUMPTION"],
         )
 
+    # Accumulation --------------------------------------------------------------------------------------------
+    with st.container(border=True):
+        section(
+            "Accumulation",
+            f"Loss at 1-in-{acc['pml_return_period']:g} by 1 km area: this risk at the recommended share plus what we have already written",
+        )
+        if not acc.get("available", True):
+            st.caption(
+                "This analysis has no per-property results, so accumulation cannot be checked."
+            )
+        else:
+            for w in acc["warnings"]:
+                if w["level"] == "limit":
+                    st.error(w["text"], icon=":material/crisis_alert:")
+                elif w["level"] == "warning":
+                    st.warning(w["text"], icon=":material/warning:")
+            if not any(w["level"] in ("limit", "warning") for w in acc["warnings"]):
+                st.success(
+                    f"No 1 km area goes over the limit of {state.kes(acc['limit_kes'])}, and no area holds more than "
+                    f"{rules['max_area_tiv_pct']:g}% of this risk's value.",
+                    icon=":material/check_circle:",
+                )
+            st.caption(
+                f"Our book: {acc['book_risks']} written risk(s) recorded with an accept or smaller-share decision."
+                if acc["book_risks"]
+                else "Our book: no written risks recorded yet, so only this risk is counted."
+            )
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "Area": a["area"],
+                            "Properties": a["properties"],
+                            "Share of value": a["tiv_share_pct"] / 100,
+                            "This risk, 100%": state.kes(a["loss_100_kes"]),
+                            "Ours at recommended share": state.kes(a["our_loss_kes"]),
+                            "Already held": state.kes(a["book_loss_kes"]),
+                            "Total held": state.kes(a["combined_loss_kes"]),
+                            "Status": "Over limit"
+                            if a["over_limit"]
+                            else (
+                                "Concentrated" if a["concentrated"] else "Within limit"
+                            ),
+                        }
+                        for a in acc["areas"][:12]
+                    ]
+                ),
+                hide_index=True,
+                width="stretch",
+                alt="Accumulation by area",
+                column_config={
+                    "Share of value": st.column_config.ProgressColumn(
+                        format="percent", min_value=0, max_value=1
+                    )
+                },
+            )
+            explain(
+                "Where this risk's flood loss would fall, next to what the organisation already holds in the same place.",
+                "Each row is a 1 km area named after the nearest county flood area. A large total in one area means one local flood hits "
+                "many policies at once. Areas are not independent events: one storm can reach several.",
+                ["PROXY", "ASSUMPTION", *rec["origin"]],
+                source="property losses at the PML return period · recorded underwriting decisions · your organisation’s rules",
+            )
+
     with st.expander("Every rule check", icon=":material/checklist:"):
-        STATUS = {"pass": "Pass", "limit": "Limits the share", "fail": "Fails"}
+        STATUS = {
+            "pass": "Pass",
+            "warn": "Warning",
+            "limit": "Limits the share",
+            "fail": "Fails",
+        }
         st.dataframe(
             pd.DataFrame(
                 [

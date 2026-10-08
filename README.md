@@ -55,6 +55,16 @@ For each scenario, the underwriter can see the portfolio loss, a breakdown by co
 
 On the **Underwriting decision** page the underwriter enters the offered premium (for 100% of the risk) and the offered share. The organisation's own rules — set by the head of underwriting — recommend **accept**, **take a smaller share** or **decline**, showing each rule's check: price against a technical premium (modelled annual loss with an uncertainty load, at a target loss ratio), our share of the 1-in-250 loss and of insured value against capacity limits, and how much of the schedule could be modelled. AI can explain the recommendation and suggest questions for the broker, but it cannot change it. A person records the final call; overriding the rules needs a written reason, and decisions above the authority limits need the head of underwriting. Starter rules are in `configs/underwriting_rules.json` and are an assumption, not market guidance.
 
+Alongside the recommendation, the page shows:
+- **Our advice:** one plain recommendation, the reasons for it, the conditions to write it on, and how far to trust it.
+  It is built by fixed rules from the figures, not by AI, and never calls a risk safe.
+- **Pricing and premium adequacy:** how the technical premium is built from the annual loss, the uncertainty load and the
+  margin; the offered premium against it; the shortfall; the lowest premium the rules accept; and rate per mille, rate
+  on line and payback years for comparison.
+- **Accumulation:** loss at the PML return period in each 1 km area, for this risk at the recommended share plus what the
+  organisation has already written (risks with an accept or smaller-share decision). A per-area limit caps the share,
+  and an area holding too much of one risk's value raises a warning.
+
 Every analysis can be downloaded as a **PDF** or **Word** report (headline figures, loss curve, concentrations, assumptions, provenance, limitations, and any AI briefing and decisions) or as an **Excel** workbook with every table and every property's loss in every scenario as numbers.
 
 ## Where AI fits

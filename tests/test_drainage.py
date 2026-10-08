@@ -13,7 +13,7 @@ from floodcat.ai.embeddings import HashingEmbedder, chunk_text
 from floodcat.ai.evidence import Evidence
 from floodcat.ai.places import PlaceIndex
 from floodcat.ai.reports import from_upload, ingest, reliefweb_search
-from floodcat.core.config import ModelConfig, load_config, upgrade
+from floodcat.core.config import ModelConfig, load_config, merge_defaults
 from floodcat.core.errors import ModelError
 from floodcat.platform import audit, data, orgs
 from floodcat.platform.db import audit_events
@@ -199,7 +199,7 @@ def test_config_validates_drainage_settings_and_upgrades_old_sets(settings):
     with pytest.raises(ModelError):
         cfg.replace(drainage_reports={k: v for k, v in cfg.drainage_reports.items() if k != "llm_top_k"})
     legacy = {k: v for k, v in cfg.to_dict().items() if k not in ("drainage_reports", "imd_index")}
-    assert ModelConfig(**upgrade(legacy)).drainage_reports["min_margin"] == cfg.drainage_reports["min_margin"]
+    assert ModelConfig(**merge_defaults(legacy)).drainage_reports["min_margin"] == cfg.drainage_reports["min_margin"]
 
 
 def test_make_client_refuses_an_unconfigured_provider(monkeypatch):
@@ -248,15 +248,7 @@ def test_reports_are_stored_per_organisation_encrypted_and_audited(p, embedder, 
         assert audit.verify_chain(c)[0]
 
 
-def test_report_modes_setting_is_validated(p):
-    _, owner, _ = make_org(p)
-    with p.tx() as c:
-        orgs.update_settings(c, owner, {"report_modes": ["gemini", "local"]})
-        from floodcat.platform.identity import settings_for
 
-        assert settings_for(c, owner.org_id)["report_modes"] == ["local", "gemini"]
-        with pytest.raises(ModelError):
-            orgs.update_settings(c, owner, {"report_modes": ["cloud"]})
 
 
 def test_place_in_the_previous_sentence_is_used_but_never_from_a_river_sentence(places):

@@ -44,7 +44,7 @@ def create_app(runtime=None):
     )
     origins = [
         x.strip()
-        for x in os.getenv("FLOODCAT_CORS_ORIGINS", "http://localhost:8501").split(",")
+        for x in os.getenv("FLOODCAT_CORS_ORIGINS", "http://127.0.0.1:8501").split(",")
         if x.strip()
     ]
     app.add_middleware(
@@ -282,12 +282,17 @@ def create_app(runtime=None):
     def extract(body: ExtractionRequest, p=Depends(principal)):
         allowed(p, "ai.extract")
         with platform().tx() as conn:
-            if identity.settings_for(conn, p.org_id)["ai_mode"] != "full":
+            settings = identity.settings_for(conn, p.org_id)
+            if settings["ai_mode"] != "full":
                 raise ModelError(
                     "forbidden", "AI evidence extraction is off for this organisation"
                 )
         from ..ai.extraction import extract as run_extraction
+        from ..ai.llm import choose
 
-        return run_extraction(body.text, body.source, rt.llm(), rt.gazetteer())
+        client = rt.llm(
+            choose(settings, p.user_id, client_data=False)[0]
+        )  # published reports, not client data
+        return run_extraction(body.text, body.source, client, rt.gazetteer(llm=client))
 
     return app

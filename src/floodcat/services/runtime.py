@@ -19,9 +19,9 @@ class Runtime:
         self.data_dir = Path(
             data_dir or os.getenv("FLOODCAT_DATA_DIR") or ROOT / "data"
         )
-        self.store_dir = Path(
-            store_dir or os.getenv("FLOODCAT_STORE_DIR") or ROOT / "runtime" / "store"
-        )
+        from ..platform.db import store_dir as default_store
+
+        self.store_dir = Path(store_dir) if store_dir else default_store()
         self.config = load_config(config_path)
         self.hazard = RasterHazard(self.data_dir).load()
         self.hotspots = load_hotspots(self.data_dir / "nairobi_hotspots_geocoded.csv")
@@ -37,7 +37,7 @@ class Runtime:
 
     @cached_property
     def imd(self):
-        """The infrastructure-deficit grid; loaded on first use so the app runs without it while the index is off."""
+        """The infrastructure-deficit grid (evaluation on Data & honesty); loaded on first use, optional."""
         from ..hazard.imd import ImdGrid
 
         return ImdGrid.load(ROOT / self.config.imd_index["grid_path"])
@@ -69,14 +69,21 @@ class Runtime:
         return cache[key]
 
     def llm(self, provider=None):
+        """A model client: the given provider (gemini | ollama), else the server default."""
         from ..ai.llm import make_client
 
         return make_client(provider)
 
-    def gazetteer(self, with_ai_fallback=True):
+    def gazetteer(self, with_ai_fallback=True, llm=None):
+        """Place lookup. The AI fallback uses ``llm`` when given, so it follows the same model choice as the request."""
         from ..ai.geocode import Gazetteer
 
-        llm = None
+        if llm is not None:
+            return Gazetteer(
+                self.store_dir / "geocode_cache.json",
+                llm=llm,
+                online=os.getenv("FLOODCAT_OFFLINE") != "1",
+            )
         if with_ai_fallback:
             try:
                 llm = self.llm()
@@ -98,6 +105,43 @@ class Runtime:
     def synthetic_only(self):
         return os.getenv("FLOODCAT_SYNTHETIC_ONLY") == "1"
 
+    @property
+    def drainage_layers_path(self):
+        return Path(
+            os.getenv("FLOODCAT_DRAINAGE_LAYERS")
+            or ROOT / "runtime" / "drainage" / "osm_layers.json"
+        )
+
+    @cached_property
+    def drainage_layers(self):
+        """OSM drains, culverts and buildings (scripts/build_drainage_layers.py), or None when not built on this server."""
+        from ..hazard.drainage import DrainageLayers
+
+        return (
+            DrainageLayers.load(self.drainage_layers_path)
+            if self.drainage_layers_path.exists()
+            else None
+        )
+
+    def drainage_adjustment(
+        self, evidence=(), config=None, extra_positives=(), layers=None
+    ):
+        """The drainage model, learned from the organisation's approved independent evidence when there is enough of it."""
+        from ..hazard.drainage import DrainageAdjustment, fit
+
+        layers = layers or self.drainage_layers
+        if layers is None:
+            raise ModelError(
+                "missing_layers",
+                "Drainage layers are not built on this server. Run: uv run python scripts/build_drainage_layers.py",
+            )
+        config = config or self.config
+        return DrainageAdjustment(
+            layers,
+            fit(layers, self.hazard, tuple(evidence or ()), config, extra_positives),
+            config,
+        )
+
     def run(
         self,
         rows,
@@ -110,12 +154,22 @@ class Runtime:
         allow_partial=False,
         ai_adjustment=False,
         evidence=None,
+        drainage=False,
+        drainage_evidence=None,
+        drainage_extra_positives=(),
     ):
         rows, notes = apply_declarations(
             rows, declare_synthetic, source_label, assign_missing_ids, data_origin
         )
         # Callers pass the organisation's evidence explicitly (tenant-scoped); none means no adjustment input.
         config = config or self.config
+        adjustment = (
+            self.drainage_adjustment(
+                drainage_evidence or evidence or (), config, drainage_extra_positives
+            )
+            if drainage
+            else None
+        )
         result = analyse(
             rows,
             config,
@@ -125,7 +179,7 @@ class Runtime:
             hotspots=self.hotspots,
             ai_adjustment=ai_adjustment,
             synthetic_only=self.synthetic_only,
-            imd=self.imd if config.imd_index["enabled"] else None,
+            drainage=adjustment,
         )
         result["declarations"] = notes
         return result

@@ -172,7 +172,7 @@ def doc_page(store_dir, doc_bytes, name):
             }
 
         submission.extract_submission = fake_extract
-        state.runtime().llm = lambda: None
+        state.llm = lambda client_data=False: None
         state.runtime().gazetteer = lambda *a, **k: None
         exec(
             compile(

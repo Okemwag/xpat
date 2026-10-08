@@ -488,14 +488,21 @@ APPEND_ONLY_SQL = {
 }
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def store_dir():
+    """FLOODCAT_STORE_DIR, with a relative path taken from the project folder (not wherever a command happens to run),
+    so the app, the CLI and scripts always open the same local database."""
+    path = Path(os.getenv("FLOODCAT_STORE_DIR") or PROJECT_ROOT / "runtime" / "store")
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 def default_url():
-    url = os.getenv("FLOODCAT_DATABASE_URL")
+    url = (os.getenv("FLOODCAT_DATABASE_URL") or "").strip()
     if url:
         return url
-    root = Path(
-        os.getenv("FLOODCAT_STORE_DIR")
-        or Path(__file__).resolve().parents[3] / "runtime" / "store"
-    )
+    root = store_dir()
     root.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{root / 'platform.db'}"
 

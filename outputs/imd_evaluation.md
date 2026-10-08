@@ -1,8 +1,8 @@
 # Infrastructure & Maintenance Deficit index — evaluation
 
-Generated 2026-10-08 by `scripts/evaluate_imd.py`. Inputs: `outputs/imd_index.tif` (612,126 OpenStreetMap buildings, https://download.geofabrik.de/africa/kenya-261006.osm.pbf), the five terrain proxy maps, the 24 named hotspots and the synthetic starter portfolio.
+Generated 2026-10-08 by `scripts/evaluate_imd.py`. Inputs: `outputs/imd_index.tif` (612,126 OpenStreetMap buildings, https://download.geofabrik.de/africa/kenya-261006.osm.pbf), the five terrain proxy maps and the 24 named hotspots. The index is an evaluation layer: it is not applied to losses.
 
-**Labels.** Index = PROXY (OSM footprints; drains and maintenance are not observed). Thresholds, weights and the score uplift = ASSUMPTION, fixed before this check was first run. Portfolio = SYNTHETIC. Hotspot names = REAL, coordinates approximate.
+**Labels.** Index = PROXY (OSM footprints; drains and maintenance are not observed). Thresholds, weights and the score uplift = ASSUMPTION, fixed before this check was first run. Hotspot names = REAL, coordinates approximate.
 
 ## Named flood areas (24)
 
@@ -51,22 +51,9 @@ A hit rate means little if the whole city is flagged. Share of hazard-map cells 
 
 Every named area is built-up (at least 2 buildings/ha in the window). Within built-up ground the index is above zero on 36% of cells (29% at 0.05 or more). An index switched on at random over built-up ground would therefore be expected to find about 4.3 of the 12 terrain misses (3.5 non-marginal); it finds 9 (6 non-marginal). With 12 places this is weak evidence, not proof.
 
-## Starter portfolio (synthetic)
-
-- Properties with any modelled hazard: 259 → 347 of 600
-- Average annual loss: KES 125.9 m → KES 230.5 m
-
-| Return period | Terrain only | With index |
-|---|---:|---:|
-| 1-in-10 | KES 263.8 m | KES 515.4 m |
-| 1-in-25 | KES 447.2 m | KES 946.5 m |
-| 1-in-50 | KES 1.01 bn | KES 1.75 bn |
-| 1-in-100 | KES 1.70 bn | KES 2.66 bn |
-| 1-in-250 | KES 2.65 bn | KES 3.80 bn |
-
 ## Read with care
 
-- A higher loss or hit rate is not evidence of a better model. The 24 hotspots are the only check, and 24 points cannot
+- A higher hit rate is not evidence of a better model. The 24 hotspots are the only check, and 24 points cannot
   separate a good index from a lucky one.
 - The index measures runoff pressure (roofed, crowded ground), not drainage condition. Low-density areas that flood
   because drains are blocked or rivers back up will stay missed.

@@ -24,6 +24,56 @@ with profile:
         if st.form_submit_button("Save"):
             if state.guarded(identity.update_profile, name) is not state.FAILED:
                 st.success("Saved.")
+    if p.can("ai.extract"):
+        from floodcat.ai.llm import LABEL, configured, describe
+        from floodcat.platform import orgs
+
+        st.subheader("AI model")
+        s = state.org().get("settings", {})
+        allowed = [x for x in s.get("ai_providers", []) if x in configured()]
+        current = (s.get("ai_preferences") or {}).get(p.user_id)
+        WHY = {
+            "gemini": "Faster and stronger at reading long documents. Text (contact details removed) is sent to Google.",
+            "ollama": "Runs on this server: text never leaves it. Slower on ordinary hardware and less reliable at reasoning; every answer is still checked.",
+        }
+        if not allowed:
+            st.caption(
+                "No AI model your organisation allows is configured on this server."
+            )
+        else:
+            options = [None] + allowed
+            pick = st.radio(
+                "Use for my AI requests",
+                options,
+                index=options.index(current) if current in options else 0,
+                key="ai_pref",
+                format_func=lambda x: (
+                    "Organisation default"
+                    if x is None
+                    else f"{LABEL[x]} — {describe(x)}"
+                ),
+            )
+            if pick:
+                st.caption(WHY[pick])
+            if s.get("ai_local_for_client_data"):
+                st.info(
+                    "Your organisation keeps client data on this server: documents, schedules, descriptions and results on real exposure always "
+                    "use the local model, whatever you choose here. Your choice applies to public material such as news and public notes.",
+                    icon=":material/shield:",
+                )
+            unconfigured = [
+                x for x in s.get("ai_providers", []) if x not in configured()
+            ]
+            if unconfigured:
+                st.caption(
+                    "Allowed but not set up on this server: "
+                    + ", ".join(LABEL[x] for x in unconfigured)
+                    + "."
+                )
+            if pick != current and st.button("Save AI model", key="ai_pref_save"):
+                if state.guarded(orgs.set_ai_preference, pick) is not state.FAILED:
+                    state.resolve()
+                    st.success("Saved. New AI requests use it.")
     st.subheader("Change e-mail")
     st.caption(
         "We send a confirmation link to the new address and a notice to the old one. Requires your password."

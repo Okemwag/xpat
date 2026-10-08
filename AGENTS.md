@@ -172,10 +172,10 @@ hazard improvement must report its own hit rate against the same 24 places in
 the same plain terms.
 
 ### 3.6b Infrastructure & Maintenance Deficit index (`hazard/imd.py`)
-A deterministic PROXY hazard layer aimed at drainage-driven (pluvial) misses: built (roofed) fraction and building
-density within `window_radius_m`, from OpenStreetMap footprints (`make imd-index` → `outputs/imd_index.tif`), scaled
-between config thresholds and applied as `s' = 1 − (1 − s)(1 − w·f_tier·I)` before any AI evidence. Off by default
-(`imd_index.enabled`); assumption sets saved before it existed load with it off (`core/config.upgrade`).
+An **evaluation layer**, not a loss input: built (roofed) fraction and building density within `window_radius_m`, from
+OpenStreetMap footprints (`make imd-index` → `outputs/imd_index.tif`), scaled between config thresholds, with the uplift
+`s' = 1 − (1 − s)(1 − w·f_tier·I)` used only to check what it would flag. Building density reaches losses through the
+drainage model (`hazard/drainage.py`); do not also apply the index to losses — that counts density twice.
 - The thresholds were fixed **before** checking the 24 hotspots. Do not tune them, the weight or the window on the
   hotspot result — that makes the only check circular. A test pins the pre-registered values.
 - Report it with `make eval-imd`: hit rate before/after **and** the share of the map flagged before/after (an index
@@ -300,6 +300,18 @@ Two AI features, served by Gemini (`ai/gemini.py`, model from `GEMINI_MODEL`) or
    evidence item (confidence = factor) that a named reviewer must approve. Modes allowed per organisation
    (`report_modes`). Thresholds were set on the dev split of `evaluation/drainage_passages.json`; score the held-out
    split with `make eval-drainage` and never tune on it. Chunk text is stored encrypted; the original file is not kept.
+
+3. **Eight further enhancements** (docs/AI_ENHANCEMENTS.md):
+   - drainage-aware hazard (`hazard/drainage.py`; prior or learned weights, never trained on the 24 hotspots)
+   - news evidence harvester (`ai/harvest.py`; public URLs only, candidates unapproved)
+   - Sentinel-1 satellite flood check (`hazard/satellite.py`; change detection, not AI, the independent test)
+   - Open Buildings storeys (`exposure/buildings.py`)
+   - schedule quality reviewer (`exposure/quality.py` checks + `ai/quality.py` explanations)
+   - Ask the results (`ai/ask.py`)
+   - referral / quote memo (`ai/memo.py`)
+   - English + Kiswahili public risk notes (`ai/public_note.py`; hazard maps only, no money, Kiswahili review before use)
+
+   Every AI writer checks its figures with `ai/briefing.unsupported_numbers`.
 
 Rules:
 - Gemini output is untrusted data. Re-validate everything deterministically;

@@ -26,6 +26,21 @@ principal, reason = state.resolve()
 P = lambda path, title, icon, **kw: st.Page(path, title=title, icon=icon, **kw)
 
 if principal is None:
+    # The sign-in cookie belongs to the host in FLOODCAT_APP_URL (127.0.0.1 by default). Opened at another address
+    # (e.g. localhost), the browser never sends it and the person looks signed out: say so instead of looping.
+    from urllib.parse import urlparse
+    from floodcat.platform.identity import app_url
+
+    try:
+        here = urlparse(st.context.url or "").hostname
+    except Exception:
+        here = None
+    expected = urlparse(app_url()).hostname
+    if here and expected and here != expected:
+        st.warning(
+            f"You opened Xpat at **{here}**, but sign-in works at **{expected}**. Use [{app_url()}]({app_url()}).",
+            icon=":material/link:",
+        )
     public = [
         P("views/landing.py", "Welcome", ":material/home:", default=True),
         P("views/solutions.py", "Solutions", ":material/category:"),
@@ -78,6 +93,9 @@ results = [
 model = [P("views/assumptions.py", "Assumptions & governance", ":material/tune:")]
 if can("evidence.add") or can("evidence.approve"):
     model.append(P("views/evidence.py", "AI flood evidence", ":material/auto_awesome:"))
+if can("runs.read"):
+    model.append(P("views/hazard_checks.py", "Hazard checks", ":material/water_drop:"))
+model.append(P("views/public_notes.py", "Public risk notes", ":material/campaign:"))
 model += [
     P("views/honesty.py", "Data & honesty", ":material/verified:"),
     P("views/method.py", "How the model works", ":material/menu_book:"),
@@ -133,6 +151,20 @@ if not principal.org_id and principal.is_platform_admin:
     }
 nav = st.navigation(sections)
 
+# Signed in through "Administrator": open administration once, or say plainly why it is not available.
+if st.query_params.get("as") == "admin" and not st.session_state.get(
+    "_admin_landing_done"
+):
+    st.session_state["_admin_landing_done"] = True
+    st.query_params.pop("as", None)
+    if admin:
+        st.switch_page(admin[0])
+    else:
+        st.toast(
+            "Your account has no administrator role in this organisation. Ask an owner if you need one.",
+            icon=":material/info:",
+        )
+
 with st.sidebar:
     org = state.org()
     with st.container(border=True):
@@ -186,6 +218,11 @@ with st.sidebar:
             + f" · {state.ai_name()}"
             if state.ai_available()
             else "not configured on this server"
+        )
+        + (
+            " · client data stays on this server"
+            if state.org().get("settings", {}).get("ai_local_for_client_data")
+            else ""
         )
     )
     st.caption(

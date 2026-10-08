@@ -5,6 +5,7 @@ from ui import state
 from ui.charts import BASIS_LABEL, class_bars, scenario_source, who_pays_chart, ylt_chart
 from ui.charts import hbars
 from ui.components import (
+    badges,
     explain,
     kpis,
     page_header,
@@ -272,3 +273,10 @@ chart = hbars(
 )
 if chart:
     st.altair_chart(chart, width="stretch")
+
+with st.container(border=True):
+    section("Ask the results")
+    badges("AI")
+    from ui.ask_view import ask_panel
+
+    ask_panel(report, key="ask_results")

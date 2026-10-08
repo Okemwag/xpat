@@ -57,17 +57,6 @@ with st.form("settings"):
         )
         + "E-mails and phone numbers are removed first, and users consent each time."
     )
-    report_modes = st.multiselect(
-        "Flood reports may be read with",
-        ["local", "ollama", "gemini"],
-        default=s.get("report_modes", ["local", "ollama", "gemini"]),
-        format_func={
-            "local": "Local embeddings only (offline)",
-            "ollama": "Local embeddings + Ollama (offline)",
-            "gemini": "Local embeddings + Gemini (online)",
-        }.get,
-        help="Users choose among these on the Flood evidence page. Empty turns flood-report processing off.",
-    )
     section("Sharing and retention")
     vis = st.radio(
         "Default visibility of new analyses",
@@ -113,7 +102,6 @@ with st.form("settings"):
     if st.form_submit_button("Save settings", type="primary"):
         changes = {
             "ai_mode": ai,
-            "report_modes": report_modes,
             "default_visibility": vis,
             "retention_runs_days": int(runs_days),
             "retention_audit_days": int(audit_days),
@@ -122,6 +110,53 @@ with st.form("settings"):
         }
         if state.guarded(orgs.update_settings, changes) is not state.FAILED:
             st.success("Saved.")
+
+if p.can("security.manage"):
+    from floodcat.ai.llm import LABEL, configured
+
+    with st.form("ai_models"):
+        section(
+            "AI models",
+            "Which models your members may use, and where client data may go. Changing this needs a recent password check.",
+        )
+        ready = configured()
+        providers = st.multiselect(
+            "Allowed models",
+            ["gemini", "ollama"],
+            default=s["ai_providers"],
+            format_func=lambda x: (
+                LABEL[x] + ("" if x in ready else " (not set up on this server)")
+            ),
+        )
+        default = st.selectbox(
+            "Default for members without a preference",
+            [None, "gemini", "ollama"],
+            index=[None, "gemini", "ollama"].index(s["ai_default_provider"]),
+            format_func=lambda x: "Server default" if x is None else LABEL[x],
+        )
+        local = st.checkbox(
+            "Keep client data on this server: documents, schedules, descriptions and results on real exposure use only the local model",
+            value=s["ai_local_for_client_data"],
+            help="If no local model is configured, those AI features are refused rather than sent to the cloud.",
+        )
+        chosen = sum(1 for v in (s.get("ai_preferences") or {}).values() if v)
+        st.caption(
+            f"{chosen} member(s) have chosen their own model. Their choice applies only within what is allowed here."
+        )
+        if st.form_submit_button("Save AI models", type="primary"):
+            if (
+                state.guarded(
+                    orgs.update_settings,
+                    {
+                        "ai_providers": providers,
+                        "ai_default_provider": default,
+                        "ai_local_for_client_data": local,
+                    },
+                )
+                is not state.FAILED
+            ):
+                state.resolve()
+                st.success("Saved.")
 
 with st.form("profile"):
     section("Organisation profile")

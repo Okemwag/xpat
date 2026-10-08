@@ -46,7 +46,7 @@ open as a demo and upload a CSV.
 | Average annual loss | **KES 125.9 m** (simulated 124.7 m, range 119–130 m) | Long-run yearly average |
 | Damage-uncertainty range at 1-in-100 | KES 1.01–2.59 bn (5th–95th pct) | If the damage curves are wrong in a plausible way |
 | Named flood hotspots flagged by the hazard proxy | **12 of 24** | The proxy cannot see drainage failures |
-| … with the infrastructure-deficit index (optional, off by default) | **21 of 24** (3 marginal) | Map area flagged 40% → 45%; see §5.6 |
+| … if the infrastructure-deficit index were applied (check only) | **21 of 24** (3 marginal) | Map area flagged 40% → 45%; see §5.6 |
 
 **Three findings an underwriter should take away**
 
@@ -217,7 +217,7 @@ Each property is tagged with its nearest named hotspot and the distance. For acc
 within 2 km (ASSUMPTION; 217 of 600 properties); otherwise it falls in "no named hotspot within radius". Hotspots are never used as
 exposure, and never as training labels.
 
-### 5.6 Infrastructure & Maintenance Deficit index (optional PROXY layer)
+### 5.6 Infrastructure & Maintenance Deficit index (evaluation layer)
 
 **Why.** The 12 misses are pluvial: rain on built-up ground exceeds what the drains carry. Terrain cannot see this. Drains themselves
 are not mapped, so the index measures the pressure side, which can be mapped: how much of the ground is roofed and how crowded it is.
@@ -243,9 +243,6 @@ were **fixed before the hotspot check was run** and a test pins them; tuning the
 | Newly flagged | — | Kibera, Kangemi, Kawangware, Fedha, Parklands, Donholm; marginal (I < 0.05): Madaraka, Lang'ata, Kileleshwa |
 | Still missed | — | Lavington, Westlands, Kitisuru |
 | Hazard-map area flagged | 40.0% | 44.8% |
-| Sample portfolio: properties with any hazard | 259 of 600 | 347 of 600 |
-| Sample portfolio: average annual loss | KES 125.9 m | KES 230.5 m |
-| Sample portfolio: 1-in-100 loss | KES 1.70 bn | KES 2.66 bn |
 
 **Is it better than chance?** Every named area is built-up. Over built-up ground the index is above zero on 36% of cells, so an index
 switched on at random would be expected to find about 4.3 of the 12 misses (3.5 non-marginal). It finds 9 (6 non-marginal). With
@@ -254,7 +251,9 @@ twelve places that is a promising signal, not proof, and it does not show the lo
 **What it cannot do.** The three remaining misses are low-density, well-off areas where flooding comes from blocked drains and
 streams, not crowding; the index cannot see them by design. OSM completeness varies: Mathare and Kiambiu, two of the densest settlements
 in Nairobi, read as sparse (the terrain proxy flags both anyway). Roads, car parks and paved yards are not counted. It never measures
-maintenance. It is off by default; switch it on under Assumptions. House views saved before it existed load with it off.
+maintenance.
+
+**Status: evaluation only.** Building density reaches losses through the drainage model (§AI enhancements, `hazard/drainage.py`), which also uses mapped drains and culverts and can learn from approved reports. Applying both would count density twice, so the index is kept as an independent check of what density alone explains (Data & honesty page, `make eval-imd`); its roofed-share measure and the chance comparison are candidates to fold into the drainage model.
 
 ---
 
@@ -770,7 +769,7 @@ Every assumption is in `configs/default.json` and editable in the interface unle
 | A18 | Evidence used | drainage & surface runoff, confidence ≥ 0.5, approved | ASSUMPTION | Mechanisms the proxy cannot see | What changes hazard |
 | A19 | AI-filled sizes | starter class medians | ASSUMPTION | Only reference available | Values for under-described buildings |
 | A20 | Coverage | raster extent only | — (rule) | Never assume zero hazard | Points outside are rejected |
-| A22 | Infrastructure-deficit index (optional, off) | roofed share 15–45%, density 25–125 /ha, 250 m window, equal weights; uplift w = 0.4, tier factors 0.2–1.0 | ASSUMPTION (index: PROXY) | Fixed before checking hotspots; urban-runoff literature | On: sample AAL ×1.8, 21 of 24 hotspots |
+| A22 | Infrastructure-deficit index (evaluation only) | roofed share 15–45%, density 25–125 /ha, 250 m window, equal weights; uplift w = 0.4, tier factors 0.2–1.0 | ASSUMPTION (index: PROXY) | Fixed before checking hotspots; urban-runoff literature | Not applied to losses; would flag 21 of 24 hotspots |
 | A21 | Flood-exposed share of multi-storey value | (basements + 1 storey) ÷ (storeys + basements), only when storeys are known | ASSUMPTION | JRC factors apply to flooded storeys; value spread evenly | Landmark Plaza: 15% of value exposed |
 
 ---

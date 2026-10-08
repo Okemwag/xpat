@@ -105,8 +105,7 @@ if state.imd_available():
         "Does the infrastructure-deficit index find the missed areas?",
         "Same 24 places, same rule. Thresholds were fixed before this check.",
     )
-    imd_cfg = {**cfg.imd_index, "enabled": True}
-    res = state.imd_check(json.dumps(imd_cfg, sort_keys=True, default=list))
+    res = state.imd_check(json.dumps(cfg.imd_index, sort_keys=True, default=list))
     hot, area = res["hotspots"], res["map_area"]
     kpis(
         [
@@ -131,8 +130,8 @@ if state.imd_available():
         ]
     )
     st.caption(
-        f"The index is **{'on' if cfg.imd_index['enabled'] else 'off'}** in your current assumptions (change it on Assumptions). "
-        "Twelve places are weak evidence: read this as a promising signal, not proof."
+        "This is a check, not a model input: building density reaches losses through the drainage model (Hazard checks), "
+        "so it is not counted twice. Twelve places are weak evidence: read this as a promising signal, not proof."
     )
     left, right = st.columns([3, 2], gap="large")
     with left.container(border=True, height="stretch"):

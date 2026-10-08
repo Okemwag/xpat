@@ -9,5 +9,7 @@
   "max_line_tiv_kes": 5000000000,
   "min_share_pct": 5,
   "max_unmodelled_pct": 10,
-  "share_step_pct": 0.5
+  "share_step_pct": 0.5,
+  "max_area_pml_kes": 150000000,
+  "max_area_tiv_pct": 35
 }

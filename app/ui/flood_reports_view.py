@@ -11,20 +11,22 @@ from .charts import hbars, place_factor_map
 from .components import explain, kpis, section
 
 
-def _mode_status(mode, allowed):
-    """(usable, reason) for one processing mode on this server, for this organisation and user."""
+def _mode_status(mode, settings):
+    """(usable, reason) for one processing mode, under the organisation's AI-model policy (ai/llm.choose rules)."""
     from floodcat.ai.llm import configured
 
-    if mode not in allowed:
-        return False, "turned off by your organisation"
     if mode == "local":
         try:
             import fastembed  # noqa: F401
         except ImportError:
             return False, "local embeddings are not installed on this server"
         return True, ""
-    if not configured(mode):
+    if mode not in (settings.get("ai_providers") or configured()):
+        return False, "not allowed by your organisation's AI-model policy"
+    if mode not in configured():
         return False, "not configured on this server"
+    if mode == "gemini" and settings.get("ai_local_for_client_data"):
+        return False, "your organisation keeps client data on its own server"
     if not state.ai_enabled("evidence"):
         return False, "AI is off for your organisation or role"
     return True, ""
@@ -33,6 +35,8 @@ def _mode_status(mode, allowed):
 def _process(reports, mode, independent, settings):
     rt = state.runtime()
     llm = rt.llm(mode) if mode != "local" else None
+    if llm is not None:
+        st.session_state["ai_provider_used"] = mode
     gazetteer = rt.gazetteer(with_ai_fallback=False) if mode != "local" else None
     added, skipped, failed = 0, [], []
     bar = st.progress(0.0, "Reading reports…")
@@ -61,7 +65,7 @@ def flood_reports_tab(store):
     rt = state.runtime()
     cfg = state.config()
     settings = cfg.drainage_reports
-    allowed = state.org().get("settings", {}).get("report_modes", list(drainage.MODES))
+    org_settings = state.org().get("settings") or {}
     try:
         rt.places
     except ModelError as exc:
@@ -69,7 +73,7 @@ def flood_reports_tab(store):
         return
 
     # Mode ----------------------------------------------------------------------------------------------------
-    status = {m: _mode_status(m, allowed) for m in drainage.MODES}
+    status = {m: _mode_status(m, org_settings) for m in drainage.MODES}
     usable_modes = [m for m in drainage.MODES if status[m][0]]
     left, right = st.columns([3, 2], gap="large", vertical_alignment="bottom")
     with left:

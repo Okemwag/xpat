@@ -12,8 +12,11 @@ Each is scaled to 0–1 between two thresholds set in config *before* checking a
 combined with config weights. The index is PROXY data: it never measures drainage condition or maintenance, roads and
 paved yards are not counted, and OSM mapping completeness varies by neighbourhood (an unmapped area reads as empty).
 
-The index raises hazard scores the same way approved evidence does: s' = 1 - (1 - s)(1 - w·f_tier·I). Tier factors
-grow toward the rarest tier, so adjusted scores keep their extreme→common order.
+It is an evaluation layer: the Data & honesty page and scripts/evaluate_imd.py check what it would flag against the
+24 named hotspots, the map and chance. It is not applied to losses — the drainage model (hazard/drainage.py) applies
+building density to hazard, and applying both would count density twice. For the check, scores are raised the same way
+approved evidence does: s' = 1 - (1 - s)(1 - w·f_tier·I); tier factors grow toward the rarest tier, so adjusted scores
+keep their extreme→common order.
 """
 
 import math
@@ -168,9 +171,9 @@ def uplift(scores, index, settings):
 
 def validate_settings(s):
     """Raise ModelError unless the imd_index config block is complete and coherent."""
-    need = {"enabled", "grid_path", "window_radius_m", "built_fraction_range", "density_per_ha_range",
+    need = {"grid_path", "window_radius_m", "built_fraction_range", "density_per_ha_range",
             "component_weights", "weight", "tier_factors", "source"}
-    if not isinstance(s, dict) or set(s) != need or not isinstance(s["enabled"], bool):
+    if not isinstance(s, dict) or set(s) != need:
         raise ModelError("invalid_config", "imd_index needs " + ", ".join(sorted(need)))
     for key in ("built_fraction_range", "density_per_ha_range"):
         lo, hi = (float(x) for x in s[key])

@@ -31,8 +31,6 @@ DEFAULT_SETTINGS = {
     "session_max_hours": 12,
     "allowed_domains": [],
     "ai_mode": "full",
-    # Flood-report processing modes this organisation allows (ai/drainage.MODES); [] switches the feature off.
-    "report_modes": ["local", "ollama", "gemini"],
     "retention_runs_days": 730,
     "retention_audit_days": 2555,
     "default_assumption_set_id": None,
@@ -40,6 +38,14 @@ DEFAULT_SETTINGS = {
     "authority_limit_tiv_kes": None,
     "default_visibility": "team",
     "enforce_separation_of_duties": True,
+    # AI model choice (ai/llm.choose): allowed providers, organisation default, client data kept on this server,
+    # and each member's own preference {user_id: provider} (set only through orgs.set_ai_preference).
+    "ai_providers": ["gemini", "ollama"],
+    "ai_default_provider": None,
+    "ai_local_for_client_data": False,
+    "ai_preferences": {},
+    # Code people enter to ask to join this organisation (registration.join_code); requests still need approval.
+    "join_code": None,
 }
 ADMIN_ROLES = {"owner", "admin"}
 INVITE_TTL = timedelta(hours=72)
@@ -53,11 +59,13 @@ TOUCH_INTERVAL = timedelta(seconds=60)
 
 
 def app_url():
-    return os.getenv("FLOODCAT_APP_URL", "http://localhost:8501").rstrip("/")
+    # 127.0.0.1, not "localhost": on many Windows machines localhost resolves to IPv6 (::1) first, while the local
+    # servers listen on IPv4, so browsers report "site cannot be reached".
+    return os.getenv("FLOODCAT_APP_URL", "http://127.0.0.1:8501").rstrip("/")
 
 
 def auth_url():
-    return os.getenv("FLOODCAT_AUTH_URL", "http://localhost:8000").rstrip("/")
+    return os.getenv("FLOODCAT_AUTH_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def _email(value):
@@ -415,7 +423,11 @@ def invitation_for(conn, raw):
             "This invitation link is invalid or has expired. Ask your administrator for a new one.",
         )
     has_account = (
-        conn.execute(select(users.c.id).where(users.c.email == row["email"])).scalar()
+        conn.execute(
+            select(users.c.id).where(
+                users.c.email == row["email"], users.c.status != "unverified"
+            )
+        ).scalar()
         is not None
     )
     return {**dict(row), "has_account": has_account}
@@ -437,7 +449,23 @@ def accept_invitation(
         .mappings()
         .first()
     )
-    if user:
+    if user and user["status"] == "unverified":
+        # Registered but never confirmed: the invitation link proves the address, so finish the account here.
+        name = str(display_name or "").strip() or user["display_name"]
+        if not sso_user_id:
+            security.check_password(password, inv["email"], (name, inv["org_name"]))
+        conn.execute(
+            users.update()
+            .where(users.c.id == user["id"])
+            .values(
+                display_name=name[:120],
+                password_hash=None if sso_user_id else security.hash_password(password),
+                status="active",
+                email_verified_at=now(),
+            )
+        )
+        user_id = user["id"]
+    elif user:
         if user["status"] != "active":
             raise ModelError("account_inactive", "This account is not active")
         if sso_user_id != user["id"]:

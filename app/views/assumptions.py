@@ -380,28 +380,6 @@ with change_tab:
             for i, t in enumerate(TIERS)
         }
         section(
-            "Infrastructure deficit index",
-            "Raises the hazard score where OpenStreetMap shows dense, mostly roofed ground — where rain runs off fast and "
-            "drains are most often overwhelmed. It cannot see drains themselves. Off by default.",
-        )
-        imd = current.imd_index
-        ready = state.imd_available()
-        a, b = st.columns(2)
-        imd_on = a.toggle(
-            "Include the index",
-            value=imd["enabled"] and ready,
-            disabled=not ready,
-            help=None if ready else "The index grid has not been built on this server (`make imd-index`).",
-        )
-        imd_weight = b.slider(
-            "Strength (score added to dry ground at index 1, rarest tier)",
-            0.0,
-            1.0,
-            float(imd["weight"]),
-            0.05,
-            help="At strength 0.4, fully dense ground with no terrain hazard gets a rarest-tier score of 0.4 (≈0.6 m at the default depth).",
-        )
-        section(
             "Vulnerability (per construction class)",
             "A lower depth scale means more damage at the same depth.",
         )
@@ -506,7 +484,6 @@ with change_tab:
             "class_adjustments": adj,
             "aal_zero_loss_return_period": zero,
             "hotspot_tag_radius_m": radius,
-            "imd_index": {**imd, "enabled": imd_on, "weight": imd_weight},
             "reinsurance": {
                 **ri,
                 "enabled": ri_on,

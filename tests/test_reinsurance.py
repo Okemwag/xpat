@@ -3,7 +3,7 @@
 from decimal import Decimal
 import numpy as np
 import pytest
-from floodcat.core.config import ModelConfig, load_config, upgrade
+from floodcat.core.config import ModelConfig, load_config, merge_defaults
 from floodcat.core.constants import TIERS
 from floodcat.core.errors import ModelError
 from floodcat.financial.reinsurance import apply, apply_array, layer_amounts
@@ -77,7 +77,7 @@ def test_reinsurance_config_rules(config):
     with pytest.raises(ModelError):
         config.replace(reinsurance={**config.reinsurance, "quota_share_cession": 0.0, "xol_limit_pct_of_tiv": 0.0})
     legacy = {k: v for k, v in load_config().to_dict().items() if k not in ("reinsurance",)}
-    assert ModelConfig(**upgrade(legacy)).reinsurance["enabled"] is False  # old house views keep their results
+    assert ModelConfig(**merge_defaults(legacy)).reinsurance["enabled"] is False  # old house views keep their results
 
 
 def test_property_aal_adds_up_to_the_portfolio_aal(starter_rows, config):

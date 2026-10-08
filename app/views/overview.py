@@ -201,21 +201,12 @@ with b.container(border=True, height="stretch"):
         )
     if st.button("Flood evidence", icon=":material/auto_awesome:"):
         st.switch_page("views/evidence.py")
-    section("Infrastructure deficit index")
-    badges("PROXY", "ASSUMPTION")
-    imd = report.get("imd_adjustment") or {"enabled": False}
-    if imd["enabled"]:
-        kpis(
-            [
-                ("Properties raised", imd["changed_properties"]),
-                ("Change in AAL", state.kes(imd["aal_delta_kes"])),
-            ],
-            columns=2,
-        )
-    else:
-        st.metric(
-            "Index",
-            "Off",
-            help="Raises hazard where dense, roofed ground overwhelms drains. Switch it on under Assumptions.",
-            border=True,
-        )
+
+with st.container(border=True):
+    section(
+        "Xpat assistant", "Questions about these results, the model or how to use Xpat"
+    )
+    badges("AI")
+    from ui.chat_view import chat_panel
+
+    chat_panel("overview_assistant", report=report)

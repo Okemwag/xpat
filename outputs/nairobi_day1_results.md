@@ -1,6 +1,6 @@
 # Nairobi flood model — Day 1 results
 
-Generated 2026-10-08 by `scripts/build_day1_outputs.py`. Config `nairobi-prototype-v0.6` (fingerprint `efb2e952c9ef`).
+Generated 2026-10-08 by `scripts/build_day1_outputs.py`. Config `nairobi-prototype-v0.6` (fingerprint `acedb441ec75`).
 
 > **Every number here is illustrative.** The 600 properties are SYNTHETIC, the hazard is a PROXY, and the return periods,
 > score-to-depth conversion and class adjustments are ASSUMPTIONS. Nothing is calibrated to Kenyan claims.

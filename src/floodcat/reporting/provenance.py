@@ -32,18 +32,6 @@ def provenance(config, origin=None):
             "status": "derived_proxy",
             "note": "Real terrain + OSM rivers, not observed depths; blind to drainage",
         },
-        *(
-            [
-                {
-                    "component": "infrastructure_deficit_index",
-                    "label": "PROXY",
-                    "status": "derived_proxy",
-                    "note": "OpenStreetMap building footprints (density and roofed share); thresholds and weights are ASSUMPTION; drains not observed",
-                }
-            ]
-            if config.imd_index["enabled"]
-            else []
-        ),
         {
             "component": "hotspots",
             "label": "REAL",
@@ -101,6 +89,13 @@ def provenance(config, origin=None):
             "label": "ASSUMPTION",
             "status": "assumed_uncalibrated",
             "note": f"Monte Carlo on damage ratio only: σ={config.uncertainty['damage_sigma']:g}, ρ={config.uncertainty['correlation']:g}, {config.uncertainty['trials']} trials",
+        },
+        {
+            "component": "drainage_model",
+            "label": "AI",
+            "status": "off_by_default",
+            "note": f"Drainage-failure probability from OSM drains, culverts and buildings; prior weights (ASSUMPTION) or learned from approved independent evidence; "
+            f"uplift only above p = {config.drainage_model['probability_threshold']:g}",
         },
         {
             "component": "AI_uplift",

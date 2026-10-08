@@ -18,6 +18,6 @@ if any(not n["read_at"] for n in items) and st.button("Mark all as read"):
 for n in items:
     with st.container(border=True):
         st.markdown(
-            ("🔵 " if not n["read_at"] else "")
+            ("New · " if not n["read_at"] else "")
             + f"**{n['message']}**  \n{when(n['created_at'])} · {n['kind'].replace('_', ' ')}"
         )

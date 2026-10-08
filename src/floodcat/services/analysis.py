@@ -11,7 +11,6 @@ from ..exposure.validation import validate_rows
 from ..hazard.providers import AttachedHazard
 from ..hazard.interpretation import validate_scores, enhance
 from ..hazard.hotspots import nearest_hotspot
-from ..hazard.imd import index_value, uplift
 from ..ai.evidence import evidence_signal, usable
 from ..ai.evaluation import spread
 from ..financial.loss import property_loss, total_loss
@@ -57,34 +56,28 @@ def analyse(
     hotspots=(),
     ai_adjustment=False,
     synthetic_only=False,
-    imd=None,
+    drainage=None,
 ):
     """Run the full chain for one portfolio. Pure: no files, network or database.
 
-    `imd` is the infrastructure-deficit grid (hazard/imd.ImdGrid); it is applied to the hazard scores of every run
-    when config.imd_index is enabled, before any AI evidence.
+    ai_adjustment applies approved evidence; drainage (a hazard.drainage.DrainageAdjustment) applies the drainage model.
+    Either produces the 'enhanced' run beside the unchanged 'baseline'.
     """
     config = config or load_config()
-    imd_on = config.imd_index["enabled"]
-    if imd_on and imd is None:
-        raise ModelError(
-            "missing_imd_grid",
-            "The infrastructure-deficit index is switched on but its grid is not loaded",
-        )
     provider = provider or AttachedHazard()
     hotspots = tuple(hotspots)
     evidence = tuple(evidence)
     applied = usable(evidence, config) if ai_adjustment else []
+    adjusting = ai_adjustment or drainage is not None
     assets, issues = validate_rows(rows, synthetic_only)
     results = {"baseline": {t: [] for t in TIERS}}
-    if ai_adjustment:
+    if adjusting:
         results["enhanced"] = {t: [] for t in TIERS}
+    drained = 0
     excluded = []
     hazard_ok = []
     changes = []
     signals = {}
-    imd_changes = {}
-    terrain_only = {t: Decimal(0) for t in TIERS}
     for asset in assets:
         try:
             scores = provider.scores(asset)
@@ -108,44 +101,40 @@ def analyse(
                 if hotspots
                 else None
             )
-            if imd_on:
-                terrain = baseline
-                index, parts = index_value(
-                    imd.components(asset.lat, asset.lon), config.imd_index
+            if adjusting:
+                signal = (
+                    evidence_signal(asset.lat, asset.lon, applied, config)
+                    if ai_adjustment
+                    else 0.0
                 )
-                baseline = uplift(terrain, index, config.imd_index)
-                tag = {
-                    **(tag or {}),
-                    "terrain_score": terrain,
-                    "imd_index": round(index, 4),
-                }
-                if any(baseline[t] - terrain[t] > 1e-12 for t in TIERS):
-                    imd_changes[asset.loc_id] = {
-                        "imd_index": index,
-                        "components": parts,
-                        "terrain": terrain,
-                        "adjusted": baseline,
-                    }
-            if ai_adjustment:
-                signal = evidence_signal(asset.lat, asset.lon, applied, config)
                 enriched = enhance(baseline, signal, config)
+                d_signal = (
+                    drainage.signal(asset.lat, asset.lon, baseline)
+                    if drainage is not None
+                    else 0.0
+                )
+                if d_signal > 0:
+                    enriched = enhance(
+                        enriched,
+                        d_signal,
+                        config,
+                        weight=config.drainage_model["weight"],
+                    )
+                    drained += 1
                 changed = any(abs(enriched[t] - baseline[t]) > 1e-12 for t in TIERS)
                 changes.append((asset, changed))
                 if changed:
                     signals[asset.loc_id] = {
                         "evidence_signal": signal,
+                        "drainage_signal": d_signal,
                         "baseline": baseline,
                         "adjusted": enriched,
                     }
             for tier in TIERS:
-                row = property_loss(asset, baseline[tier], config, tag)
-                if imd_on:
-                    row["terrain_score"] = terrain[tier]
-                    terrain_only[tier] += Decimal(
-                        property_loss(asset, terrain[tier], config)["loss_kes"]
-                    )
-                results["baseline"][tier].append(row)
-                if ai_adjustment:
+                results["baseline"][tier].append(
+                    property_loss(asset, baseline[tier], config, tag)
+                )
+                if adjusting:
                     results["enhanced"][tier].append(
                         property_loss(asset, enriched[tier], config, tag)
                     )
@@ -201,18 +190,22 @@ def analyse(
             )
         runs[name]["property_aal"] = property_aal(scenarios, config)
     contribution = {
-        "enabled": ai_adjustment,
+        "enabled": adjusting,
+        "evidence_enabled": ai_adjustment,
         "applied_evidence_count": len(applied),
+        "drainage": (
+            {**drainage.summary(), "properties_uplifted": drained}
+            if drainage is not None
+            else None
+        ),
         "approved_evidence_count": sum(e.approved for e in evidence),
         "changed_properties": sum(c for _, c in changes),
-        "spread": spread(changes, hotspots, config)
-        if ai_adjustment and hotspots
-        else None,
+        "spread": spread(changes, hotspots, config) if adjusting and hotspots else None,
         "property_changes": signals,
         "approved_evidence_snapshot": [e.to_dict() for e in applied],
         "note": "Increased loss does not by itself prove improved accuracy; see the hotspot comparison.",
     }
-    if ai_adjustment:
+    if adjusting:
         contribution["loss_delta_kes"] = {
             t: money_string(
                 total_loss(results["enhanced"][t]) - total_loss(results["baseline"][t])
@@ -222,28 +215,6 @@ def analyse(
         contribution["aal_delta_kes"] = money_string(
             Decimal(runs["enhanced"]["aal"]["aal_kes"])
             - Decimal(runs["baseline"]["aal"]["aal_kes"])
-        )
-    imd_summary = {"enabled": imd_on}
-    if imd_on:
-        base_totals = {t: total_loss(results["baseline"][t]) for t in TIERS}
-        terrain_aal = Decimal(average_annual_loss(terrain_only, config)["aal_kes"])
-        imd_summary.update(
-            {
-                "changed_properties": len(imd_changes),
-                "property_changes": imd_changes,
-                "terrain_only_loss_kes": {
-                    t: money_string(terrain_only[t]) for t in TIERS
-                },
-                "loss_delta_kes": {
-                    t: money_string(base_totals[t] - terrain_only[t]) for t in TIERS
-                },
-                "terrain_only_aal_kes": money_string(terrain_aal),
-                "aal_delta_kes": money_string(
-                    Decimal(runs["baseline"]["aal"]["aal_kes"]) - terrain_aal
-                ),
-                "grid": dict(getattr(imd, "meta", {}) or {}),
-                "note": "Proxy for runoff pressure from OpenStreetMap building footprints; it does not observe drains or maintenance.",
-            }
         )
     input_fingerprint = hashlib.sha256(
         json.dumps(rows, sort_keys=True, default=str).encode()
@@ -266,7 +237,6 @@ def analyse(
         "issues": issues,
         "runs": runs,
         "ai_contribution": contribution,
-        "imd_adjustment": imd_summary,
         "config": config.to_dict(),
         "config_fingerprint": config.fingerprint,
         "exposure_origin": exposure_origin(hazard_ok),
@@ -287,14 +257,7 @@ def analyse(
             "Depth = score × max_depth_m is an assumption; the score is relative susceptibility, not measured depth.",
             "The JRC Africa residential curve rests on South African and Mozambican functions only; class scales and caps are assumptions.",
             "A zero score means the proxy did not flag the location, not that it cannot flood (drainage-driven flooding is invisible to it).",
-        ]
-        + (
-            [
-                "The infrastructure-deficit index raises hazard where OpenStreetMap shows dense, mostly roofed ground; it does not observe drains or maintenance, omits roads and paved yards, and reads unmapped areas as empty."
-            ]
-            if imd_on
-            else []
-        ),
+        ],
         "hotspot_tagging": {
             "enabled": bool(hotspots),
             "hotspot_count": len(hotspots),

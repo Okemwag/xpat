@@ -67,6 +67,16 @@ RULE_SPEC = {
         "Decline when more than this share of submitted records could not be modelled (%)",
     ),
     "share_step_pct": (0.01, 10.0, "Shares are rounded down to a multiple of this (%)"),
+    "max_area_pml_kes": (
+        1,
+        1e15,
+        "Largest PML loss we hold in any one 1 km area, this risk and our existing book together (KES)",
+    ),
+    "max_area_tiv_pct": (
+        1.0,
+        100.0,
+        "Warn when one 1 km area holds more than this share of the submission's insured value (%)",
+    ),
 }
 
 
@@ -159,11 +169,20 @@ def _pml(view, rp):
 
 
 def recommend(
-    report, premium_100_kes, offered_share_pct, rules=None, run=None, basis=None
+    report,
+    premium_100_kes,
+    offered_share_pct,
+    rules=None,
+    run=None,
+    basis=None,
+    book=None,
+    book_written=0,
 ):
     """Recommendation for writing `offered_share_pct` % of a risk whose 100% premium is `premium_100_kes`.
 
-    Returns outcome, recommended share, the figures used and one check per rule (status pass / limit / fail)."""
+    `book` (from underwriting.accumulation.book_exposure) is what the organisation already holds per 1 km area; with it the
+    area accumulation limit is checked too. Returns outcome, recommended share, the figures used, one check per rule
+    (status pass / warn / limit / fail) and the accumulation assessment."""
     rules = validate_rules(rules) if rules is not None else default_rules()
     try:
         premium = _d(premium_100_kes)
@@ -280,6 +299,55 @@ def recommend(
                 }
             )
 
+    # Accumulation in one place: this risk plus our book, at the PML return period
+    from .accumulation import assess
+
+    acc = assess(
+        report, view["run"], view["basis"], pml_rp, rules, book, None, book_written
+    )
+    if acc["max_share_pct"] is not None and acc["max_share_pct"] < offered:
+        caps.append(("area", acc["max_share_pct"]))
+        checks.append(
+            {
+                "code": "area",
+                "label": "Accumulation in one area",
+                "status": "limit",
+                "value": acc["max_share_pct"],
+                "threshold": rules["max_area_pml_kes"],
+                "detail": acc["warnings"][0]["text"],
+            }
+        )
+    else:
+        checks.append(
+            {
+                "code": "area",
+                "label": "Accumulation in one area",
+                "status": "pass",
+                "value": acc["max_share_pct"],
+                "threshold": rules["max_area_pml_kes"],
+                "detail": f"At {offered:g}% no 1 km area exceeds our limit of {_kes(rules['max_area_pml_kes'])} of 1-in-{pml_rp:g} loss"
+                + (
+                    " including our existing book."
+                    if book
+                    else " (no written risks recorded yet)."
+                ),
+            }
+        )
+    concentrated = [r for r in acc["areas"] if r["concentrated"]]
+    if concentrated:
+        top = concentrated[0]
+        checks.append(
+            {
+                "code": "concentration",
+                "label": "Concentration within the risk",
+                "status": "warn",
+                "value": top["tiv_share_pct"],
+                "threshold": rules["max_area_tiv_pct"],
+                "detail": f"{top['area']} holds {top['tiv_share_pct']:.0f}% of the insured value "
+                f"(warning above {rules['max_area_tiv_pct']:g}%). Not a reason to decline on its own; price and share should reflect it.",
+            }
+        )
+
     # Data completeness
     unmodelled = (
         100 * (view["input_count"] - view["modelled_count"]) / view["input_count"]
@@ -303,6 +371,7 @@ def recommend(
         "price": "Price rule",
         "pml": f"1-in-{pml_rp:g} loss limit",
         "line": "Insured value limit",
+        "area": "Area accumulation limit",
     }
     share_limits = [
         {"rule": limit_names[code], "max_share_pct": cap} for code, cap in caps
@@ -328,6 +397,9 @@ def recommend(
     else:
         outcome, share = "accept", offered
     binding = [c["label"] for c in checks if c["status"] in ("fail", "limit")]
+    acc = assess(
+        report, view["run"], view["basis"], pml_rp, rules, book, share, book_written
+    )
     ours = _d(share) / 100
     return {
         "outcome": outcome,
@@ -356,5 +428,6 @@ def recommend(
         "binding_rules": binding,
         "share_limits": share_limits,
         "rules": rules,
+        "accumulation": acc,
         "note": "Indicative: built on a proxy hazard, assumed return periods and uncalibrated damage curves. A person makes the decision.",
     }

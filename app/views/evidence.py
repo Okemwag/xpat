@@ -102,10 +102,11 @@ kpis(
 )
 badges("AI", "REAL", "ASSUMPTION")
 
-reports_tab, extract_tab, library_tab, impact_tab, manual_tab = st.tabs(
+reports_tab, extract_tab, harvest_tab, library_tab, impact_tab, manual_tab = st.tabs(
     [
         ":material/article: Flood reports",
         ":material/auto_awesome: Extract from one report",
+        ":material/travel_explore: Harvest news",
         ":material/library_books: Evidence library",
         ":material/compare_arrows: Impact on losses",
         ":material/edit_location: Add manually",
@@ -189,7 +190,7 @@ with extract_tab:
                 f"{state.ai_name()} is reading the report; locating places…"
             ):
                 st.session_state["extraction"] = extract(
-                    text, source, rt.llm(), rt.gazetteer()
+                    text, source, (client := state.llm()), rt.gazetteer(llm=client)
                 ) | {"independent": independent}
         except ModelError as exc:
             st.error(str(exc), icon=":material/error:")
@@ -258,6 +259,156 @@ with extract_tab:
                     f"{n} item(s) added. A reviewer must approve them in the Evidence library."
                 )
                 st.session_state.pop("extraction")
+
+with harvest_tab:
+    hv = cfg.evidence_harvest
+    st.write(
+        "Search recent Kenyan news for flood and drainage reports, read each new article, and extract candidate evidence — the same quote "
+        "check and map lookup as pasting a report. Everything lands **unapproved**; a reviewer still approves each item."
+    )
+    st.caption(
+        f"Source: GDELT DOC 2.0 news search (Kenyan outlets, English), last {hv['timespan']}, up to {hv['max_articles']} new articles per run; "
+        "each article read counts as one AI request. Only the link, the quote and the place are kept. Articles naming "
+        f"{hv['hotspot_list_threshold']}+ places from the county hotspot list are marked not independent."
+    )
+    if not state.ai_enabled("evidence"):
+        st.warning(
+            "AI is unavailable here — not configured on this server, or turned off by your organisation.",
+            icon=":material/key_off:",
+        )
+    queries = st.text_area(
+        "Searches (one per line)",
+        chr(10).join(hv["queries"]),
+        height=100,
+        max_chars=1000,
+    )
+    if st.button(
+        "Harvest news",
+        type="primary",
+        icon=":material/travel_explore:",
+        disabled=not state.ai_enabled("evidence"),
+    ):
+        from floodcat.ai.harvest import harvest
+
+        try:
+            with st.spinner("Searching the news and reading new articles…"):
+                result = harvest(
+                    cfg,
+                    (client := state.llm()),
+                    rt.gazetteer(llm=client),
+                    [h.name for h in rt.hotspots],
+                    known_sources=[e.source for e in _all],
+                    allow_call=state.ai_quota,
+                    queries=[q for q in queries.splitlines() if q.strip()][:6],
+                )
+            state.audit_ai(
+                "ai.evidence_harvested",
+                "evidence",
+                "harvest",
+                {
+                    "articles": len(result["articles"]),
+                    "candidates": len(result["candidates"]),
+                    "stopped": result["stopped"],
+                },
+            )
+            st.session_state["harvest"] = result
+        except ModelError as exc:
+            st.error(str(exc), icon=":material/error:")
+    hv_result = st.session_state.get("harvest")
+    if hv_result:
+        for s_ in hv_result["searched"]:
+            if s_.get("error"):
+                st.warning(f"“{s_['query']}”: {s_['error']}", icon=":material/warning:")
+        if hv_result["stopped"]:
+            st.warning(
+                "Stopped at the AI request limit; run again later for the rest.",
+                icon=":material/hourglass_top:",
+            )
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Article": a["title"] or a["url"],
+                        "Link": a["url"],
+                        "Status": a["status"],
+                        "Candidates": a.get("candidates", ""),
+                        "Reproduces hotspot list": "yes"
+                        if a.get("reproduces_hotspot_list")
+                        else "",
+                    }
+                    for a in hv_result["articles"]
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+            column_config={"Link": st.column_config.LinkColumn(display_text="open")},
+        )
+        cands = [c for c in hv_result["candidates"] if c["lat"] is not None]
+        if cands:
+            frame = pd.DataFrame(
+                [
+                    {
+                        "Add": True,
+                        **{
+                            k: c[k]
+                            for k in (
+                                "location_name",
+                                "mechanism",
+                                "confidence",
+                                "event_date",
+                                "quote",
+                                "lat",
+                                "lon",
+                                "location_method",
+                                "independent_of_hotspot_list",
+                                "source",
+                                "evidence_id",
+                            )
+                        },
+                    }
+                    for c in cands
+                ]
+            )
+            edited = st.data_editor(
+                frame,
+                hide_index=True,
+                width="stretch",
+                key="harvest_editor",
+                column_config={
+                    "evidence_id": None,
+                    "quote": st.column_config.TextColumn(disabled=True, width="large"),
+                    "source": st.column_config.LinkColumn(
+                        "source", display_text="article", disabled=True
+                    ),
+                    "mechanism": st.column_config.SelectboxColumn(
+                        options=list(MECHANISMS)
+                    ),
+                    "independent_of_hotspot_list": st.column_config.CheckboxColumn(
+                        "independent of hotspot list"
+                    ),
+                },
+            )
+            if st.button(
+                "Add ticked items to the library (unapproved)",
+                icon=":material/library_add:",
+            ):
+                added = 0
+                for r in (r for r in edited.to_dict("records") if r["Add"]):
+                    if pd.isna(r["lat"]) or pd.isna(r["lon"]):
+                        continue
+                    added += add_candidates(
+                        [{**r, "event_date": r["event_date"] or ""}],
+                        bool(r["independent_of_hotspot_list"]),
+                    )
+                st.success(
+                    f"{added} item(s) added. A reviewer must approve them in the Evidence library."
+                )
+                st.session_state.pop("harvest")
+        elif hv_result["articles"]:
+            st.info(
+                "No locatable flood observations in the new articles.",
+                icon=":material/info:",
+            )
 
 with manual_tab:
     st.write("Record a flood observation from a source you have read yourself.")

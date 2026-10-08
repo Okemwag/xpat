@@ -481,21 +481,23 @@ def build_document(
     if ai["enabled"] or briefing:
         add(("heading", "AI contribution", 1, ("AI",)))
     if ai["enabled"]:
+        from ..ai.evaluation import describe_adjustment
+
         add(
             (
                 "para",
-                f"{ai['applied_evidence_count']} reviewer-approved drainage report(s) raised the hazard at {ai['changed_properties']} properties; "
+                f"{describe_adjustment(ai)} raised the hazard at {ai['changed_properties']} properties; "
                 f"average annual loss changed by {kes(ai['aal_delta_kes'])}. A higher loss is not by itself evidence of a better model.",
             )
         )
         enh = report["runs"]["enhanced"]
         add(
             Table(
-                "Loss with and without AI drainage evidence",
+                "Loss with and without the AI hazard adjustment",
                 [
                     ("Return period", "rp"),
                     ("Baseline", "kes"),
-                    ("With AI evidence", "kes"),
+                    ("With AI adjustment", "kes"),
                 ],
                 [
                     [p["return_period_years"], p["loss_kes"], q["loss_kes"]]

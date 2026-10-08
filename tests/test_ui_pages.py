@@ -23,6 +23,8 @@ PAGES = [
     "property",
     "assumptions",
     "evidence",
+    "hazard_checks",
+    "public_notes",
     "honesty",
     "method",
     "history",
@@ -242,7 +244,7 @@ def test_briefing_from_overview(store, monkeypatch):
             }
 
     monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
-    monkeypatch.setattr(state.runtime(), "llm", lambda: FakeLLM())
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
     at.run()
     next(b for b in at.button if b.label == "Draft briefing").click()
     at.run()
@@ -278,6 +280,16 @@ def test_underwriting_decision_flow(store, monkeypatch):
     next(b for b in at.button if b.label == "Get recommendation").click()
     at.run()
     assert not at.exception and any("Recommended share" == m.label for m in at.metric)
+    page_text = " ".join(m.value for m in at.markdown)
+    assert (
+        "Our advice" in page_text
+        and "Pricing and premium adequacy" in page_text
+        and "Accumulation" in page_text
+    )
+    assert any(m.label == "Rate per mille" for m in at.metric)
+    assert any(
+        "synthetic data" in m.value for m in at.markdown
+    )  # the advice warns not to quote on synthetic data
     from ui import state
 
     class FakeLLM:
@@ -293,7 +305,7 @@ def test_underwriting_decision_flow(store, monkeypatch):
             }
 
     monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
-    monkeypatch.setattr(state.runtime(), "llm", lambda: FakeLLM())
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
     at.run()
     next(b for b in at.button if b.label == "Explain this recommendation").click()
     at.run()
@@ -315,29 +327,153 @@ def test_underwriting_decision_flow(store, monkeypatch):
     }
 
 
-def test_infrastructure_index_switch_flows_through_pages(store):
-    """Switching the index on under Assumptions re-runs the portfolio with it; result pages show it."""
+def test_ask_results_and_drainage_page(store, monkeypatch):
     from ui_helpers import make_session
-    from floodcat.services.runtime import ROOT
-    from floodcat.core.config import load_config
 
-    if not (ROOT / load_config().imd_index["grid_path"]).exists():
-        pytest.skip("IMD grid not built (make imd-index)")
-    token = make_session(store, roles=("head_uw",), org_name="Imd Re", email="head@imd.re")
+    token = make_session(
+        store, roles=("analyst",), org_name="Ask Re", email="an@ask.re"
+    )
     at = app(token)
     at.switch_page("views/portfolio.py")
     at.run()
     next(b for b in at.button if b.label == "Run the sample portfolio").click()
     at.run()
-    assert at.session_state["result"]["imd_adjustment"] == {"enabled": False}
-    at.switch_page("views/assumptions.py")
+    from ui import state
+
+    class FakeLLM:
+        model = "fake-gemini"
+
+        def generate_json(self, system, prompt, schema):
+            return {
+                "answerable": True,
+                "answer": "Average annual loss is in the facts; 9,876 is not.",
+                "fact_labels": ["Average annual loss"],
+                "chart": "loss_curve",
+            }
+
+    monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
+    at.switch_page("views/results.py")
     at.run()
-    next(t for t in at.toggle if t.label == "Include the index").set_value(True)
-    next(b for b in at.button if b.label.startswith("Apply to my sandbox")).click()
+    next(t for t in at.text_input if t.label == "Your question").input(
+        "What is the average annual loss?"
+    )
+    next(b for b in at.button if b.label == "Ask").click()
     at.run()
-    assert not at.exception, at.exception[0].value if at.exception else None
-    imd = at.session_state["result"]["imd_adjustment"]
-    assert imd["enabled"] and imd["changed_properties"] > 0
-    for page in ("overview", "map", "results", "honesty", "property"):
-        errors = visit(at, page)
-        assert errors == [], f"{page}: {errors[0][:400] if errors else errors}"
+    assert not at.exception, at.exception[0].value
+    assert "ask_results_answer" in at.session_state
+    assert at.session_state["ask_results_answer"][1]["unsupported_figures"] == ["9876"]
+
+    # The assistant on Overview answers from the documentation and the loaded results.
+    class FakeAssistant:
+        model = "fake-gemini"
+
+        def generate_json(self, system, prompt, schema):
+            assert '"facts"' in prompt and "Average annual loss" not in system
+            return {
+                "answerable": True,
+                "answer": "Your average annual loss is in the results; 4,444 is not.",
+                "sources": [1],
+            }
+
+    monkeypatch.setattr(state, "llm", lambda client_data=False: FakeAssistant())
+    at.switch_page("views/overview.py")
+    at.run()
+    at.chat_input[0].set_value("What is my average annual loss?").run()
+    assert not at.exception, at.exception[0].value
+    reply = at.session_state["overview_assistant_messages"][-1]
+    assert reply["role"] == "assistant" and reply["meta"]["unsupported"] == ["4444"]
+    # Drainage page with small in-memory layers (the real ones are built by scripts/build_drainage_layers.py).
+    from floodcat.hazard.drainage import DrainageLayers
+
+    monkeypatch.setitem(
+        state.runtime().__dict__,
+        "drainage_layers",
+        DrainageLayers(
+            drains=[[[36.80, -1.40], [36.80, -1.15]]],
+            culverts=[[36.80, -1.30]],
+            buildings=[[36.78, -1.31]] * 200,
+            source="test",
+        ),
+    )
+    at.switch_page("views/hazard_checks.py")
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert any(m.label == "Named hotspots flagged" for m in at.metric)
+    next(
+        b
+        for b in at.button
+        if b.label == "Re-run the current portfolio with the drainage model"
+    ).click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert at.session_state["result"]["ai_contribution"]["drainage"]["mode"] == "prior"
+
+
+def test_admin_approves_join_request_and_edits_own_roles(store):
+    from ui_helpers import make_session, PW
+    from floodcat.platform import identity, registration
+    from floodcat.platform.email import recent
+    from floodcat.platform.service import Platform
+    import re
+
+    token = make_session(
+        store, roles=("owner",), org_name="Admin Re", email="boss@adminre.test"
+    )
+    plat = Platform(f"sqlite:///{store}/platform.db")
+    with plat.tx() as c:
+        p, _ = identity.resolve_session(c, token)
+        from floodcat.platform import orgs
+
+        identity.reauthenticate(c, p, password=PW)
+        orgs.update_settings(c, p, {"allowed_domains": ["adminre.test"]})
+        registration.register(
+            c, "join", "ula@adminre.test", "Ula", PW, request={"ip": "1.1.1.1"}
+        )
+    at = app(token)
+    at.switch_page("views/admin.py")
+    at.run()
+    assert not at.exception, at.exception[0].value
+    assert any("Ula" in m.value for m in at.markdown)
+    next(b for b in at.button if b.label == "Approve").click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    from sqlalchemy import select
+    from floodcat.platform.db import memberships, users
+
+    with plat.tx() as c:
+        ula = c.execute(
+            select(users.c.id).where(users.c.email == "ula@adminre.test")
+        ).scalar()
+        assert [o["name"] for o in identity.user_orgs(c, ula)] == ["Admin Re"]
+    # The owner can add working roles to their own account (and keeps the owner role).
+    assert any(e.label == "Your own roles" for e in at.expander)
+    own = next(m for m in at.multiselect if m.label == "Your roles")
+    own.set_value(["owner", "head_uw"])
+    next(b for b in at.button if b.label == "Save my roles").click()
+    at.run()
+    assert not at.exception, at.exception[0].value
+    with plat.tx() as c:
+        roles = c.execute(
+            select(memberships.c.roles)
+            .join(users, users.c.id == memberships.c.user_id)
+            .where(users.c.email == "boss@adminre.test")
+        ).scalar()
+    assert sorted(roles) == ["head_uw", "owner"]
+
+
+def test_public_assistant_on_the_home_page(store, monkeypatch):
+    monkeypatch.setenv(
+        "FLOODCAT_ASSISTANT_PUBLIC_AI", "0"
+    )  # visitors get documentation answers; no AI call in tests
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.run()
+    assert not at.exception
+    assert (
+        any("Ask the Xpat assistant" in h.value for h in at.markdown) or at.chat_input
+    )
+    at.chat_input[0].set_value("How do I create an account?").run()
+    assert not at.exception, at.exception[0].value
+    reply = at.session_state["home_assistant_messages"][-1]
+    assert reply["role"] == "assistant" and "Creating an account" in reply["content"]
+    assert reply["meta"]["sources"][0]["heading"] == "Creating an account"

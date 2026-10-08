@@ -55,6 +55,16 @@ For each scenario, the underwriter can see the portfolio loss, a breakdown by co
 
 On the **Underwriting decision** page the underwriter enters the offered premium (for 100% of the risk) and the offered share. The organisation's own rules — set by the head of underwriting — recommend **accept**, **take a smaller share** or **decline**, showing each rule's check: price against a technical premium (modelled annual loss with an uncertainty load, at a target loss ratio), our share of the 1-in-250 loss and of insured value against capacity limits, and how much of the schedule could be modelled. AI can explain the recommendation and suggest questions for the broker, but it cannot change it. A person records the final call; overriding the rules needs a written reason, and decisions above the authority limits need the head of underwriting. Starter rules are in `configs/underwriting_rules.json` and are an assumption, not market guidance.
 
+Alongside the recommendation, the page shows:
+- **Our advice:** one plain recommendation, the reasons for it, the conditions to write it on, and how far to trust it.
+  It is built by fixed rules from the figures, not by AI, and never calls a risk safe.
+- **Pricing and premium adequacy:** how the technical premium is built from the annual loss, the uncertainty load and the
+  margin; the offered premium against it; the shortfall; the lowest premium the rules accept; and rate per mille, rate
+  on line and payback years for comparison.
+- **Accumulation:** loss at the PML return period in each 1 km area, for this risk at the recommended share plus what the
+  organisation has already written (risks with an accept or smaller-share decision). A per-area limit caps the share,
+  and an area holding too much of one risk's value raises a warning.
+
 Every analysis can be downloaded as a **PDF** or **Word** report (headline figures, loss curve, concentrations, assumptions, provenance, limitations, and any AI briefing and decisions) or as an **Excel** workbook with every table and every property's loss in every scenario as numbers.
 
 ## Where AI fits
@@ -64,6 +74,19 @@ Xpat uses Gemini in a few clearly bounded places. First, a portfolio can be desc
 Approved evidence informs a **documented adjustment** to the baseline hazard assessment. Xpat recalculates losses and shows exactly which properties and portfolio figures changed. The financial calculation itself remains governed by explicit model assumptions: an AI-generated statement is not treated as a flood depth, damage ratio, or monetary loss.
 
 Gemini also drafts plain-English explanations — an underwriting briefing of the results and the reasoning behind an underwriting recommendation. Both are written only from figures the model produced; every number is checked against them, and neither can change a result or a recommendation.
+
+Eight further AI features extend this for every user. They are documented in [docs/AI_ENHANCEMENTS.md](docs/AI_ENHANCEMENTS.md):
+
+- a **drainage-aware hazard model** that targets the places the terrain map misses
+- a **news harvester** that fills the evidence review queue
+- a **satellite (Sentinel-1) flood check** that tests any hazard map against observed water
+- **storey counts** from Open Buildings heights
+- a **schedule quality reviewer**
+- **Ask the results**, plain questions answered only from the run's figures
+- **referral and quote memos** for underwriters
+- **public risk notes** in English and Kiswahili for county teams
+
+Each one is labelled and checked the same way as the features above.
 
 **This enhancement is built but not validated.** The app reports the named-hotspot hit rate before and after, using only evidence independent of the county's hotspot list; any claim that it improves the model still requires independent evaluation. A higher estimate of loss alone is not proof of better risk assessment.
 
@@ -98,7 +121,20 @@ make test              # full test suite
 `FLOODCAT_AI_PROVIDER=ollama` and `OLLAMA_MODEL=llama3.2:3b` (`OLLAMA_HOST` defaults to `http://127.0.0.1:11434`). Every AI output goes through the
 same checks as Gemini's. Small local models are much slower on a CPU and less reliable at reasoning; raise `OLLAMA_TIMEOUT_S` if requests time out.
 
-**First organisation.** Accounts are by invitation. Create an organisation and its owner:
+**Registering.** On the sign-in page, choose **User** or **Administrator**, then **Create an account**:
+- **Administrator → Create an organisation:** you become its administrator (owner, plus head of underwriting so you can use
+  the model) and are signed in straight away.
+- **User → Request an account:** your account is created and your request goes to the administrators of the organisation
+  whose allowed e-mail domain matches yours. They approve it and choose your roles in **Administration → Users &
+  invitations**; you can sign in once approved.
+
+There is no e-mail confirmation step, so administrators should check who is asking before approving a request.
+Registration is on by default outside production; set `FLOODCAT_ALLOW_SIGNUP=1` to allow it in production.
+Open the app at the address in `FLOODCAT_APP_URL` (default `http://127.0.0.1:8501`). The sign-in cookie belongs to
+that address. The default is `127.0.0.1` rather than `localhost` because on many Windows machines `localhost` resolves to
+IPv6 first while the local servers listen on IPv4, so the browser reports "site cannot be reached".
+
+**First organisation from the command line.** An administrator can also create an organisation and invite its owner:
 
 ```bash
 uv run flood-cat create-org "Your company" owner@company.com --domains company.com

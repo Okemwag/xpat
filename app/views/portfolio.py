@@ -132,7 +132,10 @@ def preview(assets):
 
 
 def review_and_run(rows, label_default, source_kind, key, origin_hint=None):
-    """Shared review step: where the data comes from, validation summary, preview, explicit partial run."""
+    """Shared review step: data checks and storeys, where the data comes from, validation summary, preview, explicit partial run."""
+    from ui.quality_view import improve_rows
+
+    rows = improve_rows(rows, key)
     columns = set().union(*(r.keys() for r in rows))
     missing_label = not {"synthetic", "source"} <= columns or any(
         r.get("synthetic") in (None, "") for r in rows
@@ -398,13 +401,13 @@ with describe:
             st.stop()
         try:
             with st.spinner(
-                f"{state.ai_name()} is reading the description; locating places…"
+                f"{state.ai_name(client_data=True)} is reading the description; locating places…"
             ):
                 rt = state.runtime()
                 draft = ingest(
                     text,
-                    rt.llm(),
-                    rt.gazetteer(),
+                    (client := state.llm(client_data=True)),
+                    rt.gazetteer(llm=client),
                     rt.class_defaults,
                     batch_id="AI" + secrets.token_hex(2).upper(),
                 )

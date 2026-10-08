@@ -60,11 +60,6 @@ points = [
         "score": r["hazard_score"],
         "tooltip": f"<b>{_h(r['loc_id'])}</b> · {state.class_label(r['housing_class'])}<br/>"
         f"Insured value {state.kes(r['tiv_kes'])}<br/>"
-        + (
-            f"Terrain score {r['terrain_score']:.3f} + infrastructure index {r['imd_index']:.2f}<br/>"
-            if "imd_index" in r
-            else ""
-        )
         + f"Hazard score {r['hazard_score']:.3f} ({tier}, {state.rp_label(rp)}) → depth {r['assumed_depth_m']:.2f} m<br/>"
         f"Damage ratio {r['damage_ratio']:.1%}<br/>"
         + (

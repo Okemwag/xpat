@@ -67,9 +67,18 @@ def run_banner(report):
                 f"{len(report['excluded_from_hazard']) + report['rejected_count']} excluded",
                 color="orange",
             )
-        if report["ai_contribution"]["enabled"]:
+        ai = report["ai_contribution"]
+        if (
+            ai["enabled"]
+            and ai.get("evidence_enabled", True)
+            and ai["applied_evidence_count"]
+        ):
             st.badge(
                 "AI evidence applied", color="blue", icon=":material/auto_awesome:"
+            )
+        if ai.get("drainage"):
+            st.badge(
+                "drainage model applied", color="blue", icon=":material/water_drop:"
             )
         if st.session_state.get("config_overrides"):
             st.badge("custom assumptions", color="gray")

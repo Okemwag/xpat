@@ -1,7 +1,7 @@
 """Authentication web pages (FastAPI). Issues the HttpOnly session cookie the Streamlit app reads.
 
 Routes live under /auth. In production a reverse proxy serves /auth and /v1 from FastAPI and everything else from
-Streamlit on one domain; locally they share `localhost` on different ports, which cookies allow.
+Streamlit on one domain; locally they share 127.0.0.1 on different ports, which cookies allow.
 """
 
 import os
@@ -72,6 +72,7 @@ def page(
     choices=None,
     button=None,
     links=None,
+    tabs=None,
     status=200,
 ):
     csrf = request.cookies.get(CSRF_COOKIE) or secrets.token_urlsafe(24)
@@ -86,6 +87,7 @@ def page(
         choices=choices,
         button=button,
         links=links,
+        tabs=tabs,
         csrf=csrf,
     )
     response = HTMLResponse(html, status_code=status)
@@ -147,22 +149,51 @@ def _login_links(next_url):
             "label": "Sign in with your company (SSO)",
         },
     ]
+    from .registration import signup_enabled
+
+    if signup_enabled():
+        links.insert(0, {"href": "/auth/register", "label": "Create an account"})
     if os.getenv("FLOODCAT_ALLOW_GUEST") == "1":
         links.append({"href": "/auth/guest", "label": "Explore the demo"})
     return links
 
 
 # Sign in ------------------------------------------------------------------------------------------------
+SIGNIN_AS = {
+    "user": ("Sign in", "Use your work e-mail and password."),
+    "admin": (
+        "Administrator sign in",
+        "Sign in to manage your organisation's members, roles, security and settings.",
+    ),
+}
+
+
+def _role_tabs(kind_of_page, active, next_url="/"):
+    """User / Administrator switch shown above the sign-in and registration forms."""
+    if kind_of_page == "login":
+        href = lambda r: f"/auth/login?as={r}&next={quote(next_url)}"
+    else:
+        href = lambda r: "/auth/register?kind=" + ("org" if r == "admin" else "join")
+    return [
+        {"href": href(r), "label": label, "on": r == active}
+        for r, label in (("user", "User"), ("admin", "Administrator"))
+    ]
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request, next: str = "/"):
+    role = request.query_params.get("as", "user")
+    role = role if role in SIGNIN_AS else "user"
+    title, lead = SIGNIN_AS[role]
     return page(
         request,
-        "Sign in",
-        lead="Use your work e-mail. New users join by invitation from their administrator.",
+        title,
+        lead=lead,
         fields=LOGIN_FIELDS,
-        action=f"/auth/login?next={quote(next)}",
+        action=f"/auth/login?as={role}&next={quote(next)}",
         submit="Sign in",
         links=_login_links(next),
+        tabs=_role_tabs("login", role, next),
     )
 
 
@@ -175,11 +206,14 @@ def login(
     next: str = "/",
 ):
     info = req_info(request)
+    role = request.query_params.get("as", "user")
+    role = role if role in SIGNIN_AS else "user"
     fail = lambda msg: page(
         request,
-        "Sign in",
+        SIGNIN_AS[role][0],
+        tabs=_role_tabs("login", role, next),
         fields=[{**LOGIN_FIELDS[0], "value": email}, LOGIN_FIELDS[1]],
-        action=f"/auth/login?next={quote(next)}",
+        action=f"/auth/login?as={role}&next={quote(next)}",
         submit="Sign in",
         error=msg,
         links=_login_links(next),
@@ -196,8 +230,16 @@ def login(
                 )
             orgs = identity.user_orgs(conn, user["id"])
             if not orgs and not user["is_platform_admin"]:
+                from .registration import pending_orgs
+
+                waiting = pending_orgs(conn, user["id"])
                 raise ModelError(
-                    "no_org", "Your account is not active in any organisation."
+                    "no_org",
+                    f"Your request to join {', '.join(waiting)} is waiting for an administrator's approval. "
+                    "You will get an e-mail when it is approved."
+                    if waiting
+                    else "Your account is not active in any organisation. Ask your administrator for an invitation, "
+                    "or create an account to set up a new organisation.",
                 )
             org_id = orgs[0]["id"] if len(orgs) == 1 else None
             raw, _ = identity.start_session(
@@ -224,6 +266,206 @@ def login(
         )
     )
     return with_session(redirect(target), raw, settings["session_max_hours"])
+
+
+# Self-service registration -------------------------------------------------------------------------------
+REGISTER_COMMON = [
+    {"name": "display_name", "label": "Your name", "autocomplete": "name"},
+    {"name": "email", "label": "Work e-mail", "type": "email", "autocomplete": "email"},
+]
+REGISTER_TITLE = {"org": "Create an organisation", "join": "Request an account"}
+REGISTER_LEAD = {
+    "org": "For the first person from a company: you will administer the organisation, invite colleagues and set their roles.",
+    "join": "Your organisation already uses Xpat. An administrator approves your request and chooses what you can do.",
+}
+
+
+def _register_fields(kind, values=None):
+    values = values or {}
+    org = (
+        [
+            {
+                "name": "org_name",
+                "label": "Organisation name",
+                "autocomplete": "organization",
+                "hint": "A new organisation is created and you become its administrator (owner).",
+            }
+        ]
+        if kind == "org"
+        else []
+    )
+    code = (
+        [
+            {
+                "name": "org_code",
+                "label": "Organisation code",
+                "required": False,
+                "autocomplete": "off",
+                "hint": "Looks like ABCD-EFGH. Your administrator finds it under Users & invitations. "
+                "You can leave it blank if your organisation accepts your work e-mail domain.",
+            }
+        ]
+        if kind == "join"
+        else []
+    )
+    keep = ("org_name", "display_name", "email", "org_code")
+    return [
+        {**f, "value": values.get(f["name"], "")} if f["name"] in keep else f
+        for f in org + REGISTER_COMMON + code + _reset_fields(False)
+    ]
+
+
+@router.get("/register", response_class=HTMLResponse)
+def register_form(request: Request, kind: str = ""):
+    from .registration import signup_enabled
+
+    if not signup_enabled():
+        return page(
+            request,
+            "Registration closed",
+            error="Ask your administrator for an invitation.",
+            links=[{"href": "/auth/login", "label": "Sign in"}],
+            status=404,
+        )
+    if kind not in REGISTER_TITLE:
+        return page(
+            request,
+            "Create an account",
+            lead="Which describes you?",
+            choices=[
+                {
+                    "href": "/auth/register?kind=join",
+                    "label": "I'm a user",
+                    "text": "My organisation already uses Xpat. I'll request an account and an administrator will approve it.",
+                },
+                {
+                    "href": "/auth/register?kind=org",
+                    "label": "I'm an administrator",
+                    "text": "I'm setting Xpat up for my organisation. I'll create it and invite my colleagues.",
+                },
+            ],
+            links=[
+                {"href": "/auth/login", "label": "Already have an account? Sign in"}
+            ],
+        )
+    other = "join" if kind == "org" else "org"
+    return page(
+        request,
+        REGISTER_TITLE[kind],
+        lead=REGISTER_LEAD[kind],
+        fields=_register_fields(kind),
+        action=f"/auth/register?kind={kind}",
+        submit="Create account",
+        tabs=_role_tabs("register", "admin" if kind == "org" else "user"),
+        links=[
+            {
+                "href": f"/auth/register?kind={other}",
+                "label": REGISTER_TITLE[other] + " instead",
+            },
+            {"href": "/auth/login", "label": "Sign in"},
+        ],
+    )
+
+
+@router.post("/register", response_class=HTMLResponse)
+def register(
+    request: Request,
+    kind: str = "",
+    org_name: str = Form(""),
+    display_name: str = Form(""),
+    email: str = Form(""),
+    password: str = Form(""),
+    confirm: str = Form(""),
+    org_code: str = Form(""),
+    csrf: str = Form(""),
+):
+    from .registration import register as register_account
+
+    values = {
+        "org_name": org_name,
+        "display_name": display_name,
+        "email": email,
+        "org_code": org_code,
+    }
+    info = req_info(request)
+    raw = None
+    try:
+        check_csrf(request, csrf)
+        if kind not in REGISTER_TITLE:
+            raise ModelError("invalid_kind", "Choose how you will use Xpat")
+        if password != confirm:
+            raise ModelError("mismatch", "The passwords do not match")
+        with platform().tx() as conn:
+            try:
+                result = register_account(
+                    conn,
+                    kind,
+                    email,
+                    display_name,
+                    password,
+                    org_name,
+                    request=info,
+                    org_code=org_code,
+                )
+            except ModelError as exc:
+                if exc.code != "account_exists":
+                    raise
+                # Already registered (often a second click on the button): the right password simply signs them in.
+                try:
+                    user = identity.authenticate(conn, email, password, info)
+                except ModelError:
+                    raise exc from None
+                orgs = identity.user_orgs(conn, user["id"])
+                if not orgs:
+                    raise
+                raw, _ = identity.start_session(
+                    conn,
+                    user["id"],
+                    orgs[0]["id"],
+                    mfa_passed=user["mfa_enabled_at"] is None,
+                    request=info,
+                )
+                hours = identity.settings_for(conn, orgs[0]["id"])["session_max_hours"]
+                result = {
+                    "org_id": orgs[0]["id"],
+                    "requested": [],
+                    "mfa": user["mfa_enabled_at"] is not None,
+                }
+            if result["org_id"] and raw is None:
+                raw, _ = identity.start_session(
+                    conn, result["user_id"], result["org_id"], request=info
+                )
+                hours = identity.settings_for(conn, result["org_id"])[
+                    "session_max_hours"
+                ]
+    except ModelError as exc:
+        return page(
+            request,
+            REGISTER_TITLE.get(kind, "Create an account"),
+            lead=REGISTER_LEAD.get(kind),
+            fields=_register_fields(kind, values),
+            action=f"/auth/register?kind={kind}",
+            submit="Create account",
+            tabs=_role_tabs("register", "admin" if kind == "org" else "user")
+            if kind in REGISTER_TITLE
+            else None,
+            error=str(exc),
+            status=400,
+        )
+    if raw:  # new organisation (or the same person clicking twice): its administrator goes straight in
+        target = (
+            "/auth/mfa?next=" + quote(identity.app_url() + "/?as=admin")
+            if result.get("mfa")
+            else identity.app_url() + "/?as=admin"
+        )
+        return with_session(redirect(target), raw, hours)
+    return page(
+        request,
+        "Request sent",
+        message=f"Your account is created. Your request to join {', '.join(result['requested'])} is with its administrators; "
+        "you can sign in once one of them approves it, and you will get an e-mail when they do.",
+        button={"href": "/auth/login", "label": "Back to sign in"},
+    )
 
 
 MFA_FIELD = [

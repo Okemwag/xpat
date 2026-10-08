@@ -1,13 +1,9 @@
 """Infrastructure & Maintenance Deficit index: geometry, grid, index, uplift, config and the analysis wiring."""
 
-from decimal import Decimal
-from types import SimpleNamespace
 import numpy as np
 import pytest
-from floodcat.core.config import ModelConfig, load_config, upgrade
 from floodcat.core.constants import TIERS
 from floodcat.core.errors import ModelError
-from floodcat.financial.loss import total_loss
 from floodcat.hazard.hotspots import Hotspot
 from floodcat.hazard.imd import (
     Grid,
@@ -22,7 +18,6 @@ from floodcat.hazard.imd import (
     uplift,
 )
 from floodcat.services.analysis import analyse
-from conftest import row
 
 CELL = 3 / 3600
 
@@ -39,8 +34,6 @@ def fake_grid(built=0.0, density=0.0, west=36.6, north=-1.1, width=480, height=4
     return ImdGrid(bands, grid, {"source": "test"})
 
 
-def enabled(config, **changes):
-    return config.replace(imd_index={**config.imd_index, "enabled": True, **changes})
 
 
 # Geometry and grid -----------------------------------------------------------------------------------------------
@@ -129,59 +122,16 @@ def test_shipped_index_thresholds_are_the_pre_registered_values(config):
     assert s["window_radius_m"] == 250 and s["weight"] == 0.4
 
 
-def test_assumption_sets_saved_before_the_index_upgrade_with_it_switched_off(config):
-    legacy = {k: v for k, v in config.to_dict().items() if k != "imd_index"}
-    with pytest.raises(TypeError):
-        ModelConfig(**legacy)
-    upgraded = ModelConfig(**upgrade(legacy))
-    assert upgraded.imd_index["enabled"] is False
 
 
-# Analysis wiring -------------------------------------------------------------------------------------------------
-def test_disabled_index_leaves_results_unchanged(starter_rows, config):
-    a = analyse(starter_rows, config)
-    b = analyse(starter_rows, config, imd=fake_grid(0.9, 500))
-    assert a["runs"]["baseline"]["ep_curve"] == b["runs"]["baseline"]["ep_curve"]
-    assert b["imd_adjustment"] == {"enabled": False}
 
 
-def test_enabled_index_without_grid_fails_loudly(starter_rows, config):
-    with pytest.raises(ModelError) as exc:
-        analyse(starter_rows, enabled(config))
-    assert exc.value.code == "missing_imd_grid"
 
 
-def test_enabled_index_raises_losses_and_keeps_model_invariants(starter_rows, config):
-    cfg = enabled(config)
-    before = analyse(starter_rows, cfg.replace(imd_index={**cfg.imd_index, "enabled": False}))
-    report = analyse(starter_rows, cfg, imd=fake_grid(0.30, 75))
-    base = report["runs"]["baseline"]
-    losses = [Decimal(p["loss_kes"]) for p in base["ep_curve"]]
-    assert losses == sorted(losses)
-    for t in TIERS:
-        rows = base["property_losses"][t]
-        assert total_loss(rows) >= total_loss(before["runs"]["baseline"]["property_losses"][t])
-        assert all(r["hazard_score"] >= r["terrain_score"] and r["imd_index"] == 0.5 for r in rows)
-        assert all("synthetic" in r for r in rows)
-    imd = report["imd_adjustment"]
-    assert imd["enabled"] and imd["changed_properties"] == report["modelled_count"]
-    assert imd["terrain_only_loss_kes"] == {p["tier"]: p["loss_kes"] for p in before["runs"]["baseline"]["ep_curve"]}
-    assert Decimal(imd["aal_delta_kes"]) > 0
-    assert any(p["component"] == "infrastructure_deficit_index" for p in report["provenance"])
 
 
-def test_dry_point_is_flagged_only_where_the_index_is_above_zero(config):
-    cfg = enabled(config)
-    dry = [row(scores=(0, 0, 0, 0, 0))]
-    assert analyse(dry, cfg, imd=fake_grid(0.05, 5))["runs"]["baseline"]["ep_curve"][-1]["loss_kes"] == "0.00"
-    wet = analyse(dry, cfg, imd=fake_grid(0.45, 125))["runs"]["baseline"]["property_losses"]["common"][0]
-    assert wet["hazard_score"] == pytest.approx(cfg.imd_index["weight"]) and Decimal(wet["loss_kes"]) > 0
 
 
-def test_ai_evidence_applies_on_top_of_the_index(starter_rows, config):
-    report = analyse(starter_rows, enabled(config), imd=fake_grid(0.3, 75), ai_adjustment=True)
-    assert report["imd_adjustment"]["enabled"] and report["ai_contribution"]["enabled"]
-    assert report["runs"]["enhanced"]["ep_curve"] == report["runs"]["baseline"]["ep_curve"]  # no evidence supplied
 
 
 # Hotspot check ---------------------------------------------------------------------------------------------------
@@ -245,3 +195,11 @@ def test_build_script_reads_buildings_from_a_pbf(tmp_path):
     assert area.sum() == pytest.approx(200, rel=0.01)
     assert stats["outside"] == 1
     assert not pbf.with_suffix(".nodes.idx").exists()
+
+
+def test_index_is_an_evaluation_layer_not_a_loss_input(starter_rows, config):
+    """Building density reaches losses through the drainage model only; the index must not change any run."""
+    report = analyse(starter_rows, config)
+    assert "imd_adjustment" not in report
+    assert "enabled" not in config.imd_index
+    assert all("imd_index" not in r for r in report["runs"]["baseline"]["property_losses"]["common"])

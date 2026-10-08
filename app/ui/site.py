@@ -11,27 +11,23 @@ BRAND = "#2a78d6"
 
 CSS = f"""
 <style>
-.x-eyebrow {{ display:inline-block; font-size:.78rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
-  color:{BRAND}; background:rgba(42,120,214,.10); border:1px solid rgba(42,120,214,.25); border-radius:999px; padding:.25rem .75rem; }}
-.x-hero h1 {{ font-size:clamp(2rem, 4.2vw, 3.2rem); line-height:1.08; letter-spacing:-.02em; margin:.8rem 0 .6rem; font-weight:750; }}
-.x-hero p.x-lead {{ font-size:1.15rem; line-height:1.55; opacity:.82; max-width:40rem; margin:0; }}
-.x-accent {{ color:{BRAND}; }}
-.x-section {{ margin-top:3.2rem; }}
-.x-section-head {{ text-align:center; max-width:46rem; margin:0 auto 1.6rem; }}
-.x-section-head h2 {{ font-size:clamp(1.5rem, 2.6vw, 2.1rem); letter-spacing:-.01em; margin:.5rem 0 .4rem; font-weight:700; }}
+.x-eyebrow {{ display:block; font-size:.85rem; font-weight:600; color:{BRAND}; }}
+.x-hero h1 {{ font-size:clamp(1.8rem, 3.4vw, 2.5rem); line-height:1.15; margin:.4rem 0 .6rem; font-weight:700; }}
+.x-hero p.x-lead {{ font-size:1.08rem; line-height:1.55; opacity:.85; max-width:38rem; margin:0; }}
+.x-accent {{ color:inherit; }}
+.x-section {{ margin-top:2.8rem; }}
+.x-section-head {{ max-width:46rem; margin:0 0 1.2rem; }}
+.x-section-head h2 {{ font-size:clamp(1.3rem, 2.2vw, 1.7rem); margin:.3rem 0 .3rem; font-weight:650; }}
 .x-section-head p {{ opacity:.78; font-size:1.05rem; margin:0; }}
-.x-card {{ border:1px solid rgba(127,127,127,.22); border-radius:14px; padding:1.25rem 1.3rem; height:100%;
-  background:rgba(127,127,127,.04); }}
-.x-card h4 {{ margin:.55rem 0 .35rem; font-size:1.05rem; font-weight:650; }}
+.x-card {{ border:1px solid rgba(127,127,127,.25); border-radius:8px; padding:1.1rem 1.2rem; height:100%; }}
+.x-card h4 {{ margin:0 0 .35rem; font-size:1.02rem; font-weight:650; }}
 .x-card p, .x-card li {{ opacity:.82; font-size:.95rem; line-height:1.5; margin:0; }}
 .x-card ul {{ padding-left:1.1rem; margin:.4rem 0 0; }}
-.x-icon {{ width:2.3rem; height:2.3rem; border-radius:10px; display:flex; align-items:center; justify-content:center;
-  background:rgba(42,120,214,.12); color:{BRAND}; font-size:1.25rem; }}
+.x-icon {{ font-weight:700; color:{BRAND}; font-size:.95rem; margin-bottom:.35rem; }}
 .x-stat {{ text-align:center; padding:1rem .5rem; }}
 .x-stat b {{ display:block; font-size:clamp(1.4rem, 2.4vw, 1.9rem); letter-spacing:-.01em; }}
 .x-stat span {{ opacity:.72; font-size:.9rem; }}
-.x-band {{ border-radius:18px; padding:2.2rem 2rem; text-align:center;
-  background:linear-gradient(135deg, rgba(42,120,214,.16), rgba(27,175,122,.10)); border:1px solid rgba(42,120,214,.22); }}
+.x-band {{ border-radius:8px; padding:1.6rem 1.6rem; border:1px solid rgba(127,127,127,.25); border-left:4px solid {BRAND}; }}
 .x-band h2 {{ margin:0 0 .4rem; font-size:clamp(1.4rem, 2.4vw, 1.9rem); }}
 .x-band p {{ margin:0; opacity:.82; }}
 .x-plan {{ border:1px solid rgba(127,127,127,.25); border-radius:16px; padding:1.5rem 1.4rem; height:100%; }}
@@ -78,7 +74,7 @@ def card(icon, title, text=None, bullets=()):
     if bullets:
         body += "<ul>" + "".join(f"<li>{_e(b)}</li>" for b in bullets) + "</ul>"
     st.html(
-        f"<div class='x-card'><div class='x-icon'>{icon}</div><h4>{_e(title)}</h4>{body}</div>"
+        f"<div class='x-card'>{f'<div class=x-icon>{_e(icon)}</div>' if icon else ''}<h4>{_e(title)}</h4>{body}</div>"
     )
 
 
@@ -118,7 +114,7 @@ def plan(name, price, period, blurb, features, featured=False, tag=None):
 
 
 def cta_row(primary="Sign in", key="cta"):
-    """Standard call-to-action buttons. Accounts are by invitation, so the primary action is signing in."""
+    """Standard call-to-action buttons: sign in or create an account (both on the sign-in page)."""
     from . import state
     from .components import link
 

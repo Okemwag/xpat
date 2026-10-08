@@ -743,3 +743,54 @@ def test_underwriting_decision_recorded_with_rules_override_and_authority(
         with pytest.raises(ModelError):
             data.record_decision(c, other_uw, run_id, premium, 20, "accept")
         assert data.list_decisions(c, other_uw, run_id=run_id) == []
+
+
+def test_ai_model_preference_and_policy(p):
+    _, owner, _ = make_org(p, "Model Re", "owner@model.re")
+    uw, _ = member(p, owner, "uw@model.re", ["underwriter"])
+    viewer, _ = member(p, owner, "view@model.re", ["viewer"])
+    with p.tx() as c:
+        assert orgs.set_ai_preference(c, uw, "ollama") == "ollama"
+        assert identity.settings_for(c, uw.org_id)["ai_preferences"] == {
+            uw.user_id: "ollama"
+        }
+        with pytest.raises(ModelError):
+            orgs.set_ai_preference(c, viewer, "gemini")  # no ai.extract
+        with pytest.raises(ModelError):
+            orgs.update_settings(
+                c, owner, {"ai_preferences": {}}
+            )  # members set their own
+        with pytest.raises(ModelError):
+            orgs.update_settings(c, owner, {"ai_providers": []})
+        with pytest.raises(ModelError):
+            orgs.update_settings(
+                c, owner, {"ai_providers": ["ollama"], "ai_default_provider": "gemini"}
+            )
+        orgs.update_settings(
+            c, owner, {"ai_providers": ["ollama"], "ai_local_for_client_data": True}
+        )
+        with pytest.raises(ModelError):
+            orgs.set_ai_preference(c, uw, "gemini")  # no longer allowed
+        assert orgs.set_ai_preference(c, uw, None) is None
+        events = [
+            r.action
+            for r in c.execute(
+                select(audit_events.c.action).where(audit_events.c.org_id == uw.org_id)
+            )
+        ]
+    assert (
+        events.count("user.ai_preference_changed") == 2
+        and "org.settings_changed" in events
+    )
+
+
+def test_relative_store_dir_is_taken_from_the_project_folder(monkeypatch, tmp_path):
+    from floodcat.platform.db import PROJECT_ROOT, store_dir
+
+    monkeypatch.setenv("FLOODCAT_STORE_DIR", "runtime/store")
+    monkeypatch.chdir(
+        tmp_path
+    )  # a command run from another folder must find the same database
+    assert store_dir() == PROJECT_ROOT / "runtime" / "store"
+    monkeypatch.setenv("FLOODCAT_STORE_DIR", str(tmp_path))
+    assert store_dir() == tmp_path

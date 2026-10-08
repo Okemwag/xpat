@@ -153,13 +153,9 @@ def _key():
         raise RuntimeError("Production requires FLOODCAT_SECRET_KEY (a Fernet key)")
     from cryptography.fernet import Fernet
 
-    path = (
-        Path(
-            os.getenv("FLOODCAT_STORE_DIR")
-            or Path(__file__).resolve().parents[3] / "runtime" / "store"
-        )
-        / "secret.key"
-    )
+    from .db import store_dir
+
+    path = store_dir() / "secret.key"
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
         path.write_bytes(Fernet.generate_key())

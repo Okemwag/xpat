@@ -31,7 +31,7 @@ kpis(
         (
             "Requests to join",
             len(requests),
-            "People who registered and confirmed their e-mail",
+            "People who registered with your organisation's e-mail domain",
         ),
         (
             "Two-step verification",
@@ -51,7 +51,7 @@ grantable = [r for r in ASSIGNABLE if r != "owner" or "owner" in p.roles]
 if requests:
     section(
         "Requests to join",
-        "They registered with an address at your organisation's domain and confirmed it. Choose their access.",
+        "They registered with an address at your organisation's domain. Check who they are, then choose their access.",
     )
     for r in requests:
         with st.container(border=True):
@@ -85,6 +85,21 @@ if requests:
                 and state.guarded(registration.decide, r["id"], False)
                 is not state.FAILED
             ):
+                st.rerun()
+
+with st.container(border=True):
+    with state.platform().tx() as conn:
+        code = registration.join_code(conn, p)
+    left_c, right_c = st.columns([3, 1], vertical_alignment="center")
+    with left_c:
+        st.markdown(f"**Organisation code:** `{code}`")
+        st.caption(
+            "Share it with colleagues so they can request an account from the sign-in page (User, then Request an account), "
+            "whatever e-mail they use. You still approve every request below. Replace the code if it was shared too widely."
+        )
+    with right_c:
+        if st.button("Replace code", icon=":material/refresh:", key="new_join_code"):
+            if state.guarded(registration.join_code, True) is not state.FAILED:
                 st.rerun()
 
 with st.expander(

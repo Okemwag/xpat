@@ -71,6 +71,10 @@ def update_settings(conn, principal, changes, request=None):
     for key, value in changes.items():
         if key not in DEFAULT_SETTINGS:
             raise ModelError("invalid_setting", f"Unknown setting {key}")
+        if key == "join_code":
+            raise ModelError(
+                "invalid_setting", "Change the join code from Users & invitations"
+            )
         if key == "mfa_policy" and value not in MFA_POLICIES:
             raise ModelError("invalid_setting", "MFA policy must be off, admins or all")
         if key == "ai_mode" and value not in AI_MODES:

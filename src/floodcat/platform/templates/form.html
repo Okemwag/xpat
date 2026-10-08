@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block body %}
 {% if fields is not none %}
-<form method="post" action="{{ action }}" autocomplete="on">
+<form method="post" action="{{ action }}" autocomplete="on" onsubmit="var b=this.querySelector('button[type=submit]');if(b){if(b.disabled)return false;b.disabled=true;b.textContent='Please wait…';}">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% for f in fields %}
   <label for="{{ f.name }}">{{ f.label }}</label>
@@ -12,7 +12,7 @@
   <button type="submit">{{ submit }}</button>
 </form>
 {% endif %}
-{% for c in choices or [] %}<a class="choice" href="{{ c.href }}">{{ c.label }}</a>{% endfor %}
+{% for c in choices or [] %}<a class="choice" href="{{ c.href }}"><b>{{ c.label }}</b>{% if c.text %}<span>{{ c.text }}</span>{% endif %}</a>{% endfor %}
 {% if button %}<a class="button {{ button.style or '' }}" href="{{ button.href }}">{{ button.label }}</a>{% endif %}
 {% if links %}<div class="links">{% for l in links %}<a href="{{ l.href }}">{{ l.label }}</a>{% endfor %}</div>{% endif %}
 {% endblock %}

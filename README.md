@@ -111,13 +111,15 @@ make test              # full test suite
 `FLOODCAT_AI_PROVIDER=ollama` and `OLLAMA_MODEL=llama3.2:3b` (`OLLAMA_HOST` defaults to `http://127.0.0.1:11434`). Every AI output goes through the
 same checks as Gemini's. Small local models are much slower on a CPU and less reliable at reasoning; raise `OLLAMA_TIMEOUT_S` if requests time out.
 
-**Registering.** On the sign-in page, **Create an account** offers two routes:
-- **Set up a new organisation:** you become its administrator (owner, plus head of underwriting so you can use the model).
-- **Join my organisation:** you register as a user. Your request goes to the administrators of the organisation whose
-  allowed e-mail domain matches yours, and they approve it and choose your roles in **Administration → Users & invitations**.
+**Registering.** On the sign-in page, choose **User** or **Administrator**, then **Create an account**:
+- **Administrator → Create an organisation:** you become its administrator (owner, plus head of underwriting so you can use
+  the model) and are signed in straight away.
+- **User → Request an account:** your account is created and your request goes to the administrators of the organisation
+  whose allowed e-mail domain matches yours. They approve it and choose your roles in **Administration → Users &
+  invitations**; you can sign in once approved.
 
-Both routes are confirmed by an e-mailed link first. Without Resend configured, the link is shown on the page in
-development. Registration is on by default outside production; set `FLOODCAT_ALLOW_SIGNUP=1` to allow it in production.
+There is no e-mail confirmation step, so administrators should check who is asking before approving a request.
+Registration is on by default outside production; set `FLOODCAT_ALLOW_SIGNUP=1` to allow it in production.
 Open the app at the address in `FLOODCAT_APP_URL` (default `http://127.0.0.1:8501`). The sign-in cookie belongs to
 that address. The default is `127.0.0.1` rather than `localhost` because on many Windows machines `localhost` resolves to
 IPv6 first while the local servers listen on IPv4, so the browser reports "site cannot be reached".

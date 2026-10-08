@@ -4,7 +4,7 @@ from ui import site
 site.css()
 site.hero(
     "Solutions",
-    "Flood risk answers for <span class='x-accent'>every seat at the table</span>",
+    "Flood risk answers for each role in the decision",
     "Underwriters, portfolio managers, reinsurers and public bodies ask different questions of the same flood. "
     "Xpat answers each one from one transparent model.",
 )
@@ -13,7 +13,7 @@ site.cta_row(key="sol_hero")
 
 AUDIENCES = [
     (
-        "🧮",
+        "",
         "Underwriters & risk analysts",
         "What should I budget for at the 1-in-100 level — and can I defend it?",
         [
@@ -25,7 +25,7 @@ AUDIENCES = [
         "Loss curve · Property explorer · Assumptions",
     ),
     (
-        "📊",
+        "",
         "Portfolio & exposure managers",
         "How much insured value sits where one storm could hit it all at once?",
         [
@@ -37,7 +37,7 @@ AUDIENCES = [
         "Accumulation map · Overview",
     ),
     (
-        "🤝",
+        "",
         "Reinsurers, cedants & brokers",
         "Can I get a consistent first view of a flood portfolio — fast?",
         [
@@ -49,7 +49,7 @@ AUDIENCES = [
         "Portfolio · Reports & history",
     ),
     (
-        "🏛️",
+        "",
         "Counties & disaster-management bodies",
         "Where do flood hazard and valuable assets meet — and where is the map blind?",
         [
@@ -67,7 +67,8 @@ for icon, title, question, outcomes, where in AUDIENCES:
     with st.container(border=True):
         a, b = st.columns([2, 3], gap="large")
         with a:
-            st.html(f"<div class='x-icon'>{icon}</div>")
+            if icon:
+                st.html(f"<div class='x-icon'>{icon}</div>")
             st.subheader(title)
             st.markdown(f"*“{question}”*")
             st.caption(f"Where in Xpat: {where}")
@@ -79,7 +80,7 @@ site.section("By capability", "The building blocks")
 site.cards(
     [
         (
-            "🌊",
+            "",
             "Hazard intelligence",
             "Five flood-severity maps read at every property, with coverage checks — never a silent zero.",
             (
@@ -89,7 +90,7 @@ site.cards(
             ),
         ),
         (
-            "🏚️",
+            "",
             "Vulnerability",
             "Published JRC depth-damage curves adapted per construction class, compared openly with the reference.",
             (
@@ -99,7 +100,7 @@ site.cards(
             ),
         ),
         (
-            "🏢",
+            "",
             "Exposure management",
             "Validation that handles real-world spreadsheets and explains every rejected row.",
             (
@@ -109,7 +110,7 @@ site.cards(
             ),
         ),
         (
-            "💰",
+            "",
             "Financial engine",
             "From damage to money: scenario losses, a 10,000-year simulation and average annual loss.",
             (
@@ -119,7 +120,7 @@ site.cards(
             ),
         ),
         (
-            "🤖",
+            "",
             "AI that changes the answer",
             "Gemini reads what spreadsheets and maps cannot — with people in control.",
             (
@@ -129,7 +130,7 @@ site.cards(
             ),
         ),
         (
-            "🔒",
+            "",
             "Governance",
             "Every run is reproducible and every number carries its provenance.",
             (

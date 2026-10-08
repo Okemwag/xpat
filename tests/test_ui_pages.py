@@ -397,18 +397,9 @@ def test_admin_approves_join_request_and_edits_own_roles(store):
 
         identity.reauthenticate(c, p, password=PW)
         orgs.update_settings(c, p, {"allowed_domains": ["adminre.test"]})
-        registration.start(
+        registration.register(
             c, "join", "ula@adminre.test", "Ula", PW, request={"ip": "1.1.1.1"}
         )
-        raw = re.search(
-            r"/auth/register/confirm/(\S+)",
-            next(
-                m
-                for m in recent(c, "ula@adminre.test")
-                if m["kind"] == "signup_confirm"
-            )["text"],
-        ).group(1)
-        registration.confirm(c, raw)
     at = app(token)
     at.switch_page("views/admin.py")
     at.run()

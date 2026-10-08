@@ -1,15 +1,14 @@
 """Self-service registration: set up a new organisation (as its administrator) or ask to join an existing one (as a user).
 
 Security model:
-- Nobody becomes an administrator of an existing organisation by registering. "Set up a new organisation" creates a new,
-  empty organisation whose owner is the registrant. "Join" only creates a *request*; an administrator of that organisation
-  approves it and chooses the roles.
-- Every registration is confirmed by a link e-mailed to the address first. Until then the account cannot sign in and no
-  administrator sees a request, so nobody can claim someone else's work address.
+- Nobody becomes an administrator of an existing organisation by registering. "Create an organisation" creates a new,
+  empty organisation whose owner is the registrant. "Request an account" only creates a *request*; an administrator of
+  that organisation approves it and chooses the roles, so a person cannot reach anyone else's data on their own.
+- The account is created as soon as the form is submitted; there is no e-mail confirmation step. Administrators should
+  check who is asking before approving a request (the request shows the name and e-mail address).
 - Requests are routed only to organisations whose `allowed_domains` setting contains the e-mail's domain. Public mail
   domains (gmail.com …) never route anywhere.
-- The response is the same whether or not an account or a matching organisation exists (no enumeration); the e-mail says
-  what happened. Attempts are rate-limited per address and per network address, and audited.
+- Attempts are rate-limited per address and per network address, and audited.
 - Self-registration is on by default outside production; in production set FLOODCAT_ALLOW_SIGNUP=1 to allow it.
 """
 
@@ -22,18 +21,15 @@ from .db import (
     invitations,
     memberships,
     now,
-    one_time_tokens,
     organisations,
     uid,
     users,
 )
 from .identity import (
     DEFAULT_SETTINGS,
-    VERIFY_TTL,
     _email,
     auth_url,
     rate_limit,
-    settings_for,
 )
 from .rbac import require, validate_roles
 
@@ -91,8 +87,78 @@ def _matching_orgs(conn, domain):
     ]
 
 
-def start(conn, kind, email_addr, display_name, password, org_name="", request=None):
-    """Begin a registration. Raises only for problems the person must fix (password, missing name, rate limit)."""
+CODE_ALPHABET = (
+    "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I, so codes read out loud cleanly
+)
+
+
+def new_code():
+    import secrets
+
+    raw = "".join(secrets.choice(CODE_ALPHABET) for _ in range(8))
+    return f"{raw[:4]}-{raw[4:]}"
+
+
+def _normalise_code(code):
+    text = "".join(ch for ch in str(code or "").upper() if ch.isalnum())
+    return f"{text[:4]}-{text[4:]}" if len(text) == 8 else ""
+
+
+def _org_by_code(conn, code):
+    code = _normalise_code(code)
+    if not code:
+        return None
+    for r in conn.execute(
+        select(
+            organisations.c.id, organisations.c.name, organisations.c.settings
+        ).where(organisations.c.status.in_(("active", "trial")))
+    ).mappings():
+        if (r["settings"] or {}).get("join_code") == code:
+            return {"id": r["id"], "name": r["name"]}
+    return None
+
+
+def join_code(conn, principal, regenerate=False, request=None):
+    """The organisation's join code, created on first use. Administrators share it with colleagues who register."""
+    require(principal, "users.manage")
+    from .identity import settings_for
+
+    current = settings_for(conn, principal.org_id)
+    if current.get("join_code") and not regenerate:
+        return current["join_code"]
+    code = new_code()
+    conn.execute(
+        organisations.update()
+        .where(organisations.c.id == principal.org_id)
+        .values(settings={**current, "join_code": code})
+    )
+    audit.record(
+        conn,
+        "org.join_code_changed" if regenerate else "org.join_code_created",
+        actor=principal,
+        target_type="organisation",
+        target_id=principal.org_id,
+        request=request,
+    )
+    return code
+
+
+def register(
+    conn,
+    kind,
+    email_addr,
+    display_name,
+    password,
+    org_name="",
+    request=None,
+    org_code="",
+):
+    """Create the account and finish registration in one step.
+
+    Returns {'user_id', 'kind', 'org_id' (the new organisation, or None), 'requested': [organisation names]}.
+    Raises ModelError for anything the person must fix (password, missing name, existing account, no matching
+    organisation, rate limit); nothing is created in that case.
+    """
     if not signup_enabled():
         raise ModelError(
             "signup_off",
@@ -100,7 +166,8 @@ def start(conn, kind, email_addr, display_name, password, org_name="", request=N
         )
     if kind not in KINDS:
         raise ModelError(
-            "invalid_kind", "Choose whether to set up a new organisation or join one"
+            "invalid_kind",
+            "Choose whether to create an organisation or request an account",
         )
     email_addr = _email(email_addr)
     display_name = " ".join(str(display_name or "").split())[:120]
@@ -131,41 +198,40 @@ def start(conn, kind, email_addr, display_name, password, org_name="", request=N
         .first()
     )
     if user and user["status"] == "active":
-        mail.send(
-            conn,
-            email_addr,
-            "You already have an Xpat account",
-            [
-                "Someone (probably you) tried to register this address again. You already have an account: sign in, or reset your "
-                "password if you have forgotten it. If this was not you, you can ignore this e-mail."
-            ],
-            ("Sign in", f"{auth_url()}/auth/login"),
-            kind="signup_existing",
+        raise ModelError(
+            "account_exists",
+            "An account with this e-mail already exists. Sign in instead, or reset your password.",
         )
-        audit.record(
-            conn,
-            "auth.signup_started",
-            target_type="user",
-            target_id=user["id"],
-            details={"kind": kind, "existing": True},
-            outcome="ignored",
-            request=request,
-        )
-        return
     if (
         user and user["status"] != "unverified"
-    ):  # deactivated or anonymised: say nothing, change nothing
-        audit.record(
-            conn,
-            "auth.signup_started",
-            target_type="user",
-            target_id=user["id"],
-            details={"kind": kind, "existing": True},
-            outcome="denied",
-            request=request,
+    ):  # deactivated or anonymised accounts are not reopened this way
+        raise ModelError(
+            "account_inactive",
+            "This e-mail cannot be registered. Contact your organisation's administrator.",
         )
-        return
-    if user:
+    domain = _domain(email_addr)
+    matches = []
+    if kind == "join":
+        if str(org_code or "").strip():
+            found = _org_by_code(conn, org_code)
+            if not found:
+                raise ModelError(
+                    "bad_code",
+                    "That organisation code was not recognised. Check it with your administrator; it looks like ABCD-EFGH.",
+                )
+            matches = [found]
+        else:
+            matches = _matching_orgs(conn, domain)
+        if not matches:
+            raise ModelError(
+                "no_org",
+                "Enter your organisation code to send your request. Your administrator finds it under "
+                "Administration, Users & invitations."
+                if domain in PUBLIC_DOMAINS
+                else f"No organisation on Xpat accepts members from {domain} yet. Enter your organisation code "
+                "(your administrator has it), or ask them to invite you.",
+            )
+    if user:  # left over from the earlier confirm-by-e-mail flow: finish it now
         user_id = user["id"]
         conn.execute(
             users.update()
@@ -173,6 +239,7 @@ def start(conn, kind, email_addr, display_name, password, org_name="", request=N
             .values(
                 display_name=display_name,
                 password_hash=security.hash_password(password),
+                status="active",
             )
         )
     else:
@@ -183,104 +250,24 @@ def start(conn, kind, email_addr, display_name, password, org_name="", request=N
                 email=email_addr,
                 display_name=display_name,
                 password_hash=security.hash_password(password),
-                status="unverified",
+                status="active",
                 created_at=now(),
             )
         )
-    conn.execute(
-        one_time_tokens.update()
-        .where(
-            one_time_tokens.c.user_id == user_id,
-            one_time_tokens.c.kind == "signup",
-            one_time_tokens.c.used_at.is_(None),
-        )
-        .values(used_at=now())
-    )
-    raw, token_hash = security.new_token()
-    conn.execute(
-        one_time_tokens.insert().values(
-            id=uid(),
-            kind="signup",
-            user_id=user_id,
-            token_hash=token_hash,
-            data={"kind": kind, "org_name": org_name},
-            created_at=now(),
-            expires_at=now() + VERIFY_TTL,
-        )
-    )
-    what = (
-        f"set up {org_name} on Xpat, with you as its administrator"
-        if kind == "org"
-        else "ask to join your organisation on Xpat; an administrator there will approve you and choose your access"
-    )
-    mail.send(
-        conn,
-        email_addr,
-        "Confirm your e-mail to finish registering on Xpat",
-        [
-            f"Confirm this address to {what}.",
-            "The link works once and expires in 24 hours. If you did not register, ignore this e-mail.",
-        ],
-        ("Confirm my e-mail", f"{auth_url()}/auth/register/confirm/{raw}"),
-        kind="signup_confirm",
-    )
     audit.record(
         conn,
-        "auth.signup_started",
+        "auth.signup",
         target_type="user",
         target_id=user_id,
         details={"kind": kind},
         request=request,
     )
-
-
-def confirm(conn, raw, request=None):
-    """Finish a registration from the e-mailed link.
-
-    Returns {'user_id', 'kind', 'org_id' (new organisation, or None), 'requested': [organisation names]}.
-    """
-    row = (
-        conn.execute(
-            select(one_time_tokens).where(
-                one_time_tokens.c.token_hash == security.hash_token(raw or ""),
-                one_time_tokens.c.kind == "signup",
-            )
-        )
-        .mappings()
-        .first()
-    )
-    from .identity import _aware
-
-    if not row or row["used_at"] or _aware(row["expires_at"]) < now():
-        raise ModelError(
-            "invalid_token",
-            "This link is invalid or has expired. Register again to get a new one.",
-        )
-    user = (
-        conn.execute(select(users).where(users.c.id == row["user_id"]))
-        .mappings()
-        .first()
-    )
-    if not user or user["status"] not in ("unverified", "active"):
-        raise ModelError("account_inactive", "This account is not active")
-    conn.execute(
-        one_time_tokens.update()
-        .where(one_time_tokens.c.id == row["id"])
-        .values(used_at=now())
-    )
-    conn.execute(
-        users.update()
-        .where(users.c.id == user["id"])
-        .values(status="active", email_verified_at=now())
-    )
-    kind, domain = row["data"].get("kind"), _domain(user["email"])
     if kind == "org":
         org_id = uid()
-        name = row["data"].get("org_name") or f"{user['display_name']}'s organisation"
         conn.execute(
             organisations.insert().values(
                 id=org_id,
-                name=name,
+                name=org_name,
                 status="trial",
                 plan="trial",
                 seats=10,
@@ -289,6 +276,7 @@ def confirm(conn, raw, request=None):
                 settings={
                     **DEFAULT_SETTINGS,
                     "allowed_domains": [] if domain in PUBLIC_DOMAINS else [domain],
+                    "join_code": new_code(),
                 },
                 profile={},
             )
@@ -297,7 +285,7 @@ def confirm(conn, raw, request=None):
             memberships.insert().values(
                 id=uid(),
                 org_id=org_id,
-                user_id=user["id"],
+                user_id=user_id,
                 roles=list(OWNER_ROLES),
                 status="active",
                 created_at=now(),
@@ -310,26 +298,25 @@ def confirm(conn, raw, request=None):
             org_id=org_id,
             target_type="organisation",
             target_id=org_id,
-            details={"name": name, "owner": user["id"]},
+            details={"name": org_name, "owner": user_id},
             request=request,
         )
-        return {"user_id": user["id"], "kind": kind, "org_id": org_id, "requested": []}
-    requested = []
+        return {"user_id": user_id, "kind": kind, "org_id": org_id, "requested": []}
     from .data import notify_role
 
-    for org in _matching_orgs(conn, domain):
-        exists = conn.execute(
+    requested = []
+    for org in matches:
+        if conn.execute(
             select(memberships.c.id).where(
-                memberships.c.org_id == org["id"], memberships.c.user_id == user["id"]
+                memberships.c.org_id == org["id"], memberships.c.user_id == user_id
             )
-        ).scalar()
-        if exists:
+        ).scalar():
             continue
         conn.execute(
             memberships.insert().values(
                 id=uid(),
                 org_id=org["id"],
-                user_id=user["id"],
+                user_id=user_id,
                 roles=[],
                 status="pending",
                 created_at=now(),
@@ -341,30 +328,18 @@ def confirm(conn, raw, request=None):
                 org["id"],
                 role,
                 "join_request",
-                f"{user['display_name']} ({user['email']}) asked to join. Review it in Users & invitations.",
+                f"{display_name} ({email_addr}) asked to join. Review it in Users & invitations.",
             )
         audit.record(
             conn,
             "user.join_requested",
             org_id=org["id"],
             target_type="user",
-            target_id=user["id"],
+            target_id=user_id,
             request=request,
         )
         requested.append(org["name"])
-    if not requested:
-        mail.send(
-            conn,
-            user["email"],
-            "No Xpat organisation uses your e-mail domain yet",
-            [
-                f"Your address is confirmed, but no organisation on Xpat accepts members from {domain}.",
-                "Ask your administrator to invite you, or set up a new organisation for your team.",
-            ],
-            ("Set up an organisation", f"{auth_url()}/auth/register?kind=org"),
-            kind="signup_no_org",
-        )
-    return {"user_id": user["id"], "kind": kind, "org_id": None, "requested": requested}
+    return {"user_id": user_id, "kind": kind, "org_id": None, "requested": requested}
 
 
 def pending_orgs(conn, user_id):

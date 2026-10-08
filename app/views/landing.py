@@ -21,21 +21,26 @@ def sample_headline():
 
 
 def actions(key):
-    cols = st.columns([1, 1, 1, 3])
+    cols = st.columns([1, 1.3, 1, 1, 2])
     with cols[0]:
         if st.button(
             "Sign in", type="primary", icon=":material/login:", key=f"{key}_signin"
         ):
             st.switch_page("views/signin.py")
+    with cols[1]:
+        if st.button(
+            "Create an account", icon=":material/person_add:", key=f"{key}_register"
+        ):
+            st.switch_page("views/signin.py")
     if CONTACT:
-        with cols[1]:
+        with cols[2]:
             link(
                 "Request a pilot",
                 f"mailto:{CONTACT}?subject=Xpat%20pilot",
                 primary=False,
             )
     if state.guest_allowed():
-        with cols[2]:
+        with cols[3]:
             link("View demo", state.auth_link("/auth/guest"), primary=False)
 
 
@@ -44,7 +49,7 @@ left, right = st.columns([3, 2], gap="large", vertical_alignment="center")
 with left:
     site.hero(
         "For insurers and reinsurers",
-        "Flood loss, <span class='x-accent'>priced per property</span>",
+        "Flood loss, property by property",
         "Upload a schedule or broker submission. Get the loss curve, the concentrations and the assumptions behind them.",
     )
     st.space("small")
@@ -66,19 +71,19 @@ site.section("Platform", "One model, from submission to decision")
 site.cards(
     [
         (
-            "📄",
+            "",
             "Read any submission",
             "Schedules, PDFs and Word documents, checked before they are modelled.",
             (),
         ),
         (
-            "📈",
+            "",
             "Loss at every return period",
             "1-in-10 to 1-in-10,000 years, with average annual loss and ranges.",
             (),
         ),
         (
-            "🗺️",
+            "",
             "See accumulation",
             "Value and loss by location, area and construction.",
             (),
@@ -87,7 +92,7 @@ site.cards(
 )
 
 # How it works
-site.section("How it works", "Four steps")
+site.section("How it works", "From schedule to decision in four steps")
 site.cards(
     [
         ("1", "Upload", "Schedule or document.", ()),
@@ -103,18 +108,18 @@ site.section("For organisations", "Built for underwriting teams")
 site.cards(
     [
         (
-            "🔐",
+            "",
             "Secure by default",
             "Company sign-in (SSO), two-step verification, encrypted data.",
             (),
         ),
         (
-            "👥",
+            "",
             "Roles and approvals",
             "Underwriters, reviewers and approvers, with authority limits.",
             (),
         ),
-        ("🧾", "Full audit trail", "Every sign-in, change and export recorded.", ()),
+        ("", "Full audit trail", "Every sign-in, change and export recorded.", ()),
     ]
 )
 

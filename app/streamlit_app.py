@@ -151,6 +151,20 @@ if not principal.org_id and principal.is_platform_admin:
     }
 nav = st.navigation(sections)
 
+# Signed in through "Administrator": open administration once, or say plainly why it is not available.
+if st.query_params.get("as") == "admin" and not st.session_state.get(
+    "_admin_landing_done"
+):
+    st.session_state["_admin_landing_done"] = True
+    st.query_params.pop("as", None)
+    if admin:
+        st.switch_page(admin[0])
+    else:
+        st.toast(
+            "Your account has no administrator role in this organisation. Ask an owner if you need one.",
+            icon=":material/info:",
+        )
+
 with st.sidebar:
     org = state.org()
     with st.container(border=True):

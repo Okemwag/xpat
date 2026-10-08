@@ -257,7 +257,7 @@ else:
         )
 
     with st.expander("Every rule check", icon=":material/checklist:"):
-        STATUS = {"pass": "✅ pass", "limit": "🟧 limits the share", "fail": "⛔ fails"}
+        STATUS = {"pass": "Pass", "limit": "Limits the share", "fail": "Fails"}
         st.dataframe(
             pd.DataFrame(
                 [

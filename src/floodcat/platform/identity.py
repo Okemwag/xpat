@@ -44,6 +44,8 @@ DEFAULT_SETTINGS = {
     "ai_default_provider": None,
     "ai_local_for_client_data": False,
     "ai_preferences": {},
+    # Code people enter to ask to join this organisation (registration.join_code); requests still need approval.
+    "join_code": None,
 }
 ADMIN_ROLES = {"owner", "admin"}
 INVITE_TTL = timedelta(hours=72)

@@ -74,7 +74,9 @@ def upgrade():
             payload jsonb NOT NULL
         )
     """)
-    op.execute("CREATE INDEX ix_analysis_runs_created_at ON analysis_runs (created_at DESC)")
+    op.execute(
+        "CREATE INDEX ix_analysis_runs_created_at ON analysis_runs (created_at DESC)"
+    )
 
 
 def downgrade():

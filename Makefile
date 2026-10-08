@@ -23,9 +23,7 @@ migrate:
 	@$(ENV) if [ -n "$$FLOODCAT_DATABASE_URL" ]; then uv run alembic upgrade head; else uv run flood-cat init-db; fi
 # The sign-in/API server (port 8000) and the interface (port 8501) together; Ctrl+C stops both.
 app: migrate
-	@$(ENV) trap 'kill 0' INT TERM EXIT; \
-	$(RUN) uvicorn floodcat.api.app:create_app --factory --host 127.0.0.1 --port 8000 & \
-	$(RUN) streamlit run app/streamlit_app.py --server.headless true --server.port 8501
+	@$(ENV) $(RUN) python scripts/run_app.py
 serve:
 	@$(ENV) $(RUN) uvicorn floodcat.api.app:create_app --factory --host 127.0.0.1 --port 8000
 retention:

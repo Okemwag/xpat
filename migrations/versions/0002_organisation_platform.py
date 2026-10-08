@@ -10,6 +10,7 @@ depends_on = None
 
 def upgrade():
     from floodcat.platform.db import APPEND_ONLY_SQL, metadata
+
     bind = op.get_bind()
     metadata.create_all(bind)
     for statement in APPEND_ONLY_SQL["postgresql"]:
@@ -18,6 +19,7 @@ def upgrade():
 
 def downgrade():
     from floodcat.platform.db import metadata
+
     bind = op.get_bind()
     bind.exec_driver_sql("DROP TRIGGER IF EXISTS audit_no_change ON audit_events;")
     metadata.drop_all(bind)

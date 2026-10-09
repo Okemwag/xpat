@@ -18,7 +18,7 @@ st.set_page_config(
     page_title="Xpat · Nairobi flood risk",
     page_icon=str(ROOT / "logo.png"),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",  # open on desktop, collapsed behind the menu button on phones
 )
 st.logo(str(ROOT / "logo.png"), size="large")
 
@@ -228,5 +228,24 @@ with st.sidebar:
     )
     st.caption(
         "Results are indicative: proxy hazard, assumed return periods and uncalibrated damage curves — not a price."
+    )
+# Phones: after choosing a page, close the menu so the page is visible (Streamlit leaves it open). Runs only when the page
+# changes, so opening the menu yourself still works; screens 768 px and wider are untouched.
+if st.session_state.get("_last_page") != nav.url_path:
+    st.session_state["_last_page"] = nav.url_path
+    import streamlit.components.v1 as components
+
+    components.html(
+        # The page name makes the content differ per page, so Streamlit re-creates the frame and the script runs again.
+        f"<!-- {nav.url_path or 'home'} -->"
+        """<script>
+        const w = window.parent;
+        if (w.innerWidth < 768) {
+          const bar = w.document.querySelector('[data-testid="stSidebar"]');
+          const close = w.document.querySelector('[data-testid="stSidebarCollapseButton"] button');
+          if (bar && bar.getAttribute('aria-expanded') === 'true' && close) close.click();
+        }
+        </script>""",
+        height=0,
     )
 nav.run()

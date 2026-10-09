@@ -246,6 +246,8 @@ def test_briefing_from_overview(store, monkeypatch):
     monkeypatch.setattr(state, "ai_enabled", lambda kind="extraction": True)
     monkeypatch.setattr(state, "llm", lambda client_data=False: FakeLLM())
     at.run()
+    next(b for b in at.button if b.label == "Draft AI briefing").click()
+    at.run()
     next(b for b in at.button if b.label == "Draft briefing").click()
     at.run()
     assert not at.exception
@@ -268,9 +270,9 @@ def test_underwriting_decision_flow(store, monkeypatch):
     at.run()
     at.switch_page("views/decision.py")
     at.run()
-    assert not at.exception and any(
-        "Enter the offered premium" in i.value for i in at.info
-    )
+    # A verdict shows at once from the model's technical premium; recording waits for a confirmed offer.
+    assert not at.exception and any("technical premium so you see a verdict" in c.value for c in at.caption)
+    assert next(b for b in at.button if b.label == "Record decision").disabled
     next(n for n in at.number_input if n.label.startswith("Offered premium")).set_value(
         400_000_000.0
     )
@@ -279,7 +281,11 @@ def test_underwriting_decision_flow(store, monkeypatch):
     )
     next(b for b in at.button if b.label == "Get recommendation").click()
     at.run()
-    assert not at.exception and any("Recommended share" == m.label for m in at.metric)
+    assert not at.exception and not next(b for b in at.button if b.label == "Record decision").disabled
+    html = " ".join(str(h.proto) for h in at.get("html"))
+    assert "g-verdict" in html and "Technical premium = Annual loss" in html
+    next(t for t in at.toggle if t.key == "details_decision").set_value(True)
+    at.run()
     page_text = " ".join(m.value for m in at.markdown)
     assert (
         "Our advice" in page_text

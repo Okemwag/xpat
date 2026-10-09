@@ -2,11 +2,10 @@ from decimal import Decimal
 import pandas as pd
 import streamlit as st
 from floodcat.core.constants import CLASSES, TIERS
-from ui import state
+from ui import glance, state
 from ui.charts import columns_chart, vulnerability_chart
 from ui.components import (
     explain,
-    kpis,
     page_header,
     pipeline_strip,
     require_result,
@@ -92,36 +91,24 @@ share = (
 aal_list = report["runs"][run].get("property_aal", [])
 aal_row = next((r for r in aal_list if r["loc_id"] == choice), None)
 aal_rank = aal_list.index(aal_row) + 1 if aal_row else None
-kpis(
-    [
-        (
-            "Insured value",
-            state.kes(p["tiv_kes"]),
-            "SYNTHETIC" if p.get("synthetic", True) else "REAL",
-        ),
-        ("Construction", state.class_label(p["housing_class"])),
-        (
-            f"{state.rp_label(cfg.return_periods[rarest])} loss",
-            state.kes(p["loss_kes"]),
-            f"Rank {rank} of {len(by_id[rarest])} by loss",
-            f"{share:.1%} of value",
-        ),
-        (
-            "Expected annual loss",
-            state.kes(aal_row["aal_kes"]) if aal_row else "KES 0",
-            "This property's own AAL; all properties add up to the portfolio's"
-            + (f" · insured {state.kes(aal_row['insured_aal_kes'])}" if aal_row and "insured_aal_kes" in aal_row else ""),
-            f"Rank {aal_rank} of {len(aal_list)}" if aal_row else "Never flagged by the hazard map",
-        ),
-        (
-            "Nearest named hotspot",
-            p.get("nearest_hotspot") or "—",
-            None,
-            f"{p['hotspot_distance_m'] / 1000:.1f} km away"
-            if p.get("nearest_hotspot")
-            else None,
-        ),
-    ]
+glance.style()
+exposed0 = float(p.get("exposed_fraction", 1) or 1)
+glance.tiles([
+    ("🏠", "Insured value", state.kes(p["tiv_kes"]), "SYNTHETIC" if p.get("synthetic", True) else "REAL", ""),
+    ("🧱", "Construction", state.class_label(p["housing_class"]), "", ""),
+    ("🌊", f"{state.rp_label(cfg.return_periods[rarest])} loss", state.kes(p["loss_kes"]),
+     f"{share:.1%} of value · rank {rank} of {len(by_id[rarest])}", "orange"),
+    ("📅", "Average a year", state.kes(aal_row["aal_kes"]) if aal_row else "KES 0",
+     f"rank {aal_rank} of {len(aal_list)}" if aal_row else "never flagged by the hazard map", "green"),
+    ("📍", "Nearest named area", p.get("nearest_hotspot") or "—",
+     f"{p['hotspot_distance_m'] / 1000:.1f} km away" if p.get("nearest_hotspot") else "", ""),
+])
+glance.formula(
+    "Loss = Insured value × Damage ratio" + (" × Exposed share" if exposed0 < 1 else ""),
+    f"{state.kes(p['tiv_kes'])} × {float(p['damage_ratio']):.1%}" + (f" × {exposed0:.0%}" if exposed0 < 1 else "")
+    + f" = {state.kes(p['loss_kes'])}",
+    f"Score {float(p['hazard_score']):.2f} → depth {float(p['assumed_depth_m']):.2f} m (score × {cfg.max_depth_m:g} m, ASSUMPTION) "
+    f"→ damage {float(p['damage_ratio']):.1%} from the adapted JRC curve, at {state.rp_label(cfg.return_periods[rarest])}.",
 )
 
 rows = []

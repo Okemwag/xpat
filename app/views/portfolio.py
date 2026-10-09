@@ -5,13 +5,12 @@ import streamlit as st
 from floodcat.core.constants import CLASSES
 from floodcat.core.errors import ModelError, ReviewRequired
 from floodcat.exposure.validation import apply_declarations, validate_rows
-from ui import state
+from ui import glance, state
 from ui.charts import donut
 from ui.components import (
     badges,
     explain,
     issues_panel,
-    kpis,
     page_header,
     pipeline_strip,
     section,
@@ -34,6 +33,15 @@ page_header(
     "Every source goes through the same validation before any loss is calculated.",
 )
 pipeline_strip("Exposure")
+glance.style()
+glance.answer("Three ways in, <b>one check</b>: every property is validated the same way before any loss is calculated.")
+c1, c2, c3 = st.columns(3, gap="medium")
+with c1:
+    glance.choice("📄", "Upload a file", "CSV / Excel schedule, or a broker memo (PDF, Word): AI reads it and quotes the source for every field.")
+with c2:
+    glance.choice("💬", "Describe in words", "“20 iron-sheet houses in Mathare, 300k each” — AI turns it into rows you check.")
+with c3:
+    glance.choice("🧪", "Sample portfolio", "600 synthetic Nairobi buildings from the starter kit — one click to see results.")
 if state.read_only():
     st.error(
         "Your organisation is suspended (read-only). New analyses are disabled.",
@@ -194,29 +202,15 @@ def review_and_run(rows, label_default, source_kind, key, origin_hint=None):
         st.error(str(exc), icon=":material/error:")
         return
     real = sum(not x.synthetic for x in assets)
-    kpis(
-        [
-            ("Records", f"{len(rows):,}"),
-            (
-                "Valid",
-                f"{len(assets):,}",
-                None,
-                f"{len(rows) - len(assets)} cannot be modelled"
-                if len(rows) > len(assets)
-                else "all valid",
-            ),
-            ("Insured value (valid)", state.kes(sum(x.tiv_kes for x in assets))),
-            (
-                "Data",
-                "REAL"
-                if real == len(assets) and assets
-                else "SYNTHETIC"
-                if not real
-                else "REAL + SYNTHETIC",
-                "As declared for each record",
-            ),
-        ]
-    )
+    glance.tiles([
+        ("🧾", "Records", f"{len(rows):,}", "in the file", ""),
+        ("✅", "Valid", f"{len(assets):,}",
+         f"{len(rows) - len(assets)} cannot be modelled" if len(rows) > len(assets) else "all valid",
+         "green" if len(assets) == len(rows) else "orange"),
+        ("🏠", "Insured value (valid)", state.kes(sum(x.tiv_kes for x in assets)), "", "blue"),
+        ("🏷️", "Data", "REAL" if real == len(assets) and assets else "SYNTHETIC" if not real else "REAL + SYNTHETIC",
+         "as declared for each record", ""),
+    ])
     issues_panel(issues, expanded=True)
     preview(assets)
     errors = any(i["severity"] == "error" for i in issues)
@@ -480,14 +474,12 @@ with sample:
         by_class[r["housing_class"]] = by_class.get(r["housing_class"], 0) + float(
             r["tiv_kes"]
         )
-    kpis(
-        [
-            ("Properties", f"{len(sample_rows):,}", "Invented Nairobi buildings"),
-            ("Insured value", state.kes(sum(by_class.values()))),
-            ("Construction classes", len(by_class)),
-            ("Origin", "SYNTHETIC", "Hackathon starter kit — not a real portfolio"),
-        ]
-    )
+    glance.tiles([
+        ("🏘️", "Properties", f"{len(sample_rows):,}", "invented Nairobi buildings", ""),
+        ("🏠", "Insured value", state.kes(sum(by_class.values())), "as supplied", "blue"),
+        ("🧱", "Construction classes", str(len(by_class)), "iron sheet → concrete", ""),
+        ("🧪", "Origin", "SYNTHETIC", "starter kit, not a real portfolio", "orange"),
+    ])
     left, right = st.columns([3, 2], gap="large")
     with left:
         st.write(

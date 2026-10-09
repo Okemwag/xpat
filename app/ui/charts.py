@@ -162,7 +162,7 @@ def class_bars(items):
         .encode(
             y=alt.Y("Class:N", sort="-x", title=None),
             x=alt.X(
-                "Loss (KES m):Q", title="Loss (KES m)", axis=alt.Axis(gridOpacity=0.4)
+                "Loss (KES m):Q", title="Loss (KES m)", axis=alt.Axis(gridOpacity=0.4, format=",~f", tickCount=5)
             ),
             tooltip=["Class", "Properties", "Insured value", "Loss", "Share of loss"],
         )
@@ -642,11 +642,12 @@ def hbars(
             color=color or BASE, cornerRadiusEnd=4, height=max(12, height_per - 8)
         )
         .encode(
-            y=alt.Y(f"{label}:N", sort=sort, title=None),
+            y=alt.Y(f"{label}:N", sort=sort, title=None, axis=alt.Axis(labelLimit=220)),
             x=alt.X(
                 f"{value}:Q",
                 title=value_title,
-                axis=alt.Axis(gridOpacity=0.4, format=fmt or ""),
+                # Plain thousands separators: never "1e+3" or "1.2e+2".
+                axis=alt.Axis(gridOpacity=0.4, format=fmt or ",~f", tickCount=5),
             ),
             tooltip=[c for c in data.columns if not c.startswith("_")],
         )
@@ -908,3 +909,27 @@ def waterfall_chart(report, tier, run="baseline", height=300):
     text = alt.Chart(data).transform_calculate(top="max(datum.start, datum.end)").mark_text(dy=-8, fontSize=11).encode(
         x=alt.X("Step:N", sort=order), y="top:Q", text="label:N")
     return (bars + text).properties(height=height)
+
+def split_bar(run, tier, height=70):
+    """One horizontal bar: the ground-up loss of one scenario split into owners, quota share, cat XL and net loss."""
+    from floodcat.reporting.terms import waterfall
+
+    st = {k: v for k, _, v in waterfall(run, tier)}
+    parts = [("Owners (deductible, limit)", -(st["deductible"] + st["limit"]), "#b8b8b8"),
+             ("Quota share", -st["quota_share"], SERIES[1]), ("Catastrophe XL", -st["cat_xl"], "#f2a074"),
+             ("Net loss (insurer)", st["net"], BASE)]
+    total = float(st["ground_up"]) or 1.0
+    data = pd.DataFrame([{"Part": n, "KES bn": float(v) / 1e9, "Amount": state.kes(v), "Share": f"{float(v) / total:.0%}",
+                          "order": i} for i, (n, v, _) in enumerate(parts)])
+    return (
+        alt.Chart(data)
+        .mark_bar(size=34)
+        .encode(
+            x=alt.X("KES bn:Q", stack="zero", title=None, axis=alt.Axis(format=",.1f", tickCount=4, gridOpacity=0.3)),
+            color=alt.Color("Part:N", scale=alt.Scale(domain=[n for n, _, _ in parts], range=[c for _, _, c in parts]),
+                            legend=alt.Legend(orient="bottom", title=None, columns=2, labelLimit=200)),
+            order=alt.Order("order:Q"),
+            tooltip=["Part", "Amount", "Share"],
+        )
+        .properties(height=height)
+    )

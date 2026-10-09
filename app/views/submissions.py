@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from floodcat.platform import data
 from floodcat.underwriting.decision import OUTCOME_LABEL
-from ui import state
+from ui import glance, state
 from ui.charts import columns_chart
 from ui.components import kpis, page_header, section, when
 
@@ -30,6 +30,21 @@ STATUS_COLOUR = {
 with state.platform().tx() as conn:
     subs = data.list_submissions(conn, p)
 people = state.people()
+counts = {s: sum(x["status"] == s for x in subs) for s in STATUS_LABEL}
+
+glance.style()
+glance.answer(
+    "A <b>submission</b> is one deal a broker or cedant sends you: a schedule or memo of properties. "
+    "Here you log it, run it through the flood model, get the rules’ verdict and record your decision — one place per deal."
+)
+c1, c2, c3 = st.columns(3, gap="medium")
+with c1:
+    glance.choice("📥", "1 · Log it", "Create the submission with the cedant, broker and inception date.")
+with c2:
+    glance.choice("🌊", "2 · Model it", "Upload the schedule or broker memo on Portfolio; the analysis attaches here.")
+with c3:
+    glance.choice("⚖️", "3 · Decide it", "Underwriting decision gives accept / smaller share / decline; you record the call.")
+glance.steps([(STATUS_LABEL[k], counts[k]) for k in STATUS_LABEL])
 
 if p.can("submissions.manage"):
     with st.expander("New submission", icon=":material/add:", expanded=not subs):
@@ -53,21 +68,13 @@ if not subs:
     st.info("No submissions yet.", icon=":material/work:")
     st.stop()
 
-counts = {s: sum(x["status"] == s for x in subs) for s in STATUS_LABEL}
-kpis(
-    [
-        ("Submissions", len(subs)),
-        (
-            "Open",
-            counts["received"] + counts["under_review"] + counts["referred"],
-            "Received, under review or referred",
-        ),
-        ("Referred", counts["referred"], "Waiting for the head of underwriting"),
-        ("Quoted", counts["quoted"]),
-        ("Bound", counts["bound"]),
-        ("Assigned to you", sum(x["assignee_id"] == p.user_id for x in subs)),
-    ]
-)
+glance.tiles([
+    ("📂", "Submissions", str(len(subs)), "all deals logged", ""),
+    ("⏳", "Open", str(counts["received"] + counts["under_review"] + counts["referred"]), "received, in review or referred", "blue"),
+    ("🚩", "Referred", str(counts["referred"]), "waiting for the head of underwriting", "orange" if counts["referred"] else ""),
+    ("✅", "Bound", str(counts["bound"]), f"{counts['quoted']} quoted", "green"),
+    ("👤", "Assigned to you", str(sum(x["assignee_id"] == p.user_id for x in subs)), "", ""),
+])
 
 left, right = st.columns([2, 3], gap="large")
 with left.container(border=True, height="stretch"):

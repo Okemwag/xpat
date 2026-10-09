@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from floodcat.core.errors import ModelError
-from ui import state
+from ui import glance, state
 from ui.charts import BASIS_LABEL, class_bars, scenario_source, who_pays_chart, ylt_chart
 from ui.charts import hbars
 from ui.components import (
@@ -19,6 +19,7 @@ from ui.components import (
 page_header("Loss curve")
 pipeline_strip("Loss curve")
 report = require_result()
+glance.style()
 run_banner(report)
 cfg = state.config()
 runs = ["baseline"] + (["enhanced"] if "enhanced" in report["runs"] else [])
@@ -64,34 +65,43 @@ rarest = sim["rarest_modelled_return_period"]
 table = {int(p["return_period_years"]): p for p in sim["table"]}
 
 
+TONES = {10: "", 100: "blue", 250: "orange", 1000: "red"}
+
+
 def tile(rp):
     p = table.get(rp)
     return (
-        (
-            f"1-in-{rp:,}",
-            state.kes(p["loss_kes"]),
-            f"Simulation range {state.kes(p['band_low_kes'])} – {state.kes(p['band_high_kes'])}",
-            f"{state.kes(p['band_low_kes'])}–{state.kes(p['band_high_kes'])}",
-        )
-        if p
-        else None
+        ("🌊", f"1-in-{rp:,} loss", state.kes(p["loss_kes"]),
+         f"{1 / rp:.1%} a year · range {state.kes(p['band_low_kes'])}–{state.kes(p['band_high_kes'])}", TONES[rp])
+        if p else None
     )
 
 
-kpis(
-    [
-        tile(10),
-        tile(100),
-        tile(250),
-        tile(1000),
-        (
-            "Average annual loss",
-            state.kes(sim["aal"]["aal_kes"]),
-            "Mean of the simulated years",
-            f"{state.kes(sim['aal']['band_low_kes'])}–{state.kes(sim['aal']['band_high_kes'])}",
-        ),
-    ]
-)
+p100 = table.get(100)
+if p100:
+    glance.answer(
+        f"Each year there is about a <b>1% chance</b> of a {BASIS_LABEL[basis].lower()} loss of "
+        f"<b>{state.kes(p100['loss_kes'])}</b> or more; on average the portfolio loses <b>{state.kes(sim['aal']['aal_kes'])}</b> a year."
+    )
+glance.tiles([
+    tile(10), tile(100), tile(250), tile(1000),
+    ("📅", "Average a year", state.kes(sim["aal"]["aal_kes"]),
+     f"range {state.kes(sim['aal']['band_low_kes'])}–{state.kes(sim['aal']['band_high_kes'])}", "green"),
+])
+f1, f2 = st.columns(2, gap="medium")
+with f1:
+    glance.formula("Annual chance = 1 ÷ return period", "1-in-100 → 1 ÷ 100 = 1% a year",
+                   "Not “once every 100 years”: two 1-in-100 floods can come in a row.")
+with f2:
+    glance.formula(f"AAL = Σ year losses ÷ {sim['years']:,} years",
+                   f"= {state.kes(sim['aal']['aal_kes'])} a year",
+                   f"{sim['zero_loss_years']:,} of the {sim['years']:,} simulated years have no loss.")
+glance.chips([
+    ("tiers = 10 / 25 / 50 / 100 / 250 yr", "The hazard tiers have no years attached; this mapping is our assumption, from the "
+     "reference dashboard. The narrowest footprint (“extreme”) is the most frequent flood."),
+    (f"beyond 1-in-{rarest:g}: no rarer floods", f"Right of 1-in-{rarest:g} the curve varies only with damage uncertainty; "
+     "no bigger floods are modelled."),
+], key="results")
 
 with st.container(border=True):
     st.altair_chart(

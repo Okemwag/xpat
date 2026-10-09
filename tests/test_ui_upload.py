@@ -39,7 +39,7 @@ def page(store_dir, csv_bytes, name="upload.csv"):
         page_preamble(store_dir, token)
         exec(
             compile(
-                open(f"{app_dir}/views/portfolio.py").read(), "portfolio.py", "exec"
+                open(f"{app_dir}/views/portfolio.py", encoding="utf-8").read(), "portfolio.py", "exec"
             ),
             {"__name__": "__main__"},
         )
@@ -176,7 +176,7 @@ def doc_page(store_dir, doc_bytes, name):
         state.runtime().gazetteer = lambda *a, **k: None
         exec(
             compile(
-                open(f"{app_dir}/views/portfolio.py").read(), "portfolio.py", "exec"
+                open(f"{app_dir}/views/portfolio.py", encoding="utf-8").read(), "portfolio.py", "exec"
             ),
             {"__name__": "__main__"},
         )

@@ -354,12 +354,17 @@ def test_sign_in_throttles_are_off_outside_production_but_quotas_stay(plat, monk
 def test_links_follow_the_browser_host_unless_urls_are_configured(monkeypatch):
     monkeypatch.delenv("FLOODCAT_APP_URL", raising=False)
     monkeypatch.delenv("FLOODCAT_AUTH_URL", raising=False)
+    monkeypatch.delenv("FLOODCAT_AUTH_PORT", raising=False)
     identity.use_request_host("192.168.1.20:8501")
-    assert identity.app_url() == "http://192.168.1.20:8501" and identity.auth_url() == "http://192.168.1.20:8000"
+    # Sign-in pages share the interface's address by default (app/asgi_app.py)…
+    assert identity.app_url() == "http://192.168.1.20:8501" and identity.auth_url() == "http://192.168.1.20:8501"
+    monkeypatch.setenv("FLOODCAT_AUTH_PORT", "8000")  # …or live on port 8000 with run_app.py --two-servers
+    assert identity.auth_url() == "http://192.168.1.20:8000"
     identity.use_request_host("localhost:8501")  # Windows resolves localhost to IPv6 first; servers listen on IPv4
     assert identity.app_url() == "http://127.0.0.1:8501"
     identity.use_request_host("evil.example/<script>")  # not a host name: ignored
     assert identity.auth_url() == "http://127.0.0.1:8000"
+    monkeypatch.delenv("FLOODCAT_AUTH_PORT")
     monkeypatch.setenv("FLOODCAT_APP_URL", "https://app.xpat.example/")
     identity.use_request_host("192.168.1.20")
     assert identity.app_url() == "https://app.xpat.example"  # configured URLs always win

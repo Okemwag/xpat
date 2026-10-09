@@ -85,12 +85,22 @@ def _base(env, default_port):
     return f"http://{host}:{default_port}"
 
 
+def _port(env, default):
+    value = os.getenv(env, "").strip()
+    return int(value) if value.isdigit() and 0 < int(value) < 65536 else default
+
+
 def app_url():
-    return _base("FLOODCAT_APP_URL", 8501)
+    return _base("FLOODCAT_APP_URL", _port("FLOODCAT_APP_PORT", 8501))
 
 
 def auth_url():
-    return _base("FLOODCAT_AUTH_URL", 8000)
+    # The sign-in pages are served by the interface's own server (app/asgi_app.py, started by scripts/run_app.py), so by
+    # default they share its address. FLOODCAT_AUTH_PORT=8000 is set by `run_app.py --two-servers` for the old layout.
+    return _base(
+        "FLOODCAT_AUTH_URL",
+        _port("FLOODCAT_AUTH_PORT", _port("FLOODCAT_APP_PORT", 8501)),
+    )
 
 
 def _email(value):
@@ -122,11 +132,25 @@ def settings_for(conn, org_id):
 # Rate limiting (AUTH-09, SEC-05) --------------------------------------------------------------------------
 # Sign-in throttles (sign-up, failed logins, two-step codes, resets, guest/demo sign-in) apply in production only, or
 # when FLOODCAT_AUTH_THROTTLE=1. Quotas (ai-*, upload-*) and the API limit (api-ip) always apply.
-AUTH_THROTTLES = ("signup", "signup-ip", "login", "login-ip", "mfa", "reset", "reset-ip", "reauth", "guest-ip", "demo-ip")
+AUTH_THROTTLES = (
+    "signup",
+    "signup-ip",
+    "login",
+    "login-ip",
+    "mfa",
+    "reset",
+    "reset-ip",
+    "reauth",
+    "guest-ip",
+    "demo-ip",
+)
 
 
 def auth_throttling():
-    return os.getenv("FLOODCAT_ENV") == "production" or os.getenv("FLOODCAT_AUTH_THROTTLE") == "1"
+    return (
+        os.getenv("FLOODCAT_ENV") == "production"
+        or os.getenv("FLOODCAT_AUTH_THROTTLE") == "1"
+    )
 
 
 def rate_count(conn, key, window, failures_only=True):

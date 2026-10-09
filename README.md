@@ -113,7 +113,7 @@ tracked in **[docs/ORGANISATION_CHECKLIST.md](docs/ORGANISATION_CHECKLIST.md)**.
 cp .env.example .env   # then set GEMINI_API_KEY or OLLAMA_MODEL (AI), RESEND_API_KEY / RESEND_FROM (e-mail)
 make install           # uv sync with dev, geo, ui and ai extras
 make db                # optional: local PostgreSQL (set FLOODCAT_DATABASE_URL in .env); otherwise SQLite is used
-make app               # migrate, then sign-in/API server on :8000 and the interface on :8501
+make app               # migrate, then everything (interface, sign-in, API) on one address: :8501
 make report            # outputs/xpat_submission_report.pdf (note with diagrams) and the vulnerability explainer
 make tunnel            # public https://*.trycloudflare.com address via Cloudflare quick tunnel (then restart make app);
                        # make tunnel-stop to end it. Needs cloudflared; Caddy single binary in runtime/bin
@@ -135,6 +135,9 @@ same checks as Gemini's. Small local models are much slower on a CPU and less re
 
 There is no e-mail confirmation step, so administrators should check who is asking before approving a request.
 Registration is on by default outside production; set `FLOODCAT_ALLOW_SIGNUP=1` to allow it in production.
+`scripts/run_app.py` (what `make app` runs) serves the interface, the sign-in pages and the API from one server
+(`app/asgi_app.py`), so the browser never leaves `http://127.0.0.1:8501`. Add `--two-servers` for the earlier layout
+with sign-in and the API on port 8000 (`FLOODCAT_AUTH_PORT` sets which port sign-in links use).
 Open the app at the address in `FLOODCAT_APP_URL` (default `http://127.0.0.1:8501`). The sign-in cookie belongs to
 that address. The default is `127.0.0.1` rather than `localhost` because on many Windows machines `localhost` resolves to
 IPv6 first while the local servers listen on IPv4, so the browser reports "site cannot be reached".

@@ -6,6 +6,7 @@ from floodcat.core.constants import CLASSES
 from floodcat.core.errors import ModelError, ReviewRequired
 from floodcat.exposure.validation import apply_declarations, validate_rows
 from ui import glance, state
+from ui.corrections_view import chosen_settings, portfolio_panel
 from ui.charts import donut
 from ui.components import (
     badges,
@@ -67,6 +68,9 @@ if st.session_state.get("active_submission"):
     except Exception:
         st.session_state.pop("active_submission", None)
 
+if state.can("runs.create"):
+    portfolio_panel()
+
 ORIGIN_LABEL = {
     "real": "Real exposure — a client portfolio or broker submission",
     "synthetic": "Synthetic or test data",
@@ -74,6 +78,7 @@ ORIGIN_LABEL = {
 
 
 def run_and_go(rows, label, settings):
+    settings, label = chosen_settings(settings, label, st.session_state.get("corrections", {"drainage": False, "evidence": False}))
     with st.spinner("Running hazard → vulnerability → loss…"):
         report, error = state.execute(rows, label, settings=settings)
     if error is None:

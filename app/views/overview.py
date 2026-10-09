@@ -7,13 +7,17 @@ from floodcat.reporting.terms import waterfall
 from ui import glance, state
 from ui.charts import donut, hbars, split_bar, ylt_chart
 from ui.components import explain, page_header, require_result, run_banner, section
+from ui.corrections_view import results_panel
 
 page_header("Overview")
 report = require_result()
 glance.style()
 run_banner(report)
+results_panel(report)
 cfg = state.config()
-run = report["runs"]["baseline"]
+corrected = "enhanced" in report["runs"]
+# With a correction switched on, every figure on this page is the corrected run; the baseline stays on the curve.
+run = report["runs"]["enhanced" if corrected else "baseline"]
 curve = {p["return_period_years"]: p for p in run["ep_curve"]}
 rarest_rp = max(curve)
 tier_100 = state.tier_for_rp(cfg, 100.0) if 100.0 in curve else run["ep_curve"][-2]["tier"]
@@ -32,6 +36,14 @@ glance.answer(
     + (f" After deductibles and reinsurance the insurer keeps <b>{state.kes(steps['net'])}</b> of that 1-in-{rp_100:g} loss."
        if "reinsurance" in run else "")
 )
+if corrected:
+    base = report["runs"]["baseline"]
+    base_curve = {p["return_period_years"]: p for p in base["ep_curve"]}
+    st.caption(
+        f"Corrected for places the terrain map misses (AI / PROXY). Without the correction: 1-in-{rp_100:g} loss "
+        f"{state.kes(base_curve[rp_100]['loss_kes'])}, average a year {state.kes(base['aal']['aal_kes'])}. "
+        f"{report['ai_contribution']['changed_properties']} properties' hazard raised. A higher loss is not proof of a better model."
+    )
 glance.tiles([
     ("🏠", "Insured value", state.kes(report["modelled_tiv_kes"]), f"{report['modelled_count']} properties", ""),
     ("🌊", f"1-in-{rp_100:g} loss", state.kes(p100["loss_kes"]), f"{state.pct(p100['loss_pct_of_tiv'])} of value · 1% a year", "blue"),

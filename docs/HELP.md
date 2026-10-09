@@ -63,6 +63,20 @@ Before running, the **schedule check** flags likely data errors, such as duplica
 the wrong units or an unusual cost per square metre, and proposes fixes you can tick. You also say whether the data is
 real or synthetic. Every result is labelled REAL or SYNTHETIC.
 
+## Correcting for places the map misses
+
+The terrain map finds 12 of the 24 named flood areas; the others flood because drains fail. Two switches, on the
+**Portfolio** page before a run and on **Overview** after one, correct for this:
+
+- **Drainage model (OpenStreetMap):** drains, culverts and building density give a chance of drainage failure, and hazard
+  is raised where it is high. It flags 21 of 24 named areas, but this is not validated.
+- **Approved flood evidence:** drainage and runoff reports approved by a named reviewer raise hazard near each place.
+
+Both are off by default. Switching one on raises hazard scores before the damage curve, so the change carries through
+damage, property losses, the loss curve, average annual loss, policy terms, reinsurance and the underwriting decision.
+Overview then shows the corrected figures and states the uncorrected ones; the loss curve shows both. Switching on
+Overview re-runs the portfolio and saves it as a new run. A higher loss is not proof of a better model.
+
 ## Reading the results
 
 - **Overview:** headline numbers, the loss curve, loss by construction type, where loss concentrates and the largest
